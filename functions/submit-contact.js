@@ -1,23 +1,6 @@
-export default {
-  async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-
-    // Route POST requests for the contact form
-    if (url.pathname === "/functions/submit-contact" && request.method === "POST") {
-      return handleContactSubmit(request, env);
-    }
-
-    // Serve static assets from the public/ folder via the ASSETS binding
-    if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
-    }
-
-    return new Response("Not Found", { status: 404 });
-  }
-};
-
-async function handleContactSubmit(request, env) {
+export async function onRequestPost(context) {
   try {
+    const { request, env } = context;
     const body = await request.json();
     const { name, email, message } = body;
 

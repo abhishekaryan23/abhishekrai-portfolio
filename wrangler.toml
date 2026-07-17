@@ -1,8 +1,2 @@
-name = "abhishekrai-portfolio"
-main = "src/worker.js"
+pages_build_output_dir = "public"
 compatibility_date = "2026-07-17"
-
-# Configure static assets directory to be served by the Worker
-[assets]
-directory = "./public"
-binding = "ASSETS"
