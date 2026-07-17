@@ -781,7 +781,7 @@
                 feedback.classList.remove('hidden');
 
                 setTimeout(() => {
-                    feedback.innerText = "Transmission successful (Local simulation mode).";
+                    feedback.innerText = "Thank you for reaching out to Abhishek. We will get back to you shortly (Local simulation mode).";
                     feedback.className = "text-center font-label-sm text-xs text-primary mt-4 block";
                     form.reset();
                     submitBtn.disabled = false;
@@ -814,7 +814,7 @@
                 }
 
                 if (response.ok) {
-                    feedback.innerText = "Transmission successful. Secure receipt logged.";
+                    feedback.innerText = "Thank you for reaching out to Abhishek. We will get back to you shortly.";
                     feedback.className = "text-center font-label-sm text-xs text-primary mt-4 block";
                     form.reset();
                 } else {
