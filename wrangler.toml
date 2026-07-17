@@ -1,0 +1,6 @@
+# Cloudflare Pages Configuration
+name = "abhishekrai-portfolio"
+compatibility_date = "2026-07-17"
+
+# Explicitly sets the build output directory to public/ folder
+pages_build_output_dir = "public"
