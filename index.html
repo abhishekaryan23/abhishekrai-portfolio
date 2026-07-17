@@ -119,7 +119,7 @@
               },
               "spacing": {
                       "stack-md": "24px",
-                      "section-gap": "180px",
+                      "section-gap": "160px",
                       "gutter": "32px",
                       "safe-margin": "64px",
                       "stack-sm": "8px",
@@ -769,7 +769,25 @@
 
             if (!isValid) return;
 
-            // Submit flow
+            // Detect if running locally (e.g. file:// protocol)
+            if (window.location.protocol === 'file:') {
+                submitBtn.disabled = true;
+                submitBtn.innerText = "Transmitting Message...";
+                feedback.innerText = "Connecting to simulated edge router...";
+                feedback.className = "text-center font-label-sm text-xs text-primary mt-4 block";
+                feedback.classList.remove('hidden');
+
+                setTimeout(() => {
+                    feedback.innerText = "Transmission successful (Local simulation mode).";
+                    feedback.className = "text-center font-label-sm text-xs text-primary mt-4 block";
+                    form.reset();
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = "Send Transmission";
+                }, 1000);
+                return;
+            }
+
+            // Submit flow for live deployments
             submitBtn.disabled = true;
             submitBtn.innerText = "Transmitting Message...";
             feedback.innerText = "Connecting to edge router...";
@@ -783,7 +801,14 @@
                     body: JSON.stringify({ name, email, message })
                 });
 
-                const data = await response.json();
+                let data = {};
+                const contentType = response.headers.get("content-type");
+                if (contentType && contentType.includes("application/json")) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    data = { message: text || `Status code: ${response.status}` };
+                }
 
                 if (response.ok) {
                     feedback.innerText = "Transmission successful. Secure receipt logged.";
