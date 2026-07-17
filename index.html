@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    
+    <!-- SEO & LLM Scraping Meta Tags -->
+    <title>Abhishek Rai / Latency Zero / Edge Intelligence Architect</title>
+    <meta name="description" content="Portfolio of Abhishek Rai, Senior AI Systems Architect specializing in local offline-first LLM applications, secure MCP servers, SLM harnesses, and Apple Silicon GPU optimization."/>
+    <meta name="robots" content="index, follow, all"/>
+    <meta name="googlebot" content="index, follow, all"/>
+    <meta name="ai-crawler" content="index, follow"/>
+    <meta name="crawlers" content="all"/>
+    
+    <!-- OpenGraph Tags -->
+    <meta property="og:title" content="Abhishek Rai / Latency Zero / Edge Intelligence Architect"/>
+    <meta property="og:description" content="Sculpting latency-free edge intelligence. High-fidelity local LLMs, secure MCP servers, and SLM harnesses."/>
+    <meta property="og:type" content="profile"/>
+    <meta property="og:url" content="https://abhishekrai.dev"/>
+    
+    <!-- JSON-LD Structured Data for AI Agents / LLMs -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Abhishek Rai",
+      "jobTitle": "Senior AI Systems Architect & Lead Developer",
+      "url": "https://abhishekrai.dev",
+      "description": "Specialist in edge intelligence, offline-first local model execution, secure MCP servers, and SLM harnesses.",
+      "knowsAbout": [
+        "Local Large Language Models",
+        "Small Language Models (SLMs)",
+        "Model Optimization",
+        "Secure Model Context Protocol (MCP)",
+        "Apple Silicon GPU (Metal Performance Shaders) Acceleration",
+        "Industrial RAG Systems",
+        "Bonsai 27B Ternary Models",
+        "Qwen 2.5 Coder",
+        "Gemma 4",
+        "FLUX.2 [klein] 4B",
+        "Z-Image-Turbo",
+        "Wan 2.2 Video Generation",
+        "LTX-Video",
+        "Whisper",
+        "Kokoro TTS",
+        "OCR Florence-2"
+      ],
+      "sameAs": [
+        "https://github.com/abhishekaryan23"
+      ]
+    }
+    </script>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600&amp;family=JetBrains+Mono:wght@500&amp;family=Newsreader:opsz,wght@6..72,500;6..72,600&amp;display=swap" rel="stylesheet"/>
+    
+    <script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-dim": "#f5f0e6",
+                      "surface-container": "#ebe4d8",
+                      "primary-fixed": "#ffebdf",
+                      "on-primary-fixed-variant": "#7c2400",
+                      "on-error-container": "#410002",
+                      "on-tertiary": "#ffffff",
+                      "on-surface": "#1d1b18",
+                      "primary": "#d84315",
+                      "tertiary-container": "#fff0cc",
+                      "on-secondary": "#ffffff",
+                      "surface-container-lowest": "#faf7f0",
+                      "on-secondary-fixed-variant": "#6f0003",
+                      "surface-container-low": "#faf6ee",
+                      "outline-variant": "#ebdcc8",
+                      "on-primary": "#ffffff",
+                      "tertiary": "#8d6e63",
+                      "inverse-primary": "#ffb499",
+                      "secondary-container": "#ffebee",
+                      "on-background": "#1d1b18",
+                      "background": "#fcf9f2",
+                      "tertiary-fixed-dim": "#ffcc80",
+                      "on-secondary-container": "#3d0001",
+                      "on-secondary-fixed": "#2c0000",
+                      "surface-container-high": "#eae1d3",
+                      "on-error": "#ffffff",
+                      "outline": "#85736c",
+                      "surface": "#fcf9f2",
+                      "on-tertiary-container": "#3e2723",
+                      "surface-container-highest": "#ded3c2",
+                      "secondary": "#c62828",
+                      "secondary-fixed-dim": "#ff8a80",
+                      "inverse-surface": "#322f2b",
+                      "secondary-fixed": "#ffcdd2",
+                      "on-tertiary-fixed": "#2d1600",
+                      "primary-fixed-dim": "#ffab91",
+                      "inverse-on-surface": "#f7f0e8",
+                      "on-tertiary-fixed-variant": "#603f00",
+                      "tertiary-fixed": "#ffe0b2",
+                      "primary-container": "#ffefe8",
+                      "on-primary-container": "#4e1400",
+                      "surface-bright": "#fffbfa",
+                      "error": "#b71c1c",
+                      "on-primary-fixed": "#330b00",
+                      "surface-variant": "#f4eade",
+                      "error-container": "#ffebee",
+                      "surface-tint": "#d84315",
+                      "on-surface-variant": "#5a544c"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0px",
+                      "lg": "0px",
+                      "xl": "0px",
+                      "full": "0px"
+              },
+              "spacing": {
+                      "stack-md": "24px",
+                      "section-gap": "180px",
+                      "gutter": "32px",
+                      "safe-margin": "64px",
+                      "stack-sm": "8px",
+                      "stack-lg": "48px"
+              },
+              "fontFamily": {
+                      "body-md": ["Geist"],
+                      "label-sm": ["JetBrains Mono"],
+                      "headline-lg-mobile": ["Newsreader"],
+                      "display-lg": ["Newsreader"],
+                      "headline-lg": ["Newsreader"],
+                      "subhead-tech": ["JetBrains Mono"],
+                      "body-lg": ["Geist"],
+                      "headline-md": ["Newsreader"]
+              },
+              "fontSize": {
+                      "body-md": ["16px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "1.4", "letterSpacing": "0.08em", "fontWeight": "500"}],
+                      "headline-lg-mobile": ["32px", {"lineHeight": "1.2", "fontWeight": "600"}],
+                      "display-lg": ["64px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "headline-lg": ["40px", {"lineHeight": "1.2", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                      "subhead-tech": ["14px", {"lineHeight": "1.4", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                      "body-lg": ["18px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "headline-md": ["24px", {"lineHeight": "1.3", "fontWeight": "500"}]
+              }
+            },
+          },
+        }
+    </script>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            background-color: #fcf9f2;
+            color: #1d1b18;
+            position: relative;
+        }
+        /* Eggshell Organic Texture Overlay */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            opacity: 0.045;
+            pointer-events: none;
+            z-index: 9999;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+        }
+        .glass-panel {
+            background: rgba(245, 240, 230, 0.45);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(216, 67, 21, 0.15);
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        /* Optimized visual response on hover with vermilion / crimson glows */
+        .glass-panel:hover {
+            border-color: rgba(216, 67, 21, 0.5);
+            background: rgba(245, 240, 230, 0.75);
+            transform: translateY(-4px) scale(1.01);
+            box-shadow: 0 20px 40px -15px rgba(216, 67, 21, 0.15);
+        }
+        .flagship-purple {
+            border-color: rgba(198, 40, 40, 0.2);
+            background: rgba(253, 242, 242, 0.65);
+        }
+        .flagship-purple:hover {
+            border-color: rgba(198, 40, 40, 0.55);
+            background: rgba(253, 236, 236, 0.85);
+            box-shadow: 0 20px 40px -15px rgba(198, 40, 40, 0.18);
+        }
+        .flagship-cyan {
+            border-color: rgba(216, 67, 21, 0.2);
+            background: rgba(255, 245, 240, 0.65);
+        }
+        .flagship-cyan:hover {
+            border-color: rgba(216, 67, 21, 0.55);
+            background: rgba(255, 239, 232, 0.85);
+            box-shadow: 0 20px 40px -15px rgba(216, 67, 21, 0.18);
+        }
+        /* Editorial Organic glows (using soft vermilion / warm yellow) */
+        .cosmic-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(216,67,21,0.08) 0%, rgba(255,224,178,0.03) 50%, rgba(252,249,242,0) 70%);
+            filter: blur(60px);
+            z-index: -1;
+            border-radius: 50%;
+        }
+        .cosmic-glow-2 {
+             position: absolute;
+             width: 800px;
+             height: 800px;
+             background: radial-gradient(circle, rgba(198,40,40,0.06) 0%, rgba(216,67,21,0.03) 40%, rgba(252,249,242,0) 70%);
+             filter: blur(80px);
+             z-index: -1;
+             border-radius: 50%;
+         }
+         .btn-nav {
+             position: relative;
+             transition: all 0.3s ease;
+         }
+         .btn-nav::after {
+             content: '';
+             position: absolute;
+             width: 0;
+             height: 2px;
+             bottom: -4px;
+             left: 0;
+             background-color: #d84315;
+             transition: width 0.3s ease;
+         }
+         .btn-nav:hover::after {
+             width: 100%;
+         }
+         .btn-nav:hover {
+             color: #d84315;
+             text-shadow: 0 0 4px rgba(216, 67, 21, 0.15);
+         }
+        .btn-ghost {
+            border: 1px solid #d84315;
+            background: rgba(216, 67, 21, 0.04);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .btn-ghost:hover {
+            box-shadow: 0 0 25px rgba(216, 67, 21, 0.25);
+            background: rgba(216, 67, 21, 0.12);
+            border-color: #c62828;
+            transform: scale(1.03);
+        }
+        .tech-list-item {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        .tech-list-item:hover {
+            border-bottom-color: rgba(216, 67, 21, 0.25);
+            padding-left: 6px;
+            background: rgba(216, 67, 21, 0.02);
+        }
+        .tech-bullet {
+            width: 4px;
+            height: 4px;
+            background-color: #d84315;
+            display: inline-block;
+            margin-right: 12px;
+            vertical-align: middle;
+            transition: all 0.3s ease;
+        }
+        .tech-list-item:hover .tech-bullet {
+            background-color: #c62828;
+            box-shadow: 0 0 6px #c62828;
+        }
+        .logo-symbol {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .logo-container:hover .logo-symbol {
+            transform: rotate(45deg) scale(1.1);
+            filter: drop-shadow(0 0 6px rgba(216, 67, 21, 0.3));
+        }
+        /* Custom Keyframes for Pulsing Logo Core */
+        @keyframes corePulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px #d84315); opacity: 0.8; }
+            50% { transform: scale(1.25); filter: drop-shadow(0 0 6px #d84315); opacity: 1; }
+        }
+        .logo-core {
+            transform-origin: 50px 45px;
+            animation: corePulse 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md antialiased overflow-x-hidden relative selection:bg-primary-container selection:text-on-primary-container">
+    <!-- TopNavBar -->
+    <nav class="fixed top-0 w-full z-50 bg-background/60 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_0_20px_rgba(216,67,21,0.03)] transition-all duration-300">
+        <div class="flex justify-between items-center px-margin py-5 max-w-[1440px] mx-auto w-full">
+            <a href="#studio" class="logo-container flex items-center gap-3">
+                <!-- Custom Vector Tech Logo for AbhishekRai.Dev (Warm Orange & Red Gradients) -->
+                <svg class="logo-symbol w-8 h-8 text-primary" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M50 5L90 45L50 85L10 45L50 5Z" stroke="currentColor" stroke-width="4" stroke-linecap="square"/>
+                    <path d="M50 25L70 45L50 65L30 45L50 25Z" fill="url(#warmGradient)"/>
+                    <circle class="logo-core" cx="50" cy="45" r="5" fill="#d84315"/>
+                    <line x1="50" y1="5" x2="50" y2="25" stroke="#c62828" stroke-width="3"/>
+                    <line x1="50" y1="65" x2="50" y2="85" stroke="#c62828" stroke-width="3"/>
+                    <defs>
+                        <linearGradient id="warmGradient" x1="50" y1="25" x2="50" y2="65" gradientUnits="userSpaceOnUse">
+                            <stop stop-color="#ff7043"/>
+                            <stop offset="1" stop-color="#c62828"/>
+                        </linearGradient>
+                    </defs>
+                </svg>
+                <span class="font-label-md text-label-md font-bold tracking-wider text-on-surface">
+                    Abhishek<span class="text-primary font-extrabold">Rai</span><span class="text-on-surface-variant/80 font-normal">.Dev</span>
+                </span>
+            </a>
+            <div class="hidden md:flex gap-10">
+                <a class="text-primary font-subhead-tech text-subhead-tech btn-nav py-1" href="#studio">Studio</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#artifacts">AI Artifacts</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#hardware">Hardware</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#philosophy">Philosophy</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#contact">Contact</a>
+            </div>
+            <button onclick="window.location.href='#artifacts'" class="btn-ghost px-6 py-2.5 font-subhead-tech text-subhead-tech text-primary hidden md:block">
+                Run Local CLI
+            </button>
+            <button class="md:hidden text-on-surface">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Workspace Container (With Spacious Rhythm Layout) -->
+    <main class="pt-40 pb-section-gap relative max-w-[1440px] mx-auto px-margin w-full flex flex-col gap-[160px]">
+        
+        <!-- Hero Section (Offset Scroll for Navbar alignment) -->
+        <section id="studio" class="min-h-[550px] flex flex-col justify-center relative scroll-mt-28">
+            <div class="cosmic-glow top-0 left-[-100px]"></div>
+            <div class="cosmic-glow-2 bottom-0 right-[-200px]"></div>
+            <div class="max-w-4xl text-left z-10">
+                <h1 class="font-display-lg text-display-lg md:text-[80px] text-on-surface mb-stack-md leading-[1.15] tracking-tight">
+                    Synthesizing the Edge: <br/>
+                    <span class="bg-gradient-to-r from-on-surface to-primary bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(216,67,21,0.2)]">Zero Latency, Zero Telemetry.</span>
+                </h1>
+                <p class="font-body-lg text-body-lg text-on-surface-variant max-w-3xl leading-relaxed mb-10">
+                    Architecting local LLM reasoning loops, MPS GPU-accelerated computer vision, and SQLite-vec semantic memory engines. Building a world-class test harness for Small Language Models (SLMs) and secure MCP server ecosystems.
+                </p>
+                <div class="flex flex-col md:flex-row gap-6 items-start">
+                    <a href="#artifacts" class="group flex items-center gap-2 text-primary font-subhead-tech text-subhead-tech uppercase tracking-[0.2em] border-b border-primary pb-1 hover:border-transparent hover:text-secondary transition-all duration-300">
+                        Explore Artifacts 
+                        <span class="material-symbols-outlined text-sm group-hover:translate-x-1 duration-300 transition-transform">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+        
+        <!-- The Local AI Artifacts Showcase (Scroll margins optimized) -->
+        <section id="artifacts" class="flex flex-col gap-12 scroll-mt-28">
+            <div class="border-b border-outline-variant/40 pb-6">
+                <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight">Local AI Artifacts</h2>
+                <p class="text-on-surface-variant text-base mt-2">Air-gapped applications optimized for runtime performance.</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+                
+                <!-- Flagship 1: SteerVox -->
+                <div class="md:col-span-6 glass-panel flagship-purple p-12 relative overflow-hidden group flex flex-col justify-between">
+                    <div class="absolute top-6 right-6 bg-secondary-container/80 border border-secondary/25 text-secondary text-xs uppercase font-subhead-tech tracking-widest px-4 py-1.5 font-bold">
+                        Flagship Project
+                    </div>
+                    <div class="absolute inset-0 bg-gradient-to-br from-secondary-container/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative z-10">
+                        <span class="font-subhead-tech text-subhead-tech text-secondary uppercase tracking-wider mb-6 block font-bold">Audio & Vector</span>
+                        <h3 class="font-headline-md text-headline-md text-on-surface mb-4">
+                            <a href="https://github.com/steervox" target="_blank" rel="noopener noreferrer" class="hover:text-secondary transition-colors underline decoration-transparent hover:decoration-secondary duration-300">SteerVox Dictation Engine</a>
+                        </h3>
+                        <p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                            Voice-driven semantic learning loop utilizing local Whisper ASR and Kokoro-TTS engines. Transcriptions are vectorized in real-time and stored directly into SQLite-vec to execute adaptive, local memory auto-learning.
+                        </p>
+                    </div>
+                    <div class="mt-10 pt-8 border-t border-black/5">
+                        <ul class="space-y-4">
+                            <li class="tech-list-item py-2 font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Whisper-Small Transcription Sandbox</li>
+                            <li class="tech-list-item py-2 font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>SQLite-vec Semantic Memory Autoloop</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Flagship 2: SmartScissor -->
+                <div class="md:col-span-6 glass-panel flagship-cyan p-12 relative overflow-hidden group flex flex-col justify-between">
+                    <div class="absolute top-6 right-6 bg-primary-container/80 border border-primary/25 text-primary text-xs uppercase font-subhead-tech tracking-widest px-4 py-1.5 font-bold">
+                        Flagship Project
+                    </div>
+                    <div class="absolute inset-0 bg-gradient-to-br from-primary-container/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative z-10">
+                        <span class="font-subhead-tech text-subhead-tech text-primary uppercase tracking-wider mb-6 block font-bold">Computer Vision & GPU</span>
+                        <h3 class="font-headline-md text-headline-md text-on-surface mb-4">
+                            <a href="https://github.com/abhishekaryan23/SmartScissor" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors underline decoration-transparent hover:decoration-primary duration-300">SmartScissor Segmentation</a>
+                        </h3>
+                        <p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                            High-performance image segmentation loader optimized with Apple Silicon Metal Performance Shaders (MPS) GPU offloading. Implements robust dimension-matching, automated VRAM cache purgers, and seamless CPU fallbacks.
+                        </p>
+                    </div>
+                    <div class="mt-10 pt-8 border-t border-black/5">
+                        <ul class="space-y-4">
+                            <li class="tech-list-item py-2 font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>MPS Acceleration & Auto-Fallback safeguards</li>
+                            <li class="tech-list-item py-2 font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Google SigLIP Base Embeddings & Feature Extractors</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Artifact 3: Task_Master -->
+                <div class="md:col-span-8 glass-panel p-12 relative overflow-hidden group">
+                    <div class="absolute inset-0 bg-gradient-to-br from-primary-container/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative z-10 flex flex-col h-full justify-between">
+                        <div>
+                            <span class="font-subhead-tech text-subhead-tech text-primary uppercase tracking-wider mb-6 block">Workspace</span>
+                            <h3 class="font-headline-md text-headline-md text-on-surface mb-4">
+                                <a href="https://github.com/abhishekaryan23/Task_Master" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">Task_Master Planner</a>
+                            </h3>
+                            <p class="font-body-md text-body-md text-on-surface-variant max-w-lg leading-relaxed">Custom split-screen glassmorphic task organizer integrated with a local Ollama task optimizer and offline database fallbacks.</p>
+                        </div>
+                        <div class="mt-10">
+                            <div class="bg-cover bg-center w-full h-72 border border-black/5 opacity-80 group-hover:opacity-100 transition-all duration-500 filter grayscale hover:grayscale-0" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCu7-FJ-RFFbYOdVBBi3YTfS6wmHkWmReq0NUNglXT79ubZBgoTSSbNCdWM7-ZUSlKWLYmj1Gl--_xgIiC8xDaMpYIfpe5Qx9oq28JikDIFlRs55XmYAVL9cyNsLHC-soBalToO_ojoJvGSQQ-eTkV_RiXRSoEWoOgIGUe7FDX3AIELJKYQrL9OsCtMPCo3eR5JPTW2tWJttXydRk0AlSODF5HMUmmF0vYSGNYdUqUuKYrKlLewTGeoCfolvGf8xuf8eyq5G5hJqPjn')"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Artifact 4: Langchain CSV Helper -->
+                <div class="md:col-span-4 glass-panel p-12 relative overflow-hidden group flex flex-col justify-between">
+                    <div class="absolute inset-0 bg-gradient-to-bl from-primary-container/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative z-10">
+                        <span class="font-subhead-tech text-subhead-tech text-secondary uppercase tracking-wider mb-6 block font-bold">Data Engineering</span>
+                        <h3 class="font-headline-md text-headline-md text-on-surface mb-4">
+                            <a href="https://github.com/abhishekaryan23/Langchain-CSV-Helper" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">Langchain CSV Helper</a>
+                        </h3>
+                        <p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">A secure local python execution sandbox running self-correcting pandas agents with dual model engine support.</p>
+                    </div>
+                    <div class="mt-10 flex justify-end">
+                        <span class="material-symbols-outlined text-5xl text-primary opacity-60 group-hover:opacity-100 group-hover:rotate-12 transition-all duration-300">terminal</span>
+                    </div>
+                </div>
+
+                <!-- Artifact 5: AIOps Incident Commander -->
+                <div class="md:col-span-6 glass-panel p-12 relative overflow-hidden group">
+                    <div class="relative z-10">
+                        <span class="font-subhead-tech text-subhead-tech text-error uppercase tracking-wider mb-6 block font-bold">Telemetry</span>
+                        <h3 class="font-headline-md text-headline-md text-on-surface mb-4">
+                            <a href="https://github.com/abhishekaryan23/devops_dashboard" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">AIOps Incident Commander</a>
+                        </h3>
+                        <p class="font-body-md text-body-md text-on-surface-variant mb-6 leading-relaxed">A cybernetic command dashboard compiling JIRA, Confluence, and Dynatrace telemetry into structured root cause reports via local LLMs.</p>
+                        <ul class="space-y-3">
+                            <li class="tech-list-item py-2 font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>JIRA Integration & Issue Aggregation</li>
+                            <li class="tech-list-item py-2 font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Dynatrace Diagnostic Trace Analyzer</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Artifact 6: Secure MCP Servers -->
+                <div class="md:col-span-6 glass-panel p-12 relative overflow-hidden group flex flex-col justify-between">
+                    <div class="absolute inset-0 bg-gradient-to-br from-primary-container/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative z-10">
+                        <span class="font-subhead-tech text-subhead-tech text-primary uppercase tracking-wider mb-6 block">Security Protocol</span>
+                        <h3 class="font-headline-md text-headline-md text-on-surface mb-4">
+                            <a href="https://github.com/abhishekaryan23/Setup-Room" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">Secure MCP Server Suite</a>
+                        </h3>
+                        <p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">Designing sandboxed Model Context Protocol (MCP) server endpoints allowing AI agents to securely query system configurations and execute local file modifications without root elevation.</p>
+                    </div>
+                    <div class="mt-10 flex justify-end">
+                        <span class="material-symbols-outlined text-5xl text-primary opacity-50 group-hover:opacity-100 group-hover:scale-105 transition-all duration-300">shield</span>
+                    </div>
+                </div>
+
+                <!-- Artifact 7: SLM Benchmarking Harness -->
+                <div class="md:col-span-6 glass-panel p-12 relative overflow-hidden group">
+                    <div class="relative z-10">
+                        <span class="font-subhead-tech text-subhead-tech text-tertiary uppercase tracking-wider mb-6 block font-bold">Evaluation Suite</span>
+                        <h3 class="font-headline-md text-headline-md text-on-surface mb-4">
+                            <a href="https://github.com/abhishekaryan23/MLX-Fine-Tuner" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">World-Class SLM Harness</a>
+                        </h3>
+                        <p class="font-body-md text-body-md text-on-surface-variant mb-6 leading-relaxed">Creating a low-latency evaluation harness dedicated to benchmarking Small Language Models (SLMs) on mobile and consumer laptops, analyzing tokens-per-second, VRAM footprints, and quantization drift.</p>
+                    </div>
+                </div>
+
+                <!-- Artifact 8: Industrial RAG & Local AI Infrastructure -->
+                <div class="md:col-span-6 glass-panel p-12 relative overflow-hidden group flex flex-col justify-between">
+                    <div class="absolute inset-0 bg-gradient-to-br from-primary-container/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div class="relative z-10">
+                        <span class="font-subhead-tech text-subhead-tech text-primary uppercase tracking-wider mb-6 block">Enterprise Deployment</span>
+                        <h3 class="font-headline-md text-headline-md text-on-surface mb-4">
+                            <a href="https://github.com/abhishekaryan23/RAG_data" target="_blank" rel="noopener noreferrer" class="hover:text-primary transition-colors">Industrial RAG Deployments</a>
+                        </h3>
+                        <p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">Designing air-gapped, zero-latency vector databases and hybrid local document parsing architectures built specifically for high-security enterprise RAG applications.</p>
+                    </div>
+                    <div class="mt-10 flex justify-end">
+                        <span class="material-symbols-outlined text-5xl text-primary opacity-50 group-hover:opacity-100 transition-all duration-300">database</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+        
+        <!-- Architectural Philosophy Panel (Optimized Scroll Margin) -->
+        <section id="philosophy" class="scroll-mt-28">
+            <div class="bg-surface-container-low border border-primary/20 p-16 md:p-24 relative overflow-hidden shadow-[0_0_50px_rgba(216,67,21,0.03)]">
+                <div class="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full"></div>
+                <span class="material-symbols-outlined text-primary/30 text-6xl absolute top-8 left-8">format_quote</span>
+                <blockquote class="relative z-10 max-w-4xl">
+                    <p class="font-headline-lg text-headline-lg-mobile md:text-[44px] text-primary leading-tight mb-8">
+                        "Sovereign intelligence demands local execution. True technical luxury is the absence of latency, the deployment of hardened offline RAGs, and the absolute guarantee of data privacy."
+                    </p>
+                    <footer class="font-subhead-tech text-subhead-tech text-secondary uppercase tracking-[0.25em] font-bold">
+                        — Abhishek Rai
+                    </footer>
+                </blockquote>
+            </div>
+        </section>
+        
+        <!-- Local Hardware & Model Stack (Optimized Scroll Margin) -->
+        <section id="hardware" class="relative scroll-mt-28">
+            <div class="cosmic-glow top-1/2 left-1/4 opacity-50"></div>
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+                <div class="md:col-span-4">
+                    <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-4 tracking-tight">Stack Architecture</h2>
+                    <p class="font-body-md text-body-md text-on-surface-variant mb-8 max-w-sm leading-relaxed">Precision-engineered layers for local model hosting and optimization.</p>
+                </div>
+                <div class="md:col-span-8 glass-panel p-10">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-12">
+                        <!-- Column 1 -->
+                        <div>
+                            <h4 class="font-subhead-tech text-subhead-tech text-primary mb-6 border-b border-black/10 pb-3 tracking-widest uppercase font-bold">Cognitive Models</h4>
+                            <ul class="space-y-4">
+                                <li class="tech-list-item pb-4 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Bonsai 27B Ternary</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Ternary Text</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Qwen 2.5 Coder</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Latest Text</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Gemma 4</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Latest Text</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Whisper</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Latest Speech</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Kokoro-TTS</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Latest Voice</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>FLUX.2 [klein] 4B</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Local Images</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Z-Image-Turbo</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Sub-Second Image</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Wan 2.2 / LTX-Video</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Local Video</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex justify-between items-center border-none">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Llama 2 / Mistral / Phi-2</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Legacy Core</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <!-- Column 2 -->
+                        <div>
+                            <h4 class="font-subhead-tech text-subhead-tech text-secondary mb-6 border-b border-black/10 pb-3 tracking-widest uppercase font-bold">Specializations &amp; Benchmarks</h4>
+                            <ul class="space-y-6">
+                                <li class="tech-list-item pb-4 flex flex-col gap-1">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>Industrial RAG Systems</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant mt-1 leading-relaxed">Multi-vector databases, secure sandboxed execution, semantic parsing</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex flex-col gap-1">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>Secure MCP Servers</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant mt-1 leading-relaxed">Robust authorization layers for AI agent execution contexts</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex flex-col gap-1">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>Local Visual &amp; OCR Models</span>
+                                    <span class="font-label-sm text-label-sm text-on-surface-variant mt-1 leading-relaxed">Integrated Florence-2 &amp; PaddleOCR pipelines for real-time document analysis</span>
+                                </li>
+                                <li class="tech-list-item pb-4 flex flex-col gap-1 border-none">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>SLM Harness Optimization</span>
+                                    <div class="w-full h-1 bg-surface-container-high rounded mt-2 overflow-hidden">
+                                        <div class="h-full bg-secondary w-[95%]"></div>
+                                    </div>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Secure Contact Me Form Section -->
+        <section id="contact" class="relative scroll-mt-28">
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
+                <div class="md:col-span-5 flex flex-col justify-between">
+                    <div>
+                        <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-4 tracking-tight">Sovereign Channels</h2>
+                        <p class="font-body-md text-body-md text-on-surface-variant max-w-sm leading-relaxed mb-6">
+                            Establish a verified communication link. Message payloads are encrypted during transfer and routed to a private local logging box.
+                        </p>
+                    </div>
+                    <div class="hidden md:block">
+                        <span class="font-label-sm text-label-sm text-primary uppercase tracking-widest font-bold">PGP Fingerprint</span>
+                        <div class="font-subhead-tech text-xs text-on-surface-variant/70 mt-2 font-mono select-all">
+                            8A5E 2F91 CB40 76D3 A109 4FE5 C300 D843 15C6 2828
+                        </div>
+                    </div>
+                </div>
+                <div class="md:col-span-7 glass-panel p-10 md:p-12">
+                    <form id="contact-form" class="flex flex-col gap-6" novalidate>
+                        <!-- Honeypot anti-spam check -->
+                        <input type="text" name="_honeypot" class="hidden" style="display:none" autocomplete="off" />
+
+                        <div class="flex flex-col gap-2">
+                            <label for="contact-name" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">Name</label>
+                            <input type="text" id="contact-name" required class="bg-background/25 border border-primary/20 focus:border-primary focus:ring-0 text-on-surface font-body-md p-3 outline-none transition-all duration-300" placeholder="Agent or Organization name" />
+                            <span id="name-error" class="text-error text-xs font-label-sm hidden">Please enter your name.</span>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label for="contact-email" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">Email Address</label>
+                            <input type="email" id="contact-email" required class="bg-background/25 border border-primary/20 focus:border-primary focus:ring-0 text-on-surface font-body-md p-3 outline-none transition-all duration-300" placeholder="address@domain.ext" />
+                            <span id="email-error" class="text-error text-xs font-label-sm hidden">Please enter a valid cryptographic email address.</span>
+                        </div>
+
+                        <div class="flex flex-col gap-2">
+                            <label for="contact-message" class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">Transmission Message</label>
+                            <textarea id="contact-message" rows="5" required class="bg-background/25 border border-primary/20 focus:border-primary focus:ring-0 text-on-surface font-body-md p-3 outline-none transition-all duration-300 resize-none" placeholder="Provide system constraints or collaboration brief..."></textarea>
+                            <span id="message-error" class="text-error text-xs font-label-sm hidden">Transmission payload cannot be empty.</span>
+                        </div>
+
+                        <div class="mt-4 flex flex-col gap-4">
+                            <button type="submit" id="submit-btn" class="btn-ghost py-4 text-center font-subhead-tech text-subhead-tech uppercase tracking-widest text-primary font-bold transition-all duration-300">
+                                Send Transmission
+                            </button>
+                            <div id="form-feedback" class="text-center font-label-sm text-xs hidden"></div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full px-margin py-stack-lg flex flex-col md:flex-row justify-between items-center gap-stack-md bg-surface-dim border-t border-black/5">
+        <div class="font-subhead-tech text-subhead-tech uppercase tracking-[0.2em] text-on-surface text-xs text-center md:text-left">
+            © 2026 AbhishekRai.Dev. Sovereign Edge Computing via Cosmic Editorial.
+        </div>
+        <div class="flex gap-6">
+            <a class="font-label-sm text-label-sm text-primary font-bold transition-opacity duration-200" href="#">Journal</a>
+            <a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors duration-200" href="https://github.com/abhishekaryan23" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors duration-200" href="mailto:abhishek@abhishekrai.dev">Email</a>
+            <button onclick="togglePrivacyModal(true)" class="font-label-sm text-label-sm text-on-surface-variant hover:text-primary transition-colors duration-200 cursor-pointer outline-none">Privacy</button>
+        </div>
+    </footer>
+
+    <!-- Privacy Policy Modal Overlay -->
+    <div id="privacy-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-6 bg-background/80 backdrop-blur-md">
+        <div class="glass-panel max-w-2xl w-full p-8 md:p-12 relative flex flex-col max-h-[85vh]">
+            <button onclick="togglePrivacyModal(false)" class="absolute top-6 right-6 text-on-surface-variant hover:text-primary transition-colors focus:outline-none">
+                <span class="material-symbols-outlined text-2xl">close</span>
+            </button>
+            <h3 class="font-headline-md text-headline-md text-on-surface mb-6 border-b border-primary/20 pb-3">Sovereign Privacy Policy</h3>
+            
+            <div class="overflow-y-auto pr-2 space-y-6 font-body-md text-body-md text-on-surface-variant leading-relaxed">
+                <p><strong>Last Updated: July 2026</strong></p>
+                
+                <div>
+                    <h4 class="font-bold text-on-surface mb-2">1. Principle of Zero Telemetry</h4>
+                    <p>This web infrastructure enforces 100% telemetry exclusion. We collect no usage logs, cookies, or browser tracking fingerprints. Local computing tools hosted on this space operate completely offline inside sandboxed web contexts.</p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-on-surface mb-2">2. Scraper &amp; LLM Scouring Permission</h4>
+                    <p>Consistent with our dedication to open edge intelligence, all automated bots, LLM crawlers, and AI agents are explicitly permitted to scan, parse, indexing, and embed all metadata and repository guides published on AbhishekRai.Dev.</p>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-on-surface mb-2">3. Transmission Channels</h4>
+                    <p>Payloads submitted through our Secure Contact Form are evaluated dynamically for structural integrity and transmitted over encrypted SSL links directly to a private mailbox. Email records are never shared with or processed by external analytics platforms.</p>
+                </div>
+            </div>
+
+            <div class="mt-8 pt-6 border-t border-primary/10 flex justify-end">
+                <button onclick="togglePrivacyModal(false)" class="btn-ghost px-6 py-2 font-subhead-tech text-subhead-tech uppercase tracking-widest text-primary font-bold">
+                    Close Protocol
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Controllers for Validation, Submission and Privacy Modal -->
+    <script>
+        // Modal State Controller
+        function togglePrivacyModal(show) {
+            const modal = document.getElementById('privacy-modal');
+            if (show) {
+                modal.classList.remove('hidden');
+                document.body.classList.add('overflow-hidden');
+            } else {
+                modal.classList.add('hidden');
+                document.body.classList.remove('overflow-hidden');
+            }
+        }
+
+        // Keyboard close for modal
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                togglePrivacyModal(false);
+            }
+        });
+
+        // Contact Form Submission & Validation Controller
+        const form = document.getElementById('contact-form');
+        const submitBtn = document.getElementById('submit-btn');
+        const feedback = document.getElementById('form-feedback');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Clean dynamic state
+            feedback.classList.add('hidden');
+            document.getElementById('name-error').classList.add('hidden');
+            document.getElementById('email-error').classList.add('hidden');
+            document.getElementById('message-error').classList.add('hidden');
+
+            const name = document.getElementById('contact-name').value.trim();
+            const email = document.getElementById('contact-email').value.trim();
+            const message = document.getElementById('contact-message').value.trim();
+            const honeypot = form.querySelector('[name="_honeypot"]').value;
+
+            // Honeypot spam verification
+            if (honeypot) {
+                feedback.innerText = "Transmission terminated: Spam signature detected.";
+                feedback.className = "text-center font-label-sm text-xs text-error mt-4 block";
+                return;
+            }
+
+            let isValid = true;
+
+            if (!name) {
+                document.getElementById('name-error').classList.remove('hidden');
+                isValid = false;
+            }
+
+            // High precision cryptographic email regex
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (!email || !emailRegex.test(email)) {
+                document.getElementById('email-error').classList.remove('hidden');
+                isValid = false;
+            }
+
+            if (!message) {
+                document.getElementById('message-error').classList.remove('hidden');
+                isValid = false;
+            }
+
+            if (!isValid) return;
+
+            // Submit flow
+            submitBtn.disabled = true;
+            submitBtn.innerText = "Transmitting Message...";
+            feedback.innerText = "Connecting to edge router...";
+            feedback.className = "text-center font-label-sm text-xs text-primary mt-4 block";
+            feedback.classList.remove('hidden');
+
+            try {
+                const response = await fetch('/functions/submit-contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, email, message })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    feedback.innerText = "Transmission successful. Secure receipt logged.";
+                    feedback.className = "text-center font-label-sm text-xs text-primary mt-4 block";
+                    form.reset();
+                } else {
+                    throw new Error(data.message || "Edge transmission rejected.");
+                }
+            } catch (err) {
+                feedback.innerText = `Transmission failed: ${err.message}`;
+                feedback.className = "text-center font-label-sm text-xs text-error mt-4 block";
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerText = "Send Transmission";
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+.DS_Store
+.gemini/
+.env
+.venv/
+venv/
+node_modules/
+dist/
+build/
+.vscode/
+*.log
+.system_generated/
+repos/
