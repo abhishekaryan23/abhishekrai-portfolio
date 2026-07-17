@@ -1,6 +1,23 @@
-export async function onRequestPost(context) {
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    // Route POST requests for the contact form
+    if (url.pathname === "/functions/submit-contact" && request.method === "POST") {
+      return handleContactSubmit(request, env);
+    }
+
+    // Serve static assets from the public/ folder via the ASSETS binding
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+
+    return new Response("Not Found", { status: 404 });
+  }
+};
+
+async function handleContactSubmit(request, env) {
   try {
-    const { request, env } = context;
     const body = await request.json();
     const { name, email, message } = body;
 
@@ -29,7 +46,7 @@ export async function onRequestPost(context) {
 
     const resendApiKey = env.RESEND_API_KEY;
     const receiverEmail = env.CONTACT_RECEIVER_EMAIL || "abhishekaryan23@gmail.com";
-    const senderFrom = env.CONTACT_FROM_EMAIL || "onboarding@resend.dev"; // Default Resend onboarding domain until domain verified
+    const senderFrom = env.CONTACT_FROM_EMAIL || "onboarding@resend.dev";
 
     if (resendApiKey) {
       // 1. Send Acknowledgement Email to the Visitor
@@ -128,7 +145,6 @@ export async function onRequestPost(context) {
         </html>
       `;
 
-      // Dispatch to Resend API endpoint
       const sendEmail = async (to, subject, html) => {
         return fetch("https://api.resend.com/emails", {
           method: "POST",
@@ -145,14 +161,13 @@ export async function onRequestPost(context) {
         });
       };
 
-      // Execute both sends concurrently
       await Promise.all([
         sendEmail(email, "Receipt of Transmission / AbhishekRai.Dev", visitorEmailHtml),
         sendEmail(receiverEmail, `New Portfolio Message from ${name}`, notificationEmailHtml)
       ]);
     }
 
-    // Optional forwarding fallback: discord webhook
+    // Optional Discord Webhook integration
     const webhookUrl = env.CONTACT_DISCORD_WEBHOOK;
     if (webhookUrl) {
       const payload = {

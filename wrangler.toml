@@ -1,6 +1,8 @@
-# Cloudflare Pages Configuration
 name = "abhishekrai-portfolio"
+main = "src/worker.js"
 compatibility_date = "2026-07-17"
 
-# Explicitly sets the build output directory to public/ folder
-pages_build_output_dir = "public"
+# Configure static assets directory to be served by the Worker
+[assets]
+directory = "./public"
+binding = "ASSETS"
