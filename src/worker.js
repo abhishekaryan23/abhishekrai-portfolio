@@ -5,7 +5,7 @@ export default {
     // Secure debug helper to list environment keys without leaking secret values
     if (url.pathname === "/debug-env") {
       const envKeys = env ? Object.keys(env) : [];
-      const globalKeys = Object.keys(globalThis).filter(k => k.includes("RESEND") || k.includes("CONTACT"));
+      const globalKeys = Object.keys(globalThis).filter(k => k.includes("RESEND") || k.includes("CONTACT") || k.includes("KV"));
       return new Response(
         JSON.stringify({
           success: true,
@@ -13,6 +13,7 @@ export default {
           global_keys: globalKeys,
           has_env_resend: !!env?.RESEND_API_KEY,
           has_global_resend: !!globalThis?.RESEND_API_KEY,
+          has_kv_binding: !!(env?.PORTFOLIO_KV || globalThis?.PORTFOLIO_KV),
           env_type: typeof env
         }),
         { headers: { "Content-Type": "application/json" } }
@@ -61,7 +62,20 @@ async function handleContactSubmit(request, env) {
       );
     }
 
-    // Multi-context environment variable fallback selector (module-env, global, and process.env contexts)
+    // 1. Server-Side Duplicate Submission Check (Cloudflare KV)
+    const kv = env?.PORTFOLIO_KV || globalThis?.PORTFOLIO_KV;
+    const emailKey = `submit:${email.toLowerCase().trim()}`;
+    if (kv) {
+      const hasSubmitted = await kv.get(emailKey);
+      if (hasSubmitted) {
+        return new Response(
+          JSON.stringify({ success: false, message: "A message has already been sent from this email address." }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // Resolve environment variables
     const resendApiKey = env?.RESEND_API_KEY || globalThis?.RESEND_API_KEY || (typeof process !== "undefined" && process.env?.RESEND_API_KEY);
     const receiverEmail = env?.CONTACT_RECEIVER_EMAIL || globalThis?.CONTACT_RECEIVER_EMAIL || (typeof process !== "undefined" && process.env?.CONTACT_RECEIVER_EMAIL) || "abhishekaryan23@gmail.com";
     const senderFrom = env?.CONTACT_FROM_EMAIL || globalThis?.CONTACT_FROM_EMAIL || (typeof process !== "undefined" && process.env?.CONTACT_FROM_EMAIL) || "contact@abhishekrai.dev";
@@ -183,6 +197,11 @@ async function handleContactSubmit(request, env) {
     if (!res.ok) {
       const errorText = await res.text();
       throw new Error(`Resend API Error: ${errorText}`);
+    }
+
+    // 2. Commit submission to KV storage on successful Resend dispatch
+    if (kv) {
+      await kv.put(emailKey, "true");
     }
 
     // Optional Discord Webhook integration

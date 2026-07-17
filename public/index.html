@@ -772,6 +772,15 @@
 
             if (!isValid) return;
 
+            // Client-side prevention for duplicate email submissions
+            const submissionKey = "submitted_form_" + email.toLowerCase().trim();
+            if (localStorage.getItem(submissionKey)) {
+                feedback.innerText = "You have already sent a message from this email address.";
+                feedback.className = "text-center font-label-sm text-xs text-error mt-4 block";
+                feedback.classList.remove('hidden');
+                return;
+            }
+
             // Detect if running locally (e.g. file:// protocol)
             if (window.location.protocol === 'file:') {
                 submitBtn.disabled = true;
@@ -783,6 +792,7 @@
                 setTimeout(() => {
                     feedback.innerText = "Thank you for reaching out to Abhishek. We will get back to you shortly (Local simulation mode).";
                     feedback.className = "text-center font-label-sm text-xs text-primary mt-4 block";
+                    localStorage.setItem(submissionKey, "true");
                     form.reset();
                     submitBtn.disabled = false;
                     submitBtn.innerText = "Send Transmission";
@@ -816,6 +826,7 @@
                 if (response.ok) {
                     feedback.innerText = "Thank you for reaching out to Abhishek. We will get back to you shortly.";
                     feedback.className = "text-center font-label-sm text-xs text-primary mt-4 block";
+                    localStorage.setItem(submissionKey, "true");
                     form.reset();
                 } else {
                     throw new Error(data.message || "Edge transmission rejected.");
