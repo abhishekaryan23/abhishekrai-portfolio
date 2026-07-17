@@ -2,35 +2,43 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // Secure debug helper to list environment keys without leaking secret values
-    if (url.pathname === "/debug-env") {
-      const envKeys = env ? Object.keys(env) : [];
-      const globalKeys = Object.keys(globalThis).filter(k => k.includes("RESEND") || k.includes("CONTACT") || k.includes("KV"));
-      return new Response(
-        JSON.stringify({
-          success: true,
-          env_keys: envKeys,
-          global_keys: globalKeys,
-          has_env_resend: !!env?.RESEND_API_KEY,
-          has_global_resend: !!globalThis?.RESEND_API_KEY,
-          has_kv_binding: !!(env?.PORTFOLIO_KV || globalThis?.PORTFOLIO_KV),
-          env_type: typeof env
-        }),
-        { headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // Route POST requests for the contact form
+    // Fetch static asset or API route response
+    let response;
     if (url.pathname === "/functions/submit-contact" && request.method === "POST") {
-      return handleContactSubmit(request, env);
+      response = await handleContactSubmit(request, env);
+    } else if (env.ASSETS) {
+      response = await env.ASSETS.fetch(request);
+    } else {
+      response = new Response("Not Found", { status: 404 });
     }
 
-    // Serve static assets from the public/ folder via the ASSETS binding
-    if (env.ASSETS) {
-      return env.ASSETS.fetch(request);
-    }
+    // Clone response to attach security headers
+    const secureHeaders = new Headers(response.headers);
 
-    return new Response("Not Found", { status: 404 });
+    // Top-Notch Edge Security Headers
+    secureHeaders.set("X-Frame-Options", "DENY"); // Prevents Clickjacking
+    secureHeaders.set("X-Content-Type-Options", "nosniff"); // Prevents MIME type sniffing
+    secureHeaders.set("Referrer-Policy", "strict-origin-when-cross-origin"); // Standard privacy-friendly referrer
+    secureHeaders.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload"); // Forces SSL
+    secureHeaders.set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), interest-cohort=()"); // Disables unneeded hardware access
+
+    // Content Security Policy (Optimized for Tailwind CDN, Google Fonts, and data-URI favicon)
+    secureHeaders.set("Content-Security-Policy", 
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com; " +
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+      "font-src 'self' data: https://fonts.gstatic.com; " +
+      "img-src 'self' data: https:; " +
+      "connect-src 'self'; " +
+      "frame-ancestors 'none'; " +
+      "upgrade-insecure-requests;"
+    );
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: secureHeaders
+    });
   }
 };
 
@@ -40,50 +48,43 @@ async function handleContactSubmit(request, env) {
     const { name, email, message } = body;
 
     // Server-side validation
-    if (!name || name.trim().length === 0) {
+    if (!name || name.trim().length === 0 || !email || !message || message.trim().length === 0) {
       return new Response(
-        JSON.stringify({ success: false, message: "Name is required." }),
+        JSON.stringify({ success: false, message: "Invalid payload." }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!email || !emailRegex.test(email)) {
+    if (!emailRegex.test(email)) {
       return new Response(
-        JSON.stringify({ success: false, message: "A valid email address is required." }),
+        JSON.stringify({ success: false, message: "Invalid email." }),
         { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    if (!message || message.trim().length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, message: "Message cannot be empty." }),
-        { status: 400, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    // 1. Server-Side Duplicate Submission Check (Cloudflare KV)
+    // Server-Side Duplicate Submission Check (Cloudflare KV)
     const kv = env?.PORTFOLIO_KV || globalThis?.PORTFOLIO_KV;
     const emailKey = `submit:${email.toLowerCase().trim()}`;
     if (kv) {
       const hasSubmitted = await kv.get(emailKey);
       if (hasSubmitted) {
         return new Response(
-          JSON.stringify({ success: false, message: "A message has already been sent from this email address." }),
+          JSON.stringify({ success: false, message: "Duplicate submission blocked." }),
           { status: 400, headers: { "Content-Type": "application/json" } }
         );
       }
     }
 
-    // Resolve environment variables
+    // Resolve environment variables securely at runtime
     const resendApiKey = env?.RESEND_API_KEY || globalThis?.RESEND_API_KEY || (typeof process !== "undefined" && process.env?.RESEND_API_KEY);
     const receiverEmail = env?.CONTACT_RECEIVER_EMAIL || globalThis?.CONTACT_RECEIVER_EMAIL || (typeof process !== "undefined" && process.env?.CONTACT_RECEIVER_EMAIL) || "abhishekaryan23@gmail.com";
     const senderFrom = env?.CONTACT_FROM_EMAIL || globalThis?.CONTACT_FROM_EMAIL || (typeof process !== "undefined" && process.env?.CONTACT_FROM_EMAIL) || "contact@abhishekrai.dev";
 
     if (!resendApiKey) {
-      console.error("Critical: Resend API key is missing across all binding contexts.");
+      console.error("Resend API key configuration missing on Cloudflare.");
       return new Response(
-        JSON.stringify({ success: false, message: "Server configuration error: Resend API key is missing." }),
+        JSON.stringify({ success: false, message: "Server configuration issue." }),
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
@@ -196,10 +197,10 @@ async function handleContactSubmit(request, env) {
 
     if (!res.ok) {
       const errorText = await res.text();
-      throw new Error(`Resend API Error: ${errorText}`);
+      throw new Error(`Resend error: ${errorText}`);
     }
 
-    // 2. Commit submission to KV storage on successful Resend dispatch
+    // Commit submission to KV storage on successful Resend dispatch
     if (kv) {
       await kv.put(emailKey, "true");
     }
@@ -236,7 +237,7 @@ async function handleContactSubmit(request, env) {
   } catch (err) {
     console.error("Submit contact error:", err.message);
     return new Response(
-      JSON.stringify({ success: false, message: `${err.message}` }),
+      JSON.stringify({ success: false, message: "Transmission failed." }), // Generic error response to hide details
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
   }
