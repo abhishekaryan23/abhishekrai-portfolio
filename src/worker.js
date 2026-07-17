@@ -1,6 +1,23 @@
-export async function onRequestPost(context) {
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+
+    // Route POST requests for the contact form
+    if (url.pathname === "/functions/submit-contact" && request.method === "POST") {
+      return handleContactSubmit(request, env);
+    }
+
+    // Serve static assets from the public/ folder via the ASSETS binding
+    if (env.ASSETS) {
+      return env.ASSETS.fetch(request);
+    }
+
+    return new Response("Not Found", { status: 404 });
+  }
+};
+
+async function handleContactSubmit(request, env) {
   try {
-    const { request, env } = context;
     const body = await request.json();
     const { name, email, message } = body;
 
@@ -39,7 +56,6 @@ export async function onRequestPost(context) {
     }
 
     // Send Notification Email to Abhishek Rai (receiverEmail)
-    // The email is sent FROM your verified domain (senderFrom) TO your inbox
     const notificationEmailHtml = `
       <!DOCTYPE html>
       <html>
@@ -139,7 +155,7 @@ export async function onRequestPost(context) {
       body: JSON.stringify({
         from: `Portfolio Contact <${senderFrom}>`,
         to: [receiverEmail],
-        reply_to: email, // This allows you to click 'Reply' in your email client to respond directly to the visitor!
+        reply_to: email, // Click 'Reply' to respond to the sender
         subject: `New message from ${name} (${email})`,
         html: notificationEmailHtml
       })
