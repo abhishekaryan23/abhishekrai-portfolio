@@ -2,6 +2,23 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // Secure debug helper to list environment keys without leaking secret values
+    if (url.pathname === "/debug-env") {
+      const envKeys = env ? Object.keys(env) : [];
+      const globalKeys = Object.keys(globalThis).filter(k => k.includes("RESEND") || k.includes("CONTACT"));
+      return new Response(
+        JSON.stringify({
+          success: true,
+          env_keys: envKeys,
+          global_keys: globalKeys,
+          has_env_resend: !!env?.RESEND_API_KEY,
+          has_global_resend: !!globalThis?.RESEND_API_KEY,
+          env_type: typeof env
+        }),
+        { headers: { "Content-Type": "application/json" } }
+      );
+    }
+
     // Route POST requests for the contact form
     if (url.pathname === "/functions/submit-contact" && request.method === "POST") {
       return handleContactSubmit(request, env);
@@ -44,11 +61,13 @@ async function handleContactSubmit(request, env) {
       );
     }
 
-    const resendApiKey = env.RESEND_API_KEY;
-    const receiverEmail = env.CONTACT_RECEIVER_EMAIL || "abhishekaryan23@gmail.com";
-    const senderFrom = env.CONTACT_FROM_EMAIL || "contact@abhishekrai.dev";
+    // Multi-context environment variable fallback selector (module-env, global, and process.env contexts)
+    const resendApiKey = env?.RESEND_API_KEY || globalThis?.RESEND_API_KEY || (typeof process !== "undefined" && process.env?.RESEND_API_KEY);
+    const receiverEmail = env?.CONTACT_RECEIVER_EMAIL || globalThis?.CONTACT_RECEIVER_EMAIL || (typeof process !== "undefined" && process.env?.CONTACT_RECEIVER_EMAIL) || "abhishekaryan23@gmail.com";
+    const senderFrom = env?.CONTACT_FROM_EMAIL || globalThis?.CONTACT_FROM_EMAIL || (typeof process !== "undefined" && process.env?.CONTACT_FROM_EMAIL) || "contact@abhishekrai.dev";
 
     if (!resendApiKey) {
+      console.error("Critical: Resend API key is missing across all binding contexts.");
       return new Response(
         JSON.stringify({ success: false, message: "Server configuration error: Resend API key is missing." }),
         { status: 500, headers: { "Content-Type": "application/json" } }
@@ -155,7 +174,7 @@ async function handleContactSubmit(request, env) {
       body: JSON.stringify({
         from: `Portfolio Contact <${senderFrom}>`,
         to: [receiverEmail],
-        reply_to: email, // Click 'Reply' to respond to the sender
+        reply_to: email,
         subject: `New message from ${name} (${email})`,
         html: notificationEmailHtml
       })
@@ -167,7 +186,7 @@ async function handleContactSubmit(request, env) {
     }
 
     // Optional Discord Webhook integration
-    const webhookUrl = env.CONTACT_DISCORD_WEBHOOK;
+    const webhookUrl = env?.CONTACT_DISCORD_WEBHOOK || globalThis?.CONTACT_DISCORD_WEBHOOK;
     if (webhookUrl) {
       const payload = {
         embeds: [
@@ -196,6 +215,7 @@ async function handleContactSubmit(request, env) {
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (err) {
+    console.error("Submit contact error:", err.message);
     return new Response(
       JSON.stringify({ success: false, message: `${err.message}` }),
       { status: 500, headers: { "Content-Type": "application/json" } }

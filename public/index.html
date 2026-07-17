@@ -821,7 +821,8 @@
                     throw new Error(data.message || "Edge transmission rejected.");
                 }
             } catch (err) {
-                feedback.innerText = `Transmission failed: ${err.message}`;
+                console.error("Transmission error occurred:", err);
+                feedback.innerText = "Transmission failed. An error occurred while routing your message. Please try again later or email contact@abhishekrai.dev directly.";
                 feedback.className = "text-center font-label-sm text-xs text-error mt-4 block";
             } finally {
                 submitBtn.disabled = false;
