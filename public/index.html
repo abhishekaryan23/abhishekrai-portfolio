@@ -320,15 +320,16 @@
                     Abhishekr<span class="text-primary font-extrabold">AI</span><span class="text-on-surface-variant/80 font-normal">.Dev</span>
                 </span>
             </a>
-            <div class="hidden md:flex gap-10">
+            <div class="hidden md:flex gap-8">
                 <a class="text-primary font-subhead-tech text-subhead-tech btn-nav py-1" href="#studio">Studio</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#experience">Experience</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#certifications">Credentials</a>
                 <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#artifacts">AI Artifacts</a>
-                <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#hardware">Hardware</a>
-                <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#philosophy">Philosophy</a>
+                <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#hardware">Stack</a>
                 <a class="text-on-surface-variant hover:text-on-surface transition-colors font-subhead-tech text-subhead-tech btn-nav py-1" href="#contact">Contact</a>
             </div>
-            <button onclick="window.location.href='#artifacts'" class="btn-ghost px-6 py-2.5 font-subhead-tech text-subhead-tech text-primary hidden md:block">
-                Run Local CLI
+            <button onclick="window.location.href='#certifications'" class="btn-ghost px-6 py-2.5 font-subhead-tech text-subhead-tech text-primary hidden md:block">
+                View Credentials
             </button>
             <button onclick="toggleMobileMenu(true)" class="md:hidden text-on-surface focus:outline-none">
                 <span class="material-symbols-outlined text-2xl">menu</span>
@@ -337,17 +338,18 @@
     </nav>
 
     <!-- Mobile Navigation Menu Overlay -->
-    <div id="mobile-menu" class="fixed inset-0 z-[100] bg-background/98 backdrop-blur-lg translate-x-full transition-transform duration-300 ease-in-out md:hidden flex flex-col justify-center items-center gap-8">
+    <div id="mobile-menu" class="fixed inset-0 z-[100] bg-background/98 backdrop-blur-lg translate-x-full transition-transform duration-300 ease-in-out md:hidden flex flex-col justify-center items-center gap-6">
         <button onclick="toggleMobileMenu(false)" class="absolute top-6 right-6 text-on-surface hover:text-primary transition-colors focus:outline-none">
             <span class="material-symbols-outlined text-3xl">close</span>
         </button>
         <a onclick="toggleMobileMenu(false)" class="text-2xl font-headline-md text-on-surface hover:text-primary transition-colors" href="#studio">Studio</a>
+        <a onclick="toggleMobileMenu(false)" class="text-2xl font-headline-md text-on-surface hover:text-primary transition-colors" href="#experience">Experience</a>
+        <a onclick="toggleMobileMenu(false)" class="text-2xl font-headline-md text-on-surface hover:text-primary transition-colors" href="#certifications">Credentials</a>
         <a onclick="toggleMobileMenu(false)" class="text-2xl font-headline-md text-on-surface hover:text-primary transition-colors" href="#artifacts">AI Artifacts</a>
-        <a onclick="toggleMobileMenu(false)" class="text-2xl font-headline-md text-on-surface hover:text-primary transition-colors" href="#hardware">Hardware</a>
-        <a onclick="toggleMobileMenu(false)" class="text-2xl font-headline-md text-on-surface hover:text-primary transition-colors" href="#philosophy">Philosophy</a>
+        <a onclick="toggleMobileMenu(false)" class="text-2xl font-headline-md text-on-surface hover:text-primary transition-colors" href="#hardware">Stack</a>
         <a onclick="toggleMobileMenu(false)" class="text-2xl font-headline-md text-on-surface hover:text-primary transition-colors" href="#contact">Contact</a>
-        <button onclick="toggleMobileMenu(false); window.location.href='#artifacts'" class="btn-ghost px-8 py-3 font-subhead-tech text-subhead-tech text-primary mt-4">
-            Run Local CLI
+        <button onclick="toggleMobileMenu(false); window.location.href='#certifications'" class="btn-ghost px-8 py-3 font-subhead-tech text-subhead-tech text-primary mt-2">
+            View Credentials
         </button>
     </div>
 
@@ -359,22 +361,342 @@
             <div class="cosmic-glow top-0 left-[-100px]"></div>
             <div class="cosmic-glow-2 bottom-0 right-[-200px]"></div>
             <div class="max-w-4xl text-left z-10">
+                <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-container/30 border border-primary/20 text-primary font-subhead-tech text-xs uppercase tracking-widest font-bold mb-6">
+                    <span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                    Broadcom PS Developer & Enterprise Cloud Automation Architect
+                </div>
                 <h1 class="text-4xl sm:text-5xl md:text-7xl lg:text-[80px] font-display-lg text-on-surface mb-stack-md leading-[1.15] tracking-tight">
                     Synthesizing the Edge: <br class="hidden sm:inline"/>
                     <span class="bg-gradient-to-r from-on-surface to-primary bg-clip-text text-transparent drop-shadow-[0_0_10px_rgba(216,67,21,0.2)]">Zero Latency, Zero Telemetry.</span>
                 </h1>
                 <p class="text-base sm:text-lg md:text-body-lg text-on-surface-variant max-w-3xl leading-relaxed mb-10">
-                    Architecting local LLM reasoning loops, MPS GPU-accelerated computer vision, and SQLite-vec semantic memory engines. Building a world-class test harness for Small Language Models (SLMs) and secure MCP server ecosystems.
+                    7+ years engineering enterprise Infrastructure as Code (IaC), VMware Cloud Foundation 9 (VCF 9), Aria/vRA/vRO orchestrations, and AWS/Azure serverless pipelines. Synthesizing enterprise cloud automation with zero-latency, air-gapped sovereign AI systems.
                 </p>
-                <div class="flex flex-col md:flex-row gap-6 items-start">
+                <div class="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
+                    <a href="#certifications" class="btn-ghost px-6 py-3 font-subhead-tech text-subhead-tech text-primary font-bold uppercase tracking-wider flex items-center gap-2">
+                        <span class="material-symbols-outlined text-base">verified</span>
+                        Verified Credentials
+                    </a>
                     <a href="#artifacts" class="group flex items-center gap-2 text-primary font-subhead-tech text-subhead-tech uppercase tracking-[0.2em] border-b border-primary pb-1 hover:border-transparent hover:text-secondary transition-all duration-300">
-                        Explore Artifacts 
+                        Explore AI Artifacts 
                         <span class="material-symbols-outlined text-sm group-hover:translate-x-1 duration-300 transition-transform">arrow_forward</span>
                     </a>
                 </div>
             </div>
         </section>
         
+        <!-- Verified Enterprise Certifications & Credentials Section -->
+        <section id="certifications" class="flex flex-col gap-12 scroll-mt-28">
+            <div class="border-b border-outline-variant/40 pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                <div>
+                    <div class="inline-flex items-center gap-2 text-primary font-subhead-tech text-xs uppercase tracking-widest font-bold mb-2">
+                        <span class="material-symbols-outlined text-sm">verified</span>
+                        Verified Industry Credentials
+                    </div>
+                    <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight">Official Certifications</h2>
+                    <p class="text-on-surface-variant text-base mt-1">Enterprise Cloud Foundation, Multi-Cloud Architecture & AI Certifications.</p>
+                </div>
+                <div class="font-subhead-tech text-xs text-on-surface-variant/80 uppercase tracking-widest">
+                    Broadcom • VMware • AWS • Microsoft Azure
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+                <!-- Cert 1: Broadcom Certified Expert VCF Implementation -->
+                <div class="md:col-span-6 glass-panel p-6 sm:p-8 relative overflow-hidden group flex flex-col justify-between border-l-4 border-l-primary">
+                    <div>
+                        <div class="flex items-center justify-between gap-4 mb-4">
+                            <span class="px-3 py-1 bg-primary/10 border border-primary/20 text-primary font-subhead-tech text-xs uppercase tracking-wider font-bold">Broadcom Partner Expert</span>
+                            <span class="font-subhead-tech text-xs text-on-surface-variant font-mono">June 2026</span>
+                        </div>
+                        <div class="flex items-start gap-4 mb-4">
+                            <img src="https://images.credly.com/images/59ef9fcc-45c1-4e6b-bfcc-fa026250c7f4/linkedin_thumb_blob" alt="Broadcom Certified Expert VCF" class="w-16 h-16 object-contain filter drop-shadow-md group-hover:scale-105 transition-transform duration-300" />
+                            <div>
+                                <h3 class="font-headline-md text-lg md:text-xl font-bold text-on-surface leading-snug mb-1">Broadcom Partner Certification — Certified Expert</h3>
+                                <p class="font-subhead-tech text-xs text-primary font-bold uppercase tracking-wider">VMware Cloud Foundation (VCF) Implementation</p>
+                            </div>
+                        </div>
+                        <p class="font-body-md text-sm text-on-surface-variant leading-relaxed mb-6">
+                            Validates expert-level experience delivering advanced installation, configuration, and production environment promotion of VMware Cloud Foundation solutions for enterprise private cloud customers.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-black/5 flex justify-between items-center">
+                        <span class="text-xs font-subhead-tech text-on-surface-variant/70 uppercase">Issuer: Broadcom</span>
+                        <a href="https://www.credly.com/badges/83735047-bd6c-4941-9cc0-c06ca282aefe/public_url" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-subhead-tech text-primary font-bold hover:text-secondary uppercase tracking-wider transition-colors">
+                            Verify Credly Badge
+                            <span class="material-symbols-outlined text-sm">open_in_new</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Cert 2: VMware Certified Professional VCF 9 Administrator -->
+                <div class="md:col-span-6 glass-panel p-6 sm:p-8 relative overflow-hidden group flex flex-col justify-between border-l-4 border-l-secondary">
+                    <div>
+                        <div class="flex items-center justify-between gap-4 mb-4">
+                            <span class="px-3 py-1 bg-secondary/10 border border-secondary/20 text-secondary font-subhead-tech text-xs uppercase tracking-wider font-bold">VCP Credential</span>
+                            <span class="font-subhead-tech text-xs text-on-surface-variant font-mono">Broadcom Certified</span>
+                        </div>
+                        <div class="flex items-start gap-4 mb-4">
+                            <img src="https://images.credly.com/images/081374d2-721a-4d32-bff8-cc737818a3fc/linkedin_thumb_blob" alt="VCP VCF Administrator" class="w-16 h-16 object-contain filter drop-shadow-md group-hover:scale-105 transition-transform duration-300" />
+                            <div>
+                                <h3 class="font-headline-md text-lg md:text-xl font-bold text-on-surface leading-snug mb-1">VMware Certified Professional</h3>
+                                <p class="font-subhead-tech text-xs text-secondary font-bold uppercase tracking-wider">VCF 9 System Administrator</p>
+                            </div>
+                        </div>
+                        <p class="font-body-md text-sm text-on-surface-variant leading-relaxed mb-6">
+                            Validates mastery in installing, configuring, managing, and troubleshooting full-stack VMware Cloud Foundation (VCF 9) architectures across private enterprise infrastructure.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-black/5 flex justify-between items-center">
+                        <span class="text-xs font-subhead-tech text-on-surface-variant/70 uppercase">Issuer: Broadcom / VMware</span>
+                        <a href="https://www.credly.com/badges/ddd7e5d6-b68e-439f-a8a7-cb49eb640bbd" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-subhead-tech text-secondary font-bold hover:text-primary uppercase tracking-wider transition-colors">
+                            Verify Credly Badge
+                            <span class="material-symbols-outlined text-sm">open_in_new</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Cert 3: Azure AI Engineer Associate -->
+                <div class="md:col-span-4 glass-panel p-6 sm:p-8 relative overflow-hidden group flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-4 mb-4">
+                            <span class="px-3 py-1 bg-primary/10 border border-primary/20 text-primary font-subhead-tech text-xs uppercase tracking-wider font-bold">Microsoft Certified</span>
+                            <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/microsoftazure.svg" alt="Azure" class="w-5 h-5 opacity-70" />
+                        </div>
+                        <h3 class="font-headline-md text-base md:text-lg font-bold text-on-surface leading-snug mb-2">Microsoft Certified: Azure AI Engineer Associate</h3>
+                        <p class="font-body-md text-sm text-on-surface-variant leading-relaxed mb-4">
+                            Designing and implementing generative AI models, Azure OpenAI services, NLP pipelines, and computer vision cognitive APIs.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-black/5 flex justify-between items-center">
+                        <span class="text-xs font-subhead-tech text-on-surface-variant/70 uppercase">Issuer: Microsoft</span>
+                        <a href="https://learn.microsoft.com/en-us/users/abhishekrai-1837/credentials/dcbda8578bcc0b2b" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-subhead-tech text-primary font-bold hover:text-secondary uppercase tracking-wider transition-colors">
+                            Verify MS Learn
+                            <span class="material-symbols-outlined text-sm">open_in_new</span>
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Cert 4: Partner VCAP Certification: VKS - VCAPVKS9 -->
+                <div class="md:col-span-4 glass-panel p-6 sm:p-8 relative overflow-hidden group flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-4 mb-4">
+                            <span class="px-3 py-1 bg-secondary/10 border border-secondary/20 text-secondary font-subhead-tech text-xs uppercase tracking-wider font-bold">Partner VCAP</span>
+                            <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/broadcom.svg" alt="Broadcom" class="w-5 h-5 opacity-70" />
+                        </div>
+                        <h3 class="font-headline-md text-base md:text-lg font-bold text-on-surface leading-snug mb-2">Partner VCAP: VKS — VCAPVKS9</h3>
+                        <p class="font-body-md text-sm text-on-surface-variant leading-relaxed mb-4">
+                            Advanced certification validating vSphere Kubernetes Service (VKS) deployment, control plane orchestration, and worker pool automation on VCF 9.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-black/5 flex justify-between items-center">
+                        <span class="text-xs font-subhead-tech text-on-surface-variant/70 uppercase">Issuer: Broadcom</span>
+                        <span class="text-xs font-subhead-tech text-secondary font-bold uppercase tracking-wider">Verified Credential</span>
+                    </div>
+                </div>
+
+                <!-- Cert 5: AWS Certified Solutions Architect – Associate -->
+                <div class="md:col-span-4 glass-panel p-6 sm:p-8 relative overflow-hidden group flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-4 mb-4">
+                            <span class="px-3 py-1 bg-primary/10 border border-primary/20 text-primary font-subhead-tech text-xs uppercase tracking-wider font-bold">AWS Certified</span>
+                            <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/amazonaws.svg" alt="AWS" class="w-5 h-5 opacity-70" />
+                        </div>
+                        <h3 class="font-headline-md text-base md:text-lg font-bold text-on-surface leading-snug mb-2">AWS Certified Solutions Architect – Associate</h3>
+                        <p class="font-body-md text-sm text-on-surface-variant leading-relaxed mb-4">
+                            Architecting resilient, serverless, high-availability public cloud solutions using AWS Lambda, Glue ETL, S3 events, Systems Manager (SSM), and SNS.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-black/5 flex justify-between items-center">
+                        <span class="text-xs font-subhead-tech text-on-surface-variant/70 uppercase">Issuer: Amazon Web Services</span>
+                        <span class="text-xs font-subhead-tech text-primary font-bold uppercase tracking-wider">Verified Credential</span>
+                    </div>
+                </div>
+
+                <!-- Cert 6: VMware Aria Automation Specialist -->
+                <div class="md:col-span-6 glass-panel p-6 sm:p-8 relative overflow-hidden group flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-4 mb-4">
+                            <span class="px-3 py-1 bg-secondary/10 border border-secondary/20 text-secondary font-subhead-tech text-xs uppercase tracking-wider font-bold">Specialist Credential</span>
+                            <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/vmware.svg" alt="VMware" class="w-5 h-5 opacity-70" />
+                        </div>
+                        <h3 class="font-headline-md text-base md:text-lg font-bold text-on-surface leading-snug mb-2">VMware Aria Automation [V8.3] Specialist</h3>
+                        <p class="font-body-md text-sm text-on-surface-variant leading-relaxed mb-4">
+                            Specialized design and implementation of Aria Assembler blueprints, Aria Orchestrator (vRO) workflows, and automated Day-2 lifecycle management.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-black/5 flex justify-between items-center">
+                        <span class="text-xs font-subhead-tech text-on-surface-variant/70 uppercase">Issuer: VMware</span>
+                        <span class="text-xs font-subhead-tech text-secondary font-bold uppercase tracking-wider">Verified Credential</span>
+                    </div>
+                </div>
+
+                <!-- Cert 7: Microsoft Certified: Azure Fundamentals -->
+                <div class="md:col-span-6 glass-panel p-6 sm:p-8 relative overflow-hidden group flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between gap-4 mb-4">
+                            <span class="px-3 py-1 bg-primary/10 border border-primary/20 text-primary font-subhead-tech text-xs uppercase tracking-wider font-bold">Microsoft Certified</span>
+                            <img src="https://cdn.jsdelivr.net/npm/simple-icons@v16/icons/microsoft.svg" alt="Microsoft" class="w-5 h-5 opacity-70" />
+                        </div>
+                        <h3 class="font-headline-md text-base md:text-lg font-bold text-on-surface leading-snug mb-2">Microsoft Certified: Azure Fundamentals</h3>
+                        <p class="font-body-md text-sm text-on-surface-variant leading-relaxed mb-4">
+                            Foundational cloud architecture concepts, core Azure compute/networking infrastructure, governance, security, and enterprise compliance.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-black/5 flex justify-between items-center">
+                        <span class="text-xs font-subhead-tech text-on-surface-variant/70 uppercase">Issuer: Microsoft</span>
+                        <a href="https://learn.microsoft.com/en-us/users/abhishekrai-1837/credentials/dcbda8578bcc0b2b" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs font-subhead-tech text-primary font-bold hover:text-secondary uppercase tracking-wider transition-colors">
+                            Verify MS Learn
+                            <span class="material-symbols-outlined text-sm">open_in_new</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Enterprise Career & Experience Timeline Section -->
+        <section id="experience" class="flex flex-col gap-12 scroll-mt-28">
+            <div class="border-b border-outline-variant/40 pb-6 flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+                <div>
+                    <div class="inline-flex items-center gap-2 text-secondary font-subhead-tech text-xs uppercase tracking-widest font-bold mb-2">
+                        <span class="material-symbols-outlined text-sm">history_edu</span>
+                        7+ Years Engineering Track Record
+                    </div>
+                    <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface tracking-tight">Enterprise Career Experience</h2>
+                    <p class="text-on-surface-variant text-base mt-1">Leading multi-million dollar private cloud automation & orchestration engagements.</p>
+                </div>
+                <div class="font-subhead-tech text-xs text-on-surface-variant/80 uppercase tracking-widest font-mono">
+                    Pune &amp; Bengaluru, India
+                </div>
+            </div>
+
+            <div class="relative border-l-2 border-primary/20 ml-4 md:ml-8 pl-6 md:pl-10 space-y-12">
+                <!-- Role 1: Mastercom Technologies Services -->
+                <div class="relative group">
+                    <div class="absolute -left-[31px] md:-left-[47px] top-1.5 w-5 h-5 rounded-full bg-background border-2 border-primary group-hover:scale-125 group-hover:bg-primary transition-all duration-300"></div>
+                    <div class="glass-panel p-6 sm:p-8 relative overflow-hidden">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4 border-b border-black/5 pb-4">
+                            <div>
+                                <span class="px-3 py-1 bg-primary/10 text-primary text-xs uppercase font-subhead-tech tracking-wider font-bold rounded">Current Role</span>
+                                <h3 class="font-headline-md text-xl md:text-2xl font-bold text-on-surface mt-2">Broadcom PS Developer <span class="text-on-surface-variant text-lg font-normal">(VMware Automation Specialist)</span></h3>
+                                <p class="font-subhead-tech text-sm text-primary font-bold uppercase tracking-wider mt-1">Mastercom Technologies Services • Pune, India</p>
+                            </div>
+                            <div class="font-subhead-tech text-xs text-on-surface-variant font-mono bg-surface-container-high px-4 py-2 rounded self-start md:self-auto">
+                                Jan 2026 – Present
+                            </div>
+                        </div>
+
+                        <p class="font-body-md text-on-surface-variant leading-relaxed mb-6">
+                            Leading end-to-end design, staging lab verification, and customer production environment deployments of mission-critical private cloud automation solutions under Broadcom Professional Services (PS) guidelines.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="p-4 bg-background/40 border border-primary/10 rounded">
+                                <h4 class="font-subhead-tech text-xs text-primary uppercase font-bold tracking-wider mb-2">NSX VPC Microsegmentation</h4>
+                                <p class="text-xs text-on-surface-variant leading-relaxed">Designed and implemented VMware Aria/VCF Automation 9 Network Profiles to dynamically consume NSX segments, automating microsegmentation boundaries and zero-trust security groups inside NSX VPCs.</p>
+                            </div>
+                            <div class="p-4 bg-background/40 border border-secondary/10 rounded">
+                                <h4 class="font-subhead-tech text-xs text-secondary uppercase font-bold tracking-wider mb-2">VKS Kubernetes-as-a-Service (VCF 9)</h4>
+                                <p class="text-xs text-on-surface-variant leading-relaxed">Automated the entire lifecycle of Kubernetes clusters inside private clouds using VCF 9 VM Applications Orchestrator, provisioning control planes and worker pools in under 15 minutes (95% reduction).</p>
+                            </div>
+                            <div class="p-4 bg-background/40 border border-primary/10 rounded">
+                                <h4 class="font-subhead-tech text-xs text-primary uppercase font-bold tracking-wider mb-2">End-to-End VM Provisioning &amp; Integrations</h4>
+                                <p class="text-xs text-on-surface-variant leading-relaxed">Designed dynamic VM provisioning blueprints in Aria Assembler integrating RESTful Infoblox IPAM host registrations, secure LDAPS Active Directory domain enrollments, and Ansible Controller node triggers.</p>
+                            </div>
+                            <div class="p-4 bg-background/40 border border-secondary/10 rounded">
+                                <h4 class="font-subhead-tech text-xs text-secondary uppercase font-bold tracking-wider mb-2">AI-Driven Blueprint Scaffolding</h4>
+                                <p class="text-xs text-on-surface-variant leading-relaxed">Leveraged generative AI workflows to accelerate vRO JavaScript action coding and Aria blueprint scaffolding, reducing feature development time-to-market by 40%.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role 2: Neurealm (Formerly GS Labs | GAVS) -->
+                <div class="relative group">
+                    <div class="absolute -left-[31px] md:-left-[47px] top-1.5 w-5 h-5 rounded-full bg-background border-2 border-secondary group-hover:scale-125 group-hover:bg-secondary transition-all duration-300"></div>
+                    <div class="glass-panel p-6 sm:p-8 relative overflow-hidden">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4 border-b border-black/5 pb-4">
+                            <div>
+                                <h3 class="font-headline-md text-xl md:text-2xl font-bold text-on-surface">Senior Software Developer</h3>
+                                <p class="font-subhead-tech text-sm text-secondary font-bold uppercase tracking-wider mt-1">Neurealm (Formerly GS Labs | GAVS) • Pune, India</p>
+                            </div>
+                            <div class="font-subhead-tech text-xs text-on-surface-variant font-mono bg-surface-container-high px-4 py-2 rounded self-start md:self-auto">
+                                May 2025 – Dec 2025
+                            </div>
+                        </div>
+
+                        <p class="font-body-md text-on-surface-variant leading-relaxed mb-4">
+                            Engineered production-grade database blueprints, hardened bank-audit-compliant infrastructure, and enterprise vRA/vRO workflow optimizations.
+                        </p>
+
+                        <ul class="space-y-2">
+                            <li class="tech-list-item py-2 text-sm text-on-surface"><span class="tech-bullet bg-secondary"></span><strong class="font-bold">Bank Audit Secure Blueprints:</strong> Designed and coded hardened Aria Automation (vRA) blueprints utilizing YAML IaC definitions, enforcing strict CIS Benchmarks and banking audit compliance.</li>
+                            <li class="tech-list-item py-2 text-sm text-on-surface"><span class="tech-bullet bg-secondary"></span><strong class="font-bold">Production Postgres Blueprints:</strong> Led end-to-end design and automated deployment of high-availability PostgreSQL blueprints in Aria Automation.</li>
+                            <li class="tech-list-item py-2 text-sm text-on-surface"><span class="tech-bullet bg-secondary"></span><strong class="font-bold">Workflow Optimization:</strong> Audited legacy vRO workflows, optimizing execution speed and reducing failure rates by 25% through refined API polling and custom error handlers.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Role 3: Cognizant Technology Solutions -->
+                <div class="relative group">
+                    <div class="absolute -left-[31px] md:-left-[47px] top-1.5 w-5 h-5 rounded-full bg-background border-2 border-primary group-hover:scale-125 group-hover:bg-primary transition-all duration-300"></div>
+                    <div class="glass-panel p-6 sm:p-8 relative overflow-hidden">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-4 border-b border-black/5 pb-4">
+                            <div>
+                                <h3 class="font-headline-md text-xl md:text-2xl font-bold text-on-surface">Cloud Automation &amp; DevOps Engineer</h3>
+                                <p class="font-subhead-tech text-sm text-primary font-bold uppercase tracking-wider mt-1">Cognizant Technology Solutions • Pune, India</p>
+                            </div>
+                            <div class="font-subhead-tech text-xs text-on-surface-variant font-mono bg-surface-container-high px-4 py-2 rounded self-start md:self-auto">
+                                Dec 2019 – May 2025
+                            </div>
+                        </div>
+
+                        <p class="font-body-md text-on-surface-variant leading-relaxed mb-4">
+                            Spearheaded 5.5 years of enterprise cloud automation, zero-touch VM provisioning, serverless AWS self-healing systems, and Azure HPC batch compute operations.
+                        </p>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <div class="p-3 bg-background/40 border border-black/5 rounded text-xs text-on-surface-variant">
+                                <strong class="text-on-surface font-bold block mb-1">Zero-Touch ServiceNow (SNOW) VM Pipeline</strong>
+                                Built a bidirectional automated provisioning pipeline connecting ServiceNow ITSM APIs directly with Aria Service Broker &amp; vRO for CMDB synchronization.
+                            </div>
+                            <div class="p-3 bg-background/40 border border-black/5 rounded text-xs text-on-surface-variant">
+                                <strong class="text-on-surface font-bold block mb-1">Serverless AWS Self-Healing Remediation</strong>
+                                Engineered a serverless automation loop linking CloudWatch, SNS, Lambda, and Systems Manager (SSM) to resolve operational faults automatically (MTTR &lt; 2 mins).
+                            </div>
+                            <div class="p-3 bg-background/40 border border-black/5 rounded text-xs text-on-surface-variant">
+                                <strong class="text-on-surface font-bold block mb-1">AWS Glue Data ETL Ingestion</strong>
+                                Designed an AWS serverless ingestion framework using S3 events, Lambda, and AWS Glue ETL scripts to transform and load massive object transfers.
+                            </div>
+                            <div class="p-3 bg-background/40 border border-black/5 rounded text-xs text-on-surface-variant">
+                                <strong class="text-on-surface font-bold block mb-1">Large-Scale Azure HPC Batch Compute</strong>
+                                Managed and monitored large-scale HPC batch jobs using CA Scheduler Batch on Azure compute nodes, scripting dynamic dependencies with PowerShell and Python (99.98% completion rate).
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Role 4: NiteoIT Solutions Pvt Ltd -->
+                <div class="relative group">
+                    <div class="absolute -left-[31px] md:-left-[47px] top-1.5 w-5 h-5 rounded-full bg-background border-2 border-secondary/50 group-hover:scale-125 group-hover:bg-secondary transition-all duration-300"></div>
+                    <div class="glass-panel p-6 sm:p-8 relative overflow-hidden">
+                        <div class="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
+                            <div>
+                                <h3 class="font-headline-md text-lg font-bold text-on-surface">IT Infrastructure &amp; Cloud Intern</h3>
+                                <p class="font-subhead-tech text-xs text-secondary font-bold uppercase tracking-wider">NiteoIT Solutions Pvt Ltd • Bengaluru, India</p>
+                            </div>
+                            <div class="font-subhead-tech text-xs text-on-surface-variant font-mono">
+                                Jan 2019 – Dec 2019
+                            </div>
+                        </div>
+                        <p class="font-body-md text-xs text-on-surface-variant leading-relaxed">
+                            Configured scalable AWS environments (EC2, S3), supported relational Oracle database maintenance, and authored IT infrastructure operational SOP documentation.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- The Local AI Artifacts Showcase (Scroll margins optimized) -->
         <section id="artifacts" class="flex flex-col gap-12 scroll-mt-28">
             <div class="border-b border-outline-variant/40 pb-6">
@@ -557,73 +879,75 @@
             <div class="grid grid-cols-1 md:grid-cols-12 gap-gutter">
                 <div class="md:col-span-4">
                     <h2 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-on-surface mb-4 tracking-tight">Stack Architecture</h2>
-                    <p class="font-body-md text-body-md text-on-surface-variant mb-8 max-w-sm leading-relaxed">Precision-engineered layers for local model hosting and optimization.</p>
+                    <p class="font-body-md text-body-md text-on-surface-variant mb-8 max-w-sm leading-relaxed">Enterprise Private/Public Cloud Orchestration &amp; Sovereign Edge AI Tech Stack.</p>
                 </div>
                 <div class="md:col-span-8 glass-panel p-6 sm:p-8 md:p-10">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-12">
-                        <!-- Column 1 -->
+                        <!-- Column 1: Enterprise Cloud & IaC -->
                         <div>
-                            <h4 class="font-subhead-tech text-subhead-tech text-primary mb-6 border-b border-black/10 pb-3 tracking-widest uppercase font-bold">Cognitive Models</h4>
+                            <h4 class="font-subhead-tech text-subhead-tech text-primary mb-6 border-b border-black/10 pb-3 tracking-widest uppercase font-bold">Enterprise Cloud &amp; IaC</h4>
                             <ul class="space-y-4">
-                                <li class="tech-list-item pb-4 flex justify-between items-center">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Bonsai 27B Ternary</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Ternary Text</span>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>VMware VCF 9 / vRA / vRO</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Private Cloud</span>
                                 </li>
-                                <li class="tech-list-item pb-4 flex justify-between items-center">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Qwen 2.5 Coder</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Latest Text</span>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>NSX VPC Microsegmentation</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Zero-Trust</span>
                                 </li>
-                                <li class="tech-list-item pb-4 flex justify-between items-center">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Gemma 4</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Latest Text</span>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>vSphere K8s Service (VKS)</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">K8s-as-a-Service</span>
                                 </li>
-                                <li class="tech-list-item pb-4 flex justify-between items-center">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Whisper</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Latest Speech</span>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>HashiCorp Terraform / HCL</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">IaC Blueprints</span>
                                 </li>
-                                <li class="tech-list-item pb-4 flex justify-between items-center">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Kokoro-TTS</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Latest Voice</span>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Ansible Automation Controller</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Guest Config</span>
                                 </li>
-                                <li class="tech-list-item pb-4 flex justify-between items-center">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>FLUX.2 [klein] 4B</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Local Images</span>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>ServiceNow ITSM &amp; Infoblox</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">IPAM / CMDB</span>
                                 </li>
-                                <li class="tech-list-item pb-4 flex justify-between items-center">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Z-Image-Turbo</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Sub-Second Image</span>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>AWS (Lambda, Glue, SSM)</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Serverless</span>
                                 </li>
-                                <li class="tech-list-item pb-4 flex justify-between items-center">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Wan 2.2 / LTX-Video</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Local Video</span>
-                                </li>
-                                <li class="tech-list-item pb-4 flex justify-between items-center border-none">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Llama 2 / Mistral / Phi-2</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant">Legacy Core</span>
+                                <li class="tech-list-item pb-3 flex justify-between items-center border-none">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet"></span>Microsoft Azure &amp; HPC</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Public Cloud</span>
                                 </li>
                             </ul>
                         </div>
-                        <!-- Column 2 -->
+                        <!-- Column 2: Cognitive & Edge AI -->
                         <div>
-                            <h4 class="font-subhead-tech text-subhead-tech text-secondary mb-6 border-b border-black/10 pb-3 tracking-widest uppercase font-bold">Specializations &amp; Benchmarks</h4>
-                            <ul class="space-y-6">
-                                <li class="tech-list-item pb-4 flex flex-col gap-1">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>Industrial RAG Systems</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant mt-1 leading-relaxed">Multi-vector databases, secure sandboxed execution, semantic parsing</span>
+                            <h4 class="font-subhead-tech text-subhead-tech text-secondary mb-6 border-b border-black/10 pb-3 tracking-widest uppercase font-bold">Cognitive &amp; Edge AI</h4>
+                            <ul class="space-y-4">
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>Bonsai 27B / Qwen 2.5</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Local LLMs</span>
                                 </li>
-                                <li class="tech-list-item pb-4 flex flex-col gap-1">
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>Whisper / Kokoro-TTS</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Speech Loop</span>
+                                </li>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>FLUX.2 / Z-Image-Turbo</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Vision &amp; Image</span>
+                                </li>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>SQLite-vec Vector DB</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Air-Gapped RAG</span>
+                                </li>
+                                <li class="tech-list-item pb-3 flex justify-between items-center">
                                     <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>Secure MCP Servers</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant mt-1 leading-relaxed">Robust authorization layers for AI agent execution contexts</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Agent Protocol</span>
                                 </li>
-                                <li class="tech-list-item pb-4 flex flex-col gap-1">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>Local Visual &amp; OCR Models</span>
-                                    <span class="font-label-sm text-label-sm text-on-surface-variant mt-1 leading-relaxed">Integrated Florence-2 &amp; PaddleOCR pipelines for real-time document analysis</span>
-                                </li>
-                                <li class="tech-list-item pb-4 flex flex-col gap-1 border-none">
-                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>SLM Harness Optimization</span>
-                                    <div class="w-full h-1 bg-surface-container-high rounded mt-2 overflow-hidden">
-                                        <div class="h-full bg-secondary w-[95%]"></div>
-                                    </div>
+                                <li class="tech-list-item pb-3 flex justify-between items-center border-none">
+                                    <span class="font-body-md text-body-md text-on-surface"><span class="tech-bullet bg-secondary"></span>SLM Benchmarking Harness</span>
+                                    <span class="font-label-sm text-xs text-on-surface-variant font-mono">Tokens/Sec</span>
                                 </li>
                             </ul>
                         </div>
