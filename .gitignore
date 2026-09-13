@@ -10,3 +10,9 @@ build/
 *.log
 .system_generated/
 repos/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example
