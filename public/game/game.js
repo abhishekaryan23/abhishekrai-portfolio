@@ -1,833 +1,381 @@
-/* ============================================================
-   GHOST//DEPLOY — asynchronous co-op puzzle
-   Engine: fixed-timestep sim, seeded map gen, input-recorded
-   ghost replay, Cloudflare KV sync (degrades to offline bot).
-   ============================================================ */
+/* Ghost Deploy: a daily race to production.
+   Rules
+   - Three zones (dev, staging, prod network) split by two firewalls.
+   - Each firewall has one gate. A switch in the zone before it opens the
+     gate for 4 seconds, for the runner who stepped on it only.
+   - Scanners sweep staging and the prod network on fixed tracks. A scanner
+     touch sends you back to the last gate you passed.
+   - Reach PROD. The clock starts on your first move.
+   The simulation runs on a fixed 60 Hz tick and scanners are a pure
+   function of the tick, so a run is fully described by its key presses.
+   The ghost is that recording played back: the best run on today's map,
+   from the relay if it is on, otherwise your own best on this device. */
 "use strict";
 
-/* ---------- Constants ---------- */
-const TILE = 40, COLS = 20, ROWS = 12;
-const W = COLS * TILE, H = ROWS * TILE;
-const TICK = 1000 / 60;
-const SPEED = 2.8;               // px per tick
-const SIZE = 22;                 // entity box
-const HALF = SIZE / 2;
-const LIMIT = 60000;             // 60s run
-const GROUPS = 3;                // switch/gate groups
+const TILE = 40, COLS = 20, ROWS = 12, W = COLS * TILE, H = ROWS * TILE;
+const TICK = 1000 / 60, SPEED = 2.6, SIZE = 22, HALF = SIZE / 2;
+const LIMIT_TICKS = 60 * 60;           // 60 s
+const GATE_TICKS = 4 * 60;             // a gate stays open 4 s
+const STUN_TICKS = 36, SAFE_TICKS = 60; // pause after a scan, then 1 s safe
+const SCAN_R = 14;
+const FW = [7, 13];                    // firewall columns
+const ZONES = [{ x0: 1, x1: 6, name: "dev" }, { x0: 8, x1: 12, name: "staging" }, { x0: 14, x1: 18, name: "prod network" }];
+const DIRS = { KeyW: "U", ArrowUp: "U", KeyS: "D", ArrowDown: "D", KeyA: "L", ArrowLeft: "L", KeyD: "R", ArrowRight: "R" };
+const tms = (k) => Math.round(k * TICK);
 
-const C_PLAYER = "#ff7043", C_PLAYER_DEEP = "#d84315";
-const C_GHOST = "#fbbf24", C_GHOST_DEEP = "#b45309";
-const C_SWITCH = "#f472b6", C_EXIT = "#a3e635";
-const C_DANGER = "#ff5252";
-const GHOST_REACT_MS = 750;   // how long the ghost takes to notice your flip
-const GHOST_CHASE_MS = 112;   // ghost is FASTER than you once it hunts
-const GHOST_DEFEND_MS = 90;   // ghost speed when slamming your gate
-const GHOST_PATROL_MS = 84;   // ghost speed otherwise
-const CROSS_CHOP_MS = 25000;  // crossing the gap caps remaining time at this
-const WALL_BONK_MS = 300;     // time penalty per wall hit
+/* ---------- seeded random ---------- */
+function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng32(a) { return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const SEED = new URLSearchParams(location.search).get("seed") || new Date().toISOString().slice(0, 10);
 
-const MOVE_KEYS = new Set([
-    "KeyW", "KeyA", "KeyS", "KeyD",
-    "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"
-]);
-
-/* ---------- Seeded RNG ---------- */
-function hashStr(s) {
-    let h = 2166136261;
-    for (let i = 0; i < s.length; i++) {
-        h ^= s.charCodeAt(i);
-        h = Math.imul(h, 16777619);
+/* ---------- map ---------- */
+const at = (x, y) => y * COLS + x;
+function bfs(walls, sx, sy, tx, ty) {
+  const dist = new Int16Array(COLS * ROWS).fill(-1), q = [[sx, sy]];
+  dist[at(sx, sy)] = 0;
+  while (q.length) {
+    const [x, y] = q.shift();
+    if (x === tx && y === ty) return dist[at(x, y)];
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = x + dx, ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS || walls[at(nx, ny)] || dist[at(nx, ny)] >= 0) continue;
+      dist[at(nx, ny)] = dist[at(x, y)] + 1; q.push([nx, ny]);
     }
-    return h >>> 0;
-}
-function mulberry32(a) {
-    return function () {
-        a |= 0; a = (a + 0x6D2B79F5) | 0;
-        let t = Math.imul(a ^ (a >>> 15), 1 | a);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+  }
+  return -1;
 }
 
-/* ---------- Daily seed ---------- */
-function todaySeed() {
-    return new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
-}
-
-/* ---------- Map generation (deterministic) ---------- */
-const idx = (x, y) => y * COLS + x;
-
-function near(x, y, zx, zy, r) {
-    return Math.abs(x - zx) <= r && Math.abs(y - zy) <= r;
-}
-
-function bfsPath(walls, sx, sy, tx, ty, cheapTiles) {
-    // Dijkstra-lite: switch tiles cost less so bots drift over them
-    const cost = new Float64Array(COLS * ROWS).fill(Infinity);
-    const prev = new Int32Array(COLS * ROWS).fill(-1);
-    cost[idx(sx, sy)] = 0;
-    const open = [[0, sx, sy]];
-    while (open.length) {
-        let bi = 0;
-        for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
-        const [c, x, y] = open.splice(bi, 1)[0];
-        if (x === tx && y === ty) {
-            const path = [];
-            let cur = idx(tx, ty);
-            while (cur !== -1) { path.push({ x: cur % COLS, y: Math.floor(cur / COLS) }); cur = prev[cur]; }
-            return path.reverse();
-        }
-        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-            const nx = x + dx, ny = y + dy;
-            if (nx < 0 || ny < 0 || nx >= COLS || ny >= ROWS) continue;
-            const ni = idx(nx, ny);
-            if (walls[ni]) continue;
-            const step = cheapTiles && cheapTiles.has(ni) ? 0.25 : 1;
-            if (c + step < cost[ni]) {
-                cost[ni] = c + step;
-                prev[ni] = idx(x, y);
-                open.push([c + step, nx, ny]);
-            }
-        }
-    }
-    return null;
-}
-
-function generateMap(seedStr) {
-    for (let salt = 0; salt < 64; salt++) {
-        const rng = mulberry32(hashStr(seedStr + "#" + salt));
-        const walls = new Uint8Array(COLS * ROWS);
-        for (let x = 0; x < COLS; x++) { walls[idx(x, 0)] = 1; walls[idx(x, ROWS - 1)] = 1; }
-        for (let y = 0; y < ROWS; y++) { walls[idx(0, y)] = 1; walls[idx(COLS - 1, y)] = 1; }
-
-        const zones = [
-            { x: 1, y: ROWS - 2 },      // player start (bottom-left)
-            { x: COLS - 2, y: ROWS - 2 }, // ghost start (bottom-right)
-            { x: 1, y: 1 },             // player exit (top-left)
-            { x: COLS - 2, y: 1 }       // ghost exit (top-right)
-        ];
-        const inZone = (x, y, r) => zones.some(z => near(x, y, z.x, z.y, r));
-
-        // scattered wall blocks (light — speed matters more than maze-solving)
-        let placed = 0, guard = 0;
-        while (placed < 14 && guard++ < 300) {
-            const bx = 2 + Math.floor(rng() * (COLS - 5));
-            const by = 2 + Math.floor(rng() * (ROWS - 5));
-            if (inZone(bx, by, 2)) continue;
-            walls[idx(bx, by)] = 1;
-            placed++;
-        }
-        if (!bfsPath(walls, 1, ROWS - 2, 1, 1, null)) continue;
-        if (!bfsPath(walls, COLS - 2, ROWS - 2, COLS - 2, 1, null)) continue;
-
-        // The core chokepoint: a vertical firewall wall down the middle (x = 10)
-        // with exactly ONE open gap. Whoever controls the gap controls the game.
-        const MID = 10;
-        const gapY = 2 + Math.floor(rng() * (ROWS - 4)); // gap somewhere in the middle
-        for (let y = 1; y < ROWS - 1; y++) {
-            if (y !== gapY && y !== gapY + 1) walls[idx(MID, y)] = 1; // 2-tile gap
-        }
-        // ensure the gap isn't inside a spawn/exit protection zone
-        if (inZone(MID, gapY, 1) || inZone(MID, gapY + 1, 1)) continue;
-
-        // switches: the player has ONE switch on their side (left), ghost has ONE (right).
-        // Flipping YOUR switch opens YOUR gap gate — but the ghost will flip theirs to close yours.
-        const switches = [];
-        guard = 0;
-        while (switches.length < 2 && guard++ < 400) {
-            const isP = switches.length === 0;
-            const x = isP ? 2 + Math.floor(rng() * 6) : 12 + Math.floor(rng() * 6);
-            const y = 2 + Math.floor(rng() * (ROWS - 4));
-            if (walls[idx(x, y)] || inZone(x, y, 1)) continue;
-            switches.push({ x, y, group: switches.length });
-        }
-        if (switches.length < 2) continue;
-
-        // gates: ONE gate per side, sitting in the gap. Player gate blocks P, ghost gate blocks G.
-        const gates = [
-            { x: MID, y: gapY,     group: 0, side: "P" },
-            { x: MID, y: gapY + 1, group: 0, side: "P" },
-            { x: MID, y: gapY,     group: 1, side: "G" },
-            { x: MID, y: gapY + 1, group: 1, side: "G" }
-        ];
-
-        // both gates start CLOSED. nobody gets through for free.
-        const gateState = [ { P: true, G: true }, { P: true, G: true } ];
-
-        return {
-            walls, switches, gates, gateState,
-            pStart: { x: 1, y: ROWS - 2 }, gStart: { x: COLS - 2, y: ROWS - 2 },
-            pExit: { x: 1, y: 1 }, gExit: { x: COLS - 2, y: 1 },
-            midX: MID, gapY
-        };
-    }
+function makeMap(seed) {
+  for (let salt = 0; salt < 200; salt++) {
+    const r = rng32(hashStr(seed + "/" + salt)), ri = (a, b) => a + Math.floor(r() * (b - a + 1));
     const walls = new Uint8Array(COLS * ROWS);
-    for (let x = 0; x < COLS; x++) { walls[idx(x, 0)] = 1; walls[idx(x, ROWS - 1)] = 1; }
-    for (let y = 0; y < ROWS; y++) { walls[idx(0, y)] = 1; walls[idx(COLS - 1, y)] = 1; }
-    return {
-        walls, switches: [], gates: [], gateState: [ { P: true, G: true }, { P: true, G: true } ],
-        pStart: { x: 1, y: ROWS - 2 }, gStart: { x: COLS - 2, y: ROWS - 2 },
-        pExit: { x: 1, y: 1 }, gExit: { x: COLS - 2, y: 1 }, midX: 10, gapY: 5
-    };
-}
+    for (let x = 0; x < COLS; x++) { walls[at(x, 0)] = walls[at(x, ROWS - 1)] = 1; }
+    for (let y = 0; y < ROWS; y++) { walls[at(0, y)] = walls[at(COLS - 1, y)] = 1; }
+    const gaps = FW.map(() => ri(2, ROWS - 4));
+    FW.forEach((fx, i) => { for (let y = 1; y < ROWS - 1; y++) if (y !== gaps[i] && y !== gaps[i] + 1) walls[at(fx, y)] = 1; });
 
-/* ---------- Audio (tiny synth) ---------- */
-let audioCtx = null, muted = false;
-function blip(freq, dur = 0.08, type = "square", vol = 0.05) {
-    if (muted) return;
-    try {
-        audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-        const o = audioCtx.createOscillator(), g = audioCtx.createGain();
-        o.type = type; o.frequency.value = freq;
-        g.gain.setValueAtTime(vol, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
-        o.connect(g).connect(audioCtx.destination);
-        o.start(); o.stop(audioCtx.currentTime + dur);
-    } catch (e) { /* audio unavailable — silent */ }
-}
+    const start = { x: 1, y: ri(2, ROWS - 3) };
+    const exit = { x: 18, y: ri(2, ROWS - 4) };            // two tiles tall
+    const switches = [{ x: ri(3, 5), y: ri(1, ROWS - 2) }, { x: ri(9, 11), y: ri(1, ROWS - 2) }];
 
-/* ---------- Game state ---------- */
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+    // scanner tracks: staging gets a vertical sweeper, prod a vertical and a horizontal one
+    const vx1 = ri(9, 11), vx2 = ri(15, 16);
+    let hy = ri(2, ROWS - 3); if (hy === gaps[1] || hy === gaps[1] + 1) hy = gaps[1] + 2 < ROWS - 1 ? gaps[1] + 2 : gaps[1] - 1;
+    const scanners = [
+      { ax: vx1, ay: 1, bx: vx1, by: ROWS - 2, period: ri(100, 140), phase: r() },
+      { ax: vx2, ay: 1, bx: vx2, by: ROWS - 2, period: ri(90, 130), phase: r() },
+      { ax: 14, ay: hy, bx: 17, by: hy, period: ri(80, 110), phase: r() }
+    ];
+    if (switches[1].x === vx1) switches[1].x = vx1 === 11 ? 10 : vx1 + 1;
+    const onTrack = (x, y) => scanners.some((s) => (s.ax === s.bx ? x === s.ax : y === s.ay && x >= s.ax));
 
-const SEED = todaySeed();
-let map = generateMap(SEED);
-let state = "menu";           // menu | playing | won | lost
-let time = 0, acc = 0, lastFrame = 0;
-let shake = 0;
-let particles = [];
-let switchFlash = new Map();  // tileIdx -> ttl
-
-let ghostData = null;         // { inputs, durationMs, phantom, waypoints } | null
-let ghostLabel = "…";
-let playsCount = 0;
-let recording = [];           // [t, code, 0|1]
-let runStart = 0;
-
-const player = { x: 0, y: 0, keys: {}, lastSwitch: -1, bonkCd: 0 };
-const ghost = { x: 0, y: 0, keys: {}, lastSwitch: -1, evIdx: 0, wpIdx: 0, pause: 0, reactAt: 0 };
-let flipLog = []; // [t, side, group, newState] — for ghost reaction AI
-let playerCrossed = false;    // player crossed the midline at least once
-let crossedAt = -1;           // timestamp of first crossing
-let banner = null;            // { text, sub, color, ttl } stage banner
-let playerFlips = 0;          // combo counter for audio pitch
-
-function resetEntities() {
-    player.x = map.pStart.x * TILE + TILE / 2;
-    player.y = map.pStart.y * TILE + TILE / 2;
-    player.keys = {}; player.lastSwitch = -1;
-    ghost.x = map.gStart.x * TILE + TILE / 2;
-    ghost.y = map.gStart.y * TILE + TILE / 2;
-    ghost.keys = {}; ghost.lastSwitch = -1; ghost.evIdx = 0; ghost.wpIdx = 0; ghost.pause = 0; ghost.reactAt = 0;
-    // both firewall gates start CLOSED every attempt
-    map.gateState.forEach(g => { g.P = true; g.G = true; });
-    particles = [];
-    switchFlash.clear();
-    flipLog = [];
-    playerCrossed = false; crossedAt = -1;
-    banner = null; playerFlips = 0;
-    player.bonkCd = 0;
-    ghost._targetKey = null;
-    time = 0; acc = 0;
-    recording = [];
-}
-
-/* ---------- Collision ---------- */
-function gateClosedAt(x, y, side) {
-    for (const g of map.gates) {
-        if (g.x === x && g.y === y && g.side === side) {
-            return map.gateState[g.group][side];
-        }
-    }
-    return false;
-}
-function tilesOverlapped(cx, cy) {
-    const set = new Set();
-    const x0 = Math.floor((cx - HALF) / TILE), x1 = Math.floor((cx + HALF - 0.01) / TILE);
-    const y0 = Math.floor((cy - HALF) / TILE), y1 = Math.floor((cy + HALF - 0.01) / TILE);
-    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) set.add(idx(x, y));
-    return set;
-}
-function solidTile(x, y, side, phantom) {
-    if (x < 0 || y < 0 || x >= COLS || y >= ROWS) return true;
-    if (map.walls[idx(x, y)]) return true;
-    if (!phantom && gateClosedAt(x, y, side)) return true;
-    return false;
-}
-function moveAxis(ent, dx, dy, side, phantom) {
-    const nx = ent.x + dx, ny = ent.y + dy;
-    const current = tilesOverlapped(ent.x, ent.y);
-    const target = tilesOverlapped(nx, ny);
-    for (const t of target) {
-        if (current.has(t)) continue; // allow escaping a gate that closed on us
-        const x = t % COLS, y = Math.floor(t / COLS);
-        if (solidTile(x, y, side, phantom)) {
-            // player wall-hit: time penalty (the clock is the real enemy)
-            if (side === "P" && state === "playing" && player.bonkCd <= 0) {
-                player.bonkCd = 30; // half-second cooldown
-                time = Math.min(time + WALL_BONK_MS, LIMIT);
-                blip(140, 0.06, "sawtooth", 0.04);
-                burst(ent.x, ent.y, C_DANGER, 5);
-            }
-            return;
-        }
-    }
-    ent.x = nx; ent.y = ny;
-}
-
-/* ---------- Switches ----------
-   Each switch controls the OTHER engineer's gate.
-   Player steps on SW1 -> player gate (group 0, side P) opens.
-   Ghost steps on SW2 -> player gate (group 0, side P) SLAMS SHUT.
-   The ghost never helps you. Every flip is logged for the AI. */
-function checkSwitch(ent, side) {
-    let sw = null;
-    for (const s of map.switches) {
-        const sx = s.x * TILE + TILE / 2, sy = s.y * TILE + TILE / 2;
-        if (Math.abs(ent.x - sx) < 14 && Math.abs(ent.y - sy) < 14) { sw = s; break; }
-    }
-    const t = sw ? idx(sw.x, sw.y) : -1;
-    if (!sw) { ent.lastSwitch = -1; return; }
-    if (ent.lastSwitch === t) return;
-    ent.lastSwitch = t;
-    if (side === "P") {
-        // player opens their own gate
-        map.gateState[0].P = false;
-    } else {
-        // ghost slams the player's gate shut, and opens its own
-        map.gateState[0].P = true;
-        map.gateState[1].G = false;
-    }
-    flipLog.push({ t: time, side, group: sw.group });
-    switchFlash.set(t, 22);
-    shake = Math.min(shake + 5, 9);
-    burst(sw.x * TILE + TILE / 2, sw.y * TILE + TILE / 2, side === "P" ? C_PLAYER : C_GHOST, 14);
-    blip(side === "P" ? 520 : 660, 0.09, "square", 0.05);
-}
-
-/* ---------- Particles ---------- */
-function burst(x, y, color, n) {
-    for (let i = 0; i < n; i++) {
-        const a = Math.random() * Math.PI * 2;
-        const v = 0.5 + Math.random() * 2.2;
-        particles.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 26 + Math.random() * 18, color });
-    }
-}
-function trail(x, y, color) {
-    particles.push({
-        x: x + (Math.random() - 0.5) * 8, y: y + (Math.random() - 0.5) * 8,
-        vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-        life: 16, color
-    });
-}
-function stepParticles() {
-    for (let i = particles.length - 1; i >= 0; i--) {
-        const p = particles[i];
-        p.x += p.vx; p.y += p.vy; p.life--;
-        if (p.life <= 0) particles.splice(i, 1);
-    }
-}
-
-/* ---------- Ghost control ---------- */
-function applyGhostInputs() {
-    if (!ghostData || !ghostData.inputs) return;
-    const evs = ghostData.inputs;
-    while (ghost.evIdx < evs.length && evs[ghost.evIdx][0] <= time) {
-        const [, code, type] = evs[ghost.evIdx];
-        ghost.keys[code] = type === 1;
-        ghost.evIdx++;
-    }
-}
-/* ---------- Ghost AI: defender, then hunter ----------
-   Phase 1 (before you cross): counter-agent. Reacts to your flips,
-           sprints to SW2, slams your gate shut.
-   Phase 2 (after you cross):  hunter. Stops defending switches and
-           chases you through the right half. Touching it = rollback.
-           When it reaches its own exit first, it CAMPS there — you
-           cannot win until it steps off, and it only steps off to
-           chase you. */
-function ghostBotThink() {
-    if (!ghostData || !ghostData.waypoints) ghostData = buildBotGhost();
-    const gSw = map.switches[1];
-    const pOpen = !map.gateState[0].P;
-    const gClosed = map.gateState[1].G;
-
-    const lastPlayerFlip = [...flipLog].reverse().find(f => f.side === "P" && f.group === 0);
-    const threat = pOpen && lastPlayerFlip && (time - lastPlayerFlip.t) > GHOST_REACT_MS;
-
-    let target, speedPct;
-    if (playerCrossed) {
-        // HUNT MODE: don't chase the player — cut off their destination.
-        // Sprint to the PLAYER's exit and camp it. The player must bait the
-        // ghost off the exit by feinting toward the ghost's own exit, then
-        // double back. This is the endgame.
-        const pAtOwnExit = onExit(player, map.pExit);
-        if (!pAtOwnExit) {
-            target = { x: map.pExit.x, y: map.pExit.y };
-            speedPct = GHOST_CHASE_MS;
-        } else {
-            // player is sitting on their exit: ghost body-blocks the tile
-            target = { x: map.pExit.x, y: map.pExit.y };
-            speedPct = GHOST_CHASE_MS;
-        }
-    } else if (threat) {
-        target = { x: gSw.x, y: gSw.y }; speedPct = GHOST_DEFEND_MS;
-    } else if (gClosed) {
-        target = { x: gSw.x, y: gSw.y }; speedPct = GHOST_PATROL_MS;
-    } else {
-        target = { x: map.gExit.x, y: map.gExit.y }; speedPct = GHOST_PATROL_MS;
+    // a few wall blocks for routing, never on tracks, switches, gates or spawns
+    const keep = [start, exit, { x: exit.x, y: exit.y + 1 }, ...switches];
+    let placed = 0, guard = 0;
+    while (placed < 9 && guard++ < 300) {
+      const x = ri(2, 17), y = ri(1, ROWS - 2);
+      if (FW.includes(x) || walls[at(x, y)] || onTrack(x, y)) continue;
+      if (keep.some((k) => Math.abs(k.x - x) + Math.abs(k.y - y) <= 1)) continue;
+      if (FW.some((fx, i) => Math.abs(fx - x) <= 1 && y >= gaps[i] - 1 && y <= gaps[i] + 2)) continue;
+      walls[at(x, y)] = 1; placed++;
     }
 
-    // (re)path when the target changes, or when chasing (repath every 20 ticks)
-    const tKey = target.x + "," + target.y;
-    const chasing = playerCrossed && speedPct > 0;
-    const distToTarget = Math.hypot(ghost.x - (target.x * TILE + TILE / 2), ghost.y - (target.y * TILE + TILE / 2));
-    const parkedAway = ghost.wpIdx >= ghostData.waypoints.length && distToTarget > 14 && !chasing;
-    const staleChase = chasing && (Math.floor(time / TICK) % 20 === 0);
-    if (ghost._targetKey !== tKey || parkedAway || staleChase) {
-        ghost._targetKey = tKey;
-        const cheap = new Set([idx(target.x, target.y)]);
-        const from = { x: Math.floor(ghost.x / TILE), y: Math.floor(ghost.y / TILE) };
-        const path = bfsPath(map.walls, from.x, from.y, target.x, target.y, cheap) || [target];
-        ghostData.waypoints = path.slice(1).map(t => ({
-            x: t.x * TILE + TILE / 2, y: t.y * TILE + TILE / 2, pause: 0
-        }));
-        ghostData.waypoints.push({ x: target.x * TILE + TILE / 2, y: target.y * TILE + TILE / 2, pause: 0 });
-        ghost.wpIdx = 0;
-    }
+    // solvable and fair: every leg connects, and each switch is close enough
+    // to its gate to make it through in the 4 seconds
+    const legs = [
+      bfs(walls, start.x, start.y, switches[0].x, switches[0].y),
+      bfs(walls, switches[0].x, switches[0].y, FW[0] + 1, gaps[0]),
+      bfs(walls, FW[0] + 1, gaps[0], switches[1].x, switches[1].y),
+      bfs(walls, switches[1].x, switches[1].y, FW[1] + 1, gaps[1]),
+      bfs(walls, FW[1] + 1, gaps[1], exit.x, exit.y)
+    ];
+    if (legs.some((d) => d < 0) || legs[1] > 9 || legs[3] > 9 || legs[1] < 4 || legs[3] < 4) continue;
+    return { walls, gaps, start, exit, switches, scanners };
+  }
+  throw new Error("no map");
+}
+const MAP = makeMap(SEED);
 
-    if (speedPct > 0) moveGhostBot(speedPct / 100);
+function scannerPos(s, k) {
+  const u = ((k / s.period) + s.phase) % 1, p = u < 0.5 ? u * 2 : 2 - u * 2, e = p * p * (3 - 2 * p);
+  return { x: (s.ax + (s.bx - s.ax) * e) * TILE + TILE / 2, y: (s.ay + (s.by - s.ay) * e) * TILE + TILE / 2 };
 }
 
-function moveGhostBot(speedMul = 0.84) {
-    if (ghost.pause > 0) {
-        ghost.pause--;
-        if (ghost.pause % 5 === 0) trail(ghost.x, ghost.y, C_GHOST);
-        return;
-    }
-    const wps = ghostData.waypoints;
-    if (ghost.wpIdx >= wps.length) {
-        // idle at destination: still flip our switch if we're parked on it
-        return;
-    }
-    const wp = wps[ghost.wpIdx];
-    const dx = wp.x - ghost.x, dy = wp.y - ghost.y;
-    const d = Math.hypot(dx, dy);
-    if (d < 5) {
-        if (wp.pause) ghost.pause = wp.pause;
-        ghost.wpIdx++;
-        return;
-    }
-    const v = SPEED * speedMul * (1 + 0.15 * Math.sin(time / 110));
-    moveAxis(ghost, (dx / d) * v, 0, "G", true);
-    moveAxis(ghost, 0, (dy / d) * v, "G", true);
-    if (Math.floor(time / TICK) % 3 === 0) trail(ghost.x, ghost.y, C_GHOST);
-}
-function dirFromKeys(keys) {
-    let dx = 0, dy = 0;
-    if (keys.KeyA || keys.ArrowLeft) dx--;
-    if (keys.KeyD || keys.ArrowRight) dx++;
-    if (keys.KeyW || keys.ArrowUp) dy--;
-    if (keys.KeyS || keys.ArrowDown) dy++;
-    if (dx && dy) { dx *= 0.7071; dy *= 0.7071; }
-    return [dx, dy];
+/* ---------- runners ---------- */
+function newRunner() {
+  const c = { x: MAP.start.x * TILE + TILE / 2, y: MAP.start.y * TILE + TILE / 2 };
+  return { x: c.x, y: c.y, keys: {}, open: [0, 0], checkpoint: c, zone: 0, stun: 0, safe: 0, done: 0, scans: 0, face: 1 };
 }
 
-/* ---------- Bot ghost fallback (offline / first-ever run) ----------
-   Builds a static patrol; the reactive AI in ghostBotThink() overrides this
-   every frame. This only seeds initial waypoints. */
-function buildBotGhost() {
-    const gSw = map.switches[1] || map.gExit;
-    const cheap = new Set([idx(gSw.x, gSw.y)]);
-    const path = bfsPath(map.walls, map.gStart.x, map.gStart.y, gSw.x, gSw.y, cheap) || [gSw];
-    return {
-        phantom: true,
-        waypoints: path.slice(1).map(t => ({ x: t.x * TILE + TILE / 2, y: t.y * TILE + TILE / 2, pause: 0 })),
-        inputs: null, durationMs: 0
-    };
+function gateClosed(r, k, i) { return r.open[i] <= k; }
+function solidAt(r, k, tx, ty) {
+  if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS || MAP.walls[at(tx, ty)]) return true;
+  for (let i = 0; i < 2; i++) if (tx === FW[i] && (ty === MAP.gaps[i] || ty === MAP.gaps[i] + 1) && gateClosed(r, k, i)) return true;
+  return false;
+}
+function boxTiles(x, y) {
+  const out = [];
+  for (let ty = Math.floor((y - HALF) / TILE); ty <= Math.floor((y + HALF - 0.01) / TILE); ty++)
+    for (let tx = Math.floor((x - HALF) / TILE); tx <= Math.floor((x + HALF - 0.01) / TILE); tx++) out.push([tx, ty]);
+  return out;
+}
+function move(r, k, dx, dy) {
+  if (!dx && !dy) return;
+  const before = new Set(boxTiles(r.x, r.y).map(([a, b]) => a + "," + b)); // a gate closing on you never traps you
+  const nx = r.x + dx, ny = r.y + dy;
+  if (boxTiles(nx, ny).some(([tx, ty]) => !before.has(tx + "," + ty) && solidAt(r, k, tx, ty))) {
+    // slide along the wall: snap to the edge
+    if (dx) r.x = dx > 0 ? Math.floor((r.x + HALF) / TILE) * TILE + TILE - HALF - 0.01 : Math.floor((r.x - HALF) / TILE) * TILE + HALF;
+    if (dy) r.y = dy > 0 ? Math.floor((r.y + HALF) / TILE) * TILE + TILE - HALF - 0.01 : Math.floor((r.y - HALF) / TILE) * TILE + HALF;
+    return;
+  }
+  r.x = nx; r.y = ny;
 }
 
-/* ---------- Network ---------- */
+/* one 60 Hz step for one runner; returns events for sound and effects */
+function step(r, k) {
+  const ev = [];
+  if (r.done) return ev;
+  if (r.stun > 0) {
+    if (--r.stun === 0) { r.x = r.checkpoint.x; r.y = r.checkpoint.y; r.safe = SAFE_TICKS; ev.push("respawn"); }
+    return ev;
+  }
+  if (r.safe > 0) r.safe--;
+  let dx = (r.keys.R ? 1 : 0) - (r.keys.L ? 1 : 0), dy = (r.keys.D ? 1 : 0) - (r.keys.U ? 1 : 0);
+  if (dx && dy) { dx *= Math.SQRT1_2; dy *= Math.SQRT1_2; }
+  if (dx) r.face = Math.sign(dx);
+  move(r, k, dx * SPEED, 0);
+  move(r, k, 0, dy * SPEED);
+
+  const tx = Math.floor(r.x / TILE), ty = Math.floor(r.y / TILE);
+  MAP.switches.forEach((s, i) => {
+    if (tx === s.x && ty === s.y) { if (r.open[i] - k < GATE_TICKS - 20) ev.push("open" + i); r.open[i] = k + GATE_TICKS; }
+  });
+  const zone = r.x > FW[1] * TILE + TILE ? 2 : r.x > FW[0] * TILE + TILE ? 1 : 0;
+  if (zone > r.zone) {
+    r.zone = zone;
+    r.checkpoint = { x: (FW[zone - 1] + 1) * TILE + TILE / 2, y: MAP.gaps[zone - 1] * TILE + TILE };
+    ev.push("zone" + zone);
+  }
+  if (!r.safe) for (const s of MAP.scanners) {
+    const p = scannerPos(s, k), cx = Math.max(r.x - HALF, Math.min(p.x, r.x + HALF)), cy = Math.max(r.y - HALF, Math.min(p.y, r.y + HALF));
+    if (Math.hypot(p.x - cx, p.y - cy) < SCAN_R) { r.stun = STUN_TICKS; r.scans++; ev.push("scan"); break; }
+  }
+  if (tx === MAP.exit.x && (ty === MAP.exit.y || ty === MAP.exit.y + 1)) { r.done = k; ev.push("done"); }
+  return ev;
+}
+
+/* ---------- state ---------- */
+const canvas = document.getElementById("game"), g = canvas.getContext("2d");
+const $ = (id) => document.getElementById(id);
+const LS = "ghost-deploy:";
+let me, ghost, ghostRun = null, ghostSource = "", k = 0, started = false, state = "menu", rec = [], held = {}, fx = [], banner = null;
+
+function load(key) { try { return JSON.parse(localStorage.getItem(LS + key)); } catch (e) { return null; } }
+function save(key, v) { try { localStorage.setItem(LS + key, JSON.stringify(v)); } catch (e) { /* private mode */ } }
+const fmt = (ticks) => (ticks * TICK / 1000).toFixed(2) + " s";
+
+function pickGhost(remote) {
+  const local = load("best:" + SEED);
+  const cands = [];
+  if (remote && remote.v === 2 && Array.isArray(remote.inputs) && verify(remote)) cands.push({ ...remote, source: "fastest today" });
+  if (local) cands.push({ ...local, source: "your best" });
+  cands.sort((a, b) => a.durationMs - b.durationMs);
+  ghostRun = cands[0] || null;
+  ghostSource = ghostRun ? ghostRun.source : "";
+  $("hud-ghost").textContent = ghostRun ? (ghostRun.durationMs / 1000).toFixed(2) + " s, " + ghostSource : "none yet";
+  const best = load("best:" + SEED);
+  $("hud-best").textContent = best ? (best.durationMs / 1000).toFixed(2) + " s" : "none yet";
+}
+
+/* replay a run headlessly; only a run that really reaches PROD in the
+   time it claims can become the ghost */
+function verify(run) {
+  const r = newRunner(); let e = 0;
+  for (let t = 0; t < LIMIT_TICKS && !r.done; t++) {
+    while (e < run.inputs.length && run.inputs[e][0] <= tms(t)) { const [, d, v] = run.inputs[e++]; r.keys[d] = v === 1; }
+    step(r, t);
+  }
+  return r.done > 0 && Math.abs(r.done * TICK - run.durationMs) < 20;
+}
+
 async function fetchGhost() {
-    const statusEl = document.getElementById("menu-link-status");
-    try {
-        const res = await fetch("/api/ghost?seed=" + SEED);
-        if (!res.ok) throw new Error("http " + res.status);
-        const j = await res.json();
-        playsCount = j.plays || 0;
-        if (j.ghost && Array.isArray(j.ghost.inputs) && j.ghost.seed === SEED) {
-            ghostData = { inputs: j.ghost.inputs, durationMs: j.ghost.durationMs, phantom: false };
-            ghostLabel = "LAST_ENGINEER.log";
-            statusEl.textContent = `UPLINK ESTABLISHED — replaying ${(j.ghost.durationMs / 1000).toFixed(1)}s run from the relay`;
-            statusEl.classList.remove("offline");
-        } else {
-            ghostData = buildBotGhost();
-            ghostLabel = "TRAINING_BOT.log";
-            statusEl.textContent = "NO GHOST ON RELAY — you are patient zero. A training bot will assist.";
-            statusEl.classList.add("offline");
-        }
-    } catch (e) {
-        ghostData = buildBotGhost();
-        ghostLabel = "TRAINING_BOT.log";
-        statusEl.textContent = "RELAY OFFLINE — local training bot engaged. Game fully playable.";
-        statusEl.classList.add("offline");
-    }
-    document.getElementById("hud-link").textContent = ghostLabel;
-    document.getElementById("hud-plays").textContent = String(playsCount);
+  try {
+    const res = await fetch("/api/ghost?seed=" + SEED);
+    const data = res.ok ? await res.json() : null;
+    pickGhost(data && data.ghost);
+  } catch (e) { pickGhost(null); }
 }
 
-async function submitRun() {
-    const el = document.getElementById("win-ghost-status");
-    const payload = {
-        v: 1, seed: SEED, inputs: recording,
-        durationMs: Math.round(time), result: "win"
-    };
-    try {
-        const res = await fetch("/api/ghost", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-        const j = await res.json();
-        if (res.ok && j.stored) {
-            el.textContent = "✓ Your run is now the ACTIVE GHOST. The next stranger deploys alongside you.";
-        } else if (res.ok) {
-            el.textContent = "A faster ghost already holds this instance. Beat their time to take the relay.";
-        } else {
-            el.textContent = "Relay rejected the upload — but the deploy shipped. Run it back.";
-        }
-    } catch (e) {
-        el.textContent = "Relay unreachable — your ghost stayed local. Deploy still counts.";
-    }
+function reset() {
+  me = newRunner(); ghost = ghostRun ? newRunner() : null;
+  if (ghost) { ghost.evs = ghostRun.inputs; ghost.ev = 0; }
+  k = 0; started = false; rec = []; fx = []; banner = null;
 }
-
-/* ---------- Flow ---------- */
 function startRun() {
-    resetEntities();
-    state = "playing";
-    runStart = performance.now();
-    document.getElementById("overlay").classList.add("hidden");
-    blip(440, 0.1, "square", 0.05);
-    blip(880, 0.16, "square", 0.04);
+  reset(); state = "play"; $("overlay").hidden = true; canvas.focus && canvas.focus();
+  banner = { text: "Move to start the clock", t: 120 };
 }
 
-function endRun(won, reason) {
-    state = won ? "won" : "lost";
-    const overlay = document.getElementById("overlay");
-    document.getElementById("panel-menu").classList.add("hidden");
-    document.getElementById("panel-win").classList.toggle("hidden", !won);
-    document.getElementById("panel-lose").classList.toggle("hidden", won);
-    overlay.classList.remove("hidden");
-    if (won) {
-        const t = (time / 1000).toFixed(1);
-        document.getElementById("win-detail").textContent =
-            `You beat the ghost with ${((LIMIT - time) / 1000).toFixed(1)}s to spare (${t}s run). This is rare.`;
-        blip(523, 0.12, "square", 0.06);
-        setTimeout(() => blip(784, 0.12, "square", 0.06), 120);
-        setTimeout(() => blip(1047, 0.22, "square", 0.06), 240);
-        submitRun();
-    } else {
-        const el = document.getElementById("lose-detail");
-        if (reason === "caught") {
-            el.textContent = "The ghost caught you inside the VPC. Next run: cross the gap LATER in its patrol cycle, so it's far away when the hunt begins.";
-        } else {
-            const pDone = onExit(player, map.pExit), gDone = onExit(ghost, map.gExit);
-            el.textContent =
-                pDone && !gDone ? "You reached PROD — but the ghost was still inside. It has to exit too. Cross earlier so it has time to leave."
-                : !pDone && gDone ? "The ghost shipped first. It was already waiting at PROD while you were still fighting the firewall."
-                : "Time expired. The firewall cycle beat both of you. Flip SW1 when the ghost is farthest from SW2.";
-        }
-        blip(220, 0.25, "sawtooth", 0.06);
-    }
+function setKey(dir, down) {
+  held[dir] = down;
+  if (state !== "play" || me.done) return;
+  if (!!me.keys[dir] === down) return;
+  me.keys[dir] = down;
+  if (down && !started) started = true;
+  if (started) rec.push([tms(k), dir, down ? 1 : 0]);
 }
 
-function onExit(ent, exit) {
-    return Math.floor(ent.x / TILE) === exit.x && Math.floor(ent.y / TILE) === exit.y;
+function finish(won) {
+  state = "end";
+  const title = $("end-title"), result = $("end-result"), note = $("end-note");
+  if (!won) {
+    title.textContent = "Out of time";
+    result.textContent = "60 s passed before the build reached PROD.";
+    note.textContent = "Tip: wait on the switch until a scanner has just passed the gate, then go.";
+    Arcade.tone(196, 0.3, "sawtooth", 0.05, -80);
+  } else {
+    const ms = Math.round(me.done * TICK), prev = load("best:" + SEED), beat = !ghostRun || ms < ghostRun.durationMs;
+    title.textContent = beat ? "Shipped, and the ghost is yours" : "Shipped";
+    result.textContent = (ms / 1000).toFixed(2) + " s" + (me.scans ? ", scanned " + me.scans + (me.scans === 1 ? " time" : " times") : ", never scanned");
+    if (!ghostRun) note.textContent = "No one had finished today's map on this device yet, so your run is now the ghost.";
+    else if (beat) note.textContent = "You beat the ghost (" + ghostSource + ") by " + ((ghostRun.durationMs - ms) / 1000).toFixed(2) + " s. Your run is the new ghost on this device.";
+    else note.textContent = "The ghost (" + ghostSource + ") was " + ((ms - ghostRun.durationMs) / 1000).toFixed(2) + " s faster. Watch where it waits.";
+    const run = { v: 2, seed: SEED, inputs: rec, durationMs: ms, result: "win" };
+    if (!prev || ms < prev.durationMs) save("best:" + SEED, run);
+    if (beat) submit(run, note);
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => Arcade.tone(f, 0.12, "square", 0.05), i * 90));
+    pickGhost(ghostSource === "fastest today" && !beat ? ghostRun : null);
+  }
+  $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
+  $("again-btn").focus();
 }
 
-/* ---------- Simulation tick ---------- */
-function tick() {
-    time += TICK;
-    if (player.bonkCd > 0) player.bonkCd--;
-
-    // player
-    const [pdx, pdy] = dirFromKeys(player.keys);
-    moveAxis(player, pdx * SPEED, 0, "P", false);
-    moveAxis(player, 0, pdy * SPEED, "P", false);
-    checkSwitch(player, "P");
-    if (pdx || pdy) trail(player.x, player.y, C_PLAYER);
-
-    // crossing the midline for the first time: the hunt begins
-    if (!playerCrossed && Math.floor(player.x / TILE) > map.midX) {
-        playerCrossed = true;
-        crossedAt = time;
-        // crossing chops the clock — no dawdling on the far side
-        const remain = LIMIT - time;
-        if (remain > CROSS_CHOP_MS) time = LIMIT - CROSS_CHOP_MS;
-        banner = { text: "BREACH DETECTED", sub: "THE GHOST IS HUNTING YOU", color: C_DANGER, ttl: 140 };
-        blip(200, 0.2, "sawtooth", 0.07);
-        setTimeout(() => blip(160, 0.3, "sawtooth", 0.07), 140);
-        shake = 12;
-        burst(player.x, player.y, C_DANGER, 20);
-    }
-
-    // ghost
-    if (ghostData) {
-        if (ghostData.phantom) ghostBotThink();
-        else {
-            applyGhostInputs();
-            const [gdx, gdy] = dirFromKeys(ghost.keys);
-            moveAxis(ghost, gdx * SPEED, 0, "G", false);
-            moveAxis(ghost, 0, gdy * SPEED, "G", false);
-            if (gdx || gdy) trail(ghost.x, ghost.y, C_GHOST);
-        }
-        checkSwitch(ghost, "G");
-    }
-
-    // caught by the ghost
-    if (state === "playing" && Math.hypot(player.x - ghost.x, player.y - ghost.y) < SIZE) {
-        banner = { text: "CAUGHT", sub: "INTRUDER PURGED FROM THE VPC", color: C_DANGER, ttl: 160 };
-        burst(player.x, player.y, C_DANGER, 30);
-        blip(110, 0.4, "sawtooth", 0.08);
-        shake = 16;
-        endRun(false, "caught");
-        return;
-    }
-
-    stepParticles();
-    for (const [t, ttl] of switchFlash) {
-        if (ttl <= 1) switchFlash.delete(t); else switchFlash.set(t, ttl - 1);
-    }
-    if (shake > 0) shake *= 0.88;
-    if (banner && banner.ttl > 0) banner.ttl--;
-
-    // win check: the ghost must have ALREADY exited (be off the map's
-    // active area on its side) — it can't camp forever, it must leave
-    // through its own exit once the player forces the issue
-    if (onExit(player, map.pExit) && onExit(ghost, map.gExit)) endRun(true);
-    else if (time >= LIMIT) endRun(false);
+async function submit(run, note) {
+  try {
+    const res = await fetch("/api/ghost", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(run) });
+    const data = await res.json().catch(() => ({}));
+    if (data.stored) note.textContent = note.textContent.replace(" on this device.", ".") + " It is now the ghost for everyone who plays today.";
+  } catch (e) { /* offline: the device copy is enough */ }
 }
 
-/* ---------- Rendering ---------- */
-function render() {
-    ctx.save();
-    ctx.clearRect(0, 0, W, H);
-    if (shake > 0.4) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+/* ---------- loop ---------- */
+function tickOnce() {
+  if (state !== "play") return;
+  if (!started) { if (banner && banner.t > 0) banner.t--; return; }
+  if (ghost) {
+    while (ghost.ev < ghost.evs.length && ghost.evs[ghost.ev][0] <= tms(k)) { const [, d, t] = ghost.evs[ghost.ev++]; ghost.keys[d] = t === 1; }
+    step(ghost, k);
+  }
+  for (const e of step(me, k)) {
+    if (e.startsWith("open")) { Arcade.tone(660, 0.07); Arcade.tone(990, 0.09, "square", 0.04); banner = { text: "Gate " + (+e[4] + 1) + " open for 4 s", t: 70 }; }
+    if (e.startsWith("zone")) { Arcade.tone(784, 0.1, "triangle", 0.06); banner = { text: e === "zone1" ? "Staging. Checkpoint saved" : "Prod network. Checkpoint saved", t: 80 }; }
+    if (e === "scan") { Arcade.noise(0.18, 0.1); Arcade.tone(150, 0.25, "sawtooth", 0.05, -60); banner = { text: "Scanned. Back to the last gate", t: 80 }; burst(me.x, me.y, Arcade.tokens().red); }
+    if (e === "done") { finish(true); return; }
+  }
+  k++;
+  if (banner && banner.t > 0) banner.t--;
+  if (k >= LIMIT_TICKS) finish(false);
+}
+function burst(x, y, c) { for (let i = 0; i < 18; i++) { const a = Math.random() * 6.28, s = 1 + Math.random() * 3; fx.push({ x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 30, c }); } }
 
-    // floor
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-            if ((x + y) % 2 === 0) {
-                ctx.fillStyle = "rgba(255,180,120,0.016)";
-                ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
-            }
-        }
-    }
-    // grid
-    ctx.strokeStyle = "rgba(255,160,110,0.05)";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let x = 0; x <= COLS; x++) { ctx.moveTo(x * TILE, 0); ctx.lineTo(x * TILE, H); }
-    for (let y = 0; y <= ROWS; y++) { ctx.moveTo(0, y * TILE); ctx.lineTo(W, y * TILE); }
-    ctx.stroke();
-
-    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 240);
-
-    // exits
-    drawExit(map.pExit, C_PLAYER, "PROD", onExit(player, map.pExit), pulse);
-    drawExit(map.gExit, C_GHOST, "PROD", onExit(ghost, map.gExit), pulse);
-
-    // walls
-    for (let y = 0; y < ROWS; y++) {
-        for (let x = 0; x < COLS; x++) {
-            if (!map.walls[idx(x, y)]) continue;
-            ctx.fillStyle = "#1a1109";
-            ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
-            ctx.fillStyle = "rgba(255,170,110,0.16)";
-            ctx.fillRect(x * TILE, y * TILE, TILE, 2);
-        }
-    }
-
-    // switches
-    for (const sw of map.switches) {
-        const cx = sw.x * TILE + TILE / 2, cy = sw.y * TILE + TILE / 2;
-        const flash = switchFlash.get(idx(sw.x, sw.y)) || 0;
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(Math.PI / 4);
-        ctx.shadowColor = C_SWITCH;
-        ctx.shadowBlur = 10 + flash * 1.5 + pulse * 4;
-        ctx.fillStyle = flash ? "#e9d5ff" : C_SWITCH;
-        const s = 9 + flash * 0.4;
-        ctx.fillRect(-s / 2, -s / 2, s, s);
-        ctx.restore();
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = "rgba(244,114,182,0.85)";
-        ctx.font = "700 9px 'JetBrains Mono', monospace";
-        ctx.textAlign = "center";
-        ctx.fillText("SW" + (sw.group + 1), cx, cy + 20);
-    }
-
-    // gates
-    for (const g of map.gates) {
-        const closed = map.gateState[g.group][g.side];
-        const x = g.x * TILE, y = g.y * TILE;
-        const color = g.side === "P" ? C_PLAYER : C_GHOST;
-        if (closed) {
-            ctx.save();
-            ctx.shadowColor = color;
-            ctx.shadowBlur = 12 + pulse * 6;
-            ctx.fillStyle = color;
-            ctx.globalAlpha = 0.85;
-            for (let i = 0; i < 4; i++) ctx.fillRect(x + 6 + i * 8, y + 3, 3, TILE - 6);
-            ctx.restore();
-            ctx.shadowBlur = 0;
-        } else {
-            ctx.strokeStyle = color;
-            ctx.globalAlpha = 0.22;
-            ctx.setLineDash([4, 5]);
-            ctx.strokeRect(x + 5, y + 5, TILE - 10, TILE - 10);
-            ctx.setLineDash([]);
-            ctx.globalAlpha = 1;
-        }
-    }
-
-    // particles
-    for (const p of particles) {
-        ctx.globalAlpha = Math.min(1, p.life / 20);
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - 1.5, p.y - 1.5, 3, 3);
-    }
-    ctx.globalAlpha = 1;
-
-    // entities
-    if (state === "playing" || state === "won" || state === "lost") {
-        // hunt mode: ghost flickers hot — visual panic cue
-        const hunting = playerCrossed && state === "playing";
-        const gColor = hunting && Math.floor(performance.now() / 120) % 2 === 0 ? C_DANGER : C_GHOST;
-        const gDeep = hunting ? "#991b1b" : C_GHOST_DEEP;
-        drawEntity(ghost.x, ghost.y, gColor, gDeep, true, pulse);
-        drawEntity(player.x, player.y, C_PLAYER, C_PLAYER_DEEP, false, pulse);
-    }
-
-    ctx.restore();
-
-    // stage banner
-    if (banner && banner.ttl > 0) {
-        const a = Math.min(1, banner.ttl / 40);
-        ctx.save();
-        ctx.globalAlpha = a;
-        ctx.fillStyle = banner.color;
-        ctx.shadowColor = banner.color;
-        ctx.shadowBlur = 30;
-        ctx.font = "800 34px 'JetBrains Mono', monospace";
-        ctx.textAlign = "center";
-        ctx.fillText(banner.text, W / 2, H / 2 - 8);
-        ctx.font = "400 13px 'JetBrains Mono', monospace";
-        ctx.shadowBlur = 10;
-        ctx.fillText(banner.sub, W / 2, H / 2 + 22);
-        ctx.restore();
-    }
-
-    // HUD
-    const remain = Math.max(0, (LIMIT - time) / 1000);
-    const timeEl = document.getElementById("hud-time");
-    timeEl.textContent = remain.toFixed(1);
-    timeEl.classList.toggle("low", state === "playing" && remain < 10);
+let last = performance.now(), acc = 0;
+function frame(now) {
+  acc += Math.min(100, now - last); last = now;
+  while (acc >= TICK) { tickOnce(); acc -= TICK; }
+  draw();
+  $("hud-time").textContent = fmt(state === "end" && me.done ? me.done : k);
+  requestAnimationFrame(frame);
 }
 
-function drawExit(ex, color, label, occupied, pulse) {
-    const cx = ex.x * TILE + TILE / 2, cy = ex.y * TILE + TILE / 2;
-    ctx.save();
-    ctx.strokeStyle = occupied ? C_EXIT : color;
-    ctx.shadowColor = occupied ? C_EXIT : color;
-    ctx.shadowBlur = 8 + pulse * 8;
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 12 + pulse * 2, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = occupied ? C_EXIT : color;
-    ctx.font = "800 8px 'JetBrains Mono', monospace";
-    ctx.textAlign = "center";
-    ctx.fillText(label, cx, cy - 18);
+/* ---------- drawing (colours come from the site theme) ---------- */
+function rr(x, y, w, h, r) { g.beginPath(); g.roundRect ? g.roundRect(x, y, w, h, r) : g.rect(x, y, w, h); }
+function draw() {
+  const T = Arcade.tokens();
+  g.fillStyle = T.paper; g.fillRect(0, 0, W, H);
+  // zone tint and labels
+  ZONES.forEach((z, i) => {
+    g.fillStyle = i === 2 ? T.accentBg : T.surface; g.globalAlpha = i === 2 ? 0.5 : 1;
+    g.fillRect(z.x0 * TILE, TILE, (z.x1 - z.x0 + 1) * TILE, H - 2 * TILE); g.globalAlpha = 1;
+    g.fillStyle = T.muted; g.font = "500 13px 'IBM Plex Mono', monospace"; g.textAlign = "left";
+    g.fillText(z.name, z.x0 * TILE + 8, TILE + 18);
+  });
+  // grid
+  g.strokeStyle = T.line; g.lineWidth = 1; g.beginPath();
+  for (let x = 1; x < COLS; x++) { g.moveTo(x * TILE + 0.5, TILE); g.lineTo(x * TILE + 0.5, H - TILE); }
+  for (let y = 1; y < ROWS; y++) { g.moveTo(TILE, y * TILE + 0.5); g.lineTo(W - TILE, y * TILE + 0.5); }
+  g.stroke();
+  // walls
+  for (let y = 0; y < ROWS; y++) for (let x = 0; x < COLS; x++) if (MAP.walls[at(x, y)]) {
+    g.fillStyle = FW.includes(x) && y > 0 && y < ROWS - 1 ? (T.dark ? T.muted : T.ink2) : T.line2;
+    g.fillRect(x * TILE, y * TILE, TILE, TILE);
+  }
+  // scanner tracks
+  g.setLineDash([4, 6]); g.strokeStyle = T.red; g.globalAlpha = 0.35; g.lineWidth = 2;
+  for (const s of MAP.scanners) { g.beginPath(); g.moveTo(s.ax * TILE + 20, s.ay * TILE + 20); g.lineTo(s.bx * TILE + 20, s.by * TILE + 20); g.stroke(); }
+  g.setLineDash([]); g.globalAlpha = 1;
+  // gates and switches (state shown for you, not the ghost)
+  const kk = started ? k : 0;
+  FW.forEach((fx_, i) => {
+    const open = !gateClosed(me, kk, i), x = fx_ * TILE, y = MAP.gaps[i] * TILE;
+    if (open) { g.strokeStyle = T.teal; g.setLineDash([5, 5]); g.lineWidth = 2; g.strokeRect(x + 3, y + 3, TILE - 6, 2 * TILE - 6); g.setLineDash([]); }
+    else { g.fillStyle = T.teal; for (let b = 0; b < 4; b++) g.fillRect(x + 4 + b * 9, y + 2, 5, 2 * TILE - 4); }
+    const s = MAP.switches[i], sx = s.x * TILE + 20, sy = s.y * TILE + 20, left = (me.open[i] - kk) / GATE_TICKS;
+    rr(sx - 13, sy - 13, 26, 26, 4); g.fillStyle = open ? T.teal : T.surface; g.fill(); g.strokeStyle = T.teal; g.lineWidth = 2; g.stroke();
+    g.fillStyle = open ? T.paper : T.teal; g.font = "600 11px 'IBM Plex Mono', monospace"; g.textAlign = "center"; g.fillText("S" + (i + 1), sx, sy + 4);
+    if (open) { g.strokeStyle = T.accent; g.lineWidth = 3; g.beginPath(); g.arc(sx, sy, 18, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left); g.stroke(); }
+  });
+  // start and exit
+  g.fillStyle = T.muted; g.font = "500 11px 'IBM Plex Mono', monospace"; g.textAlign = "center";
+  g.fillText("laptop", MAP.start.x * TILE + 20, MAP.start.y * TILE - 4);
+  const ex = MAP.exit.x * TILE, ey = MAP.exit.y * TILE;
+  rr(ex + 3, ey + 3, TILE - 6, 2 * TILE - 6, 5); g.fillStyle = T.good; g.fill();
+  g.save(); g.translate(ex + 20, ey + 40); g.rotate(-Math.PI / 2); g.fillStyle = T.paper; g.font = "600 13px 'IBM Plex Mono', monospace"; g.fillText("PROD", 0, 5); g.restore();
+  // scanners
+  for (const s of MAP.scanners) {
+    const p = scannerPos(s, kk);
+    g.fillStyle = T.red; g.globalAlpha = 0.15; g.beginPath(); g.arc(p.x, p.y, SCAN_R + 8, 0, 7); g.fill();
+    g.globalAlpha = 1; g.beginPath(); g.arc(p.x, p.y, SCAN_R, 0, 7); g.fill();
+    g.fillStyle = T.paper; g.beginPath(); g.arc(p.x, p.y, 4, 0, 7); g.fill();
+  }
+  // runners
+  if (ghost) drawRunner(ghost, T.muted, 0.45, T);
+  drawRunner(me, T.accent, 1, T);
+  // particles
+  fx = fx.filter((p) => p.life-- > 0);
+  for (const p of fx) { p.x += p.vx; p.y += p.vy; p.vx *= 0.92; p.vy *= 0.92; g.globalAlpha = p.life / 30; g.fillStyle = p.c; g.fillRect(p.x - 2, p.y - 2, 4, 4); }
+  g.globalAlpha = 1;
+  // banner
+  if (state === "play" && banner && banner.t > 0) {
+    g.font = "600 15px 'IBM Plex Sans', sans-serif"; g.textAlign = "center";
+    const w = g.measureText(banner.text).width + 28;
+    rr(W / 2 - w / 2, 6, w, 28, 4); g.fillStyle = T.ink; g.globalAlpha = Math.min(1, banner.t / 15); g.fill();
+    g.fillStyle = T.paper; g.fillText(banner.text, W / 2, 25); g.globalAlpha = 1;
+  }
+}
+function drawRunner(r, color, alpha, T) {
+  if (r.stun > 0 && Math.floor(r.stun / 4) % 2) return;
+  if (r.safe > 0 && Math.floor(r.safe / 5) % 2) alpha *= 0.4;
+  g.globalAlpha = alpha;
+  rr(r.x - HALF, r.y - HALF, SIZE, SIZE, 5); g.fillStyle = color; g.fill();
+  g.fillStyle = T.paper; g.fillRect(r.x + r.face * 4 - 2, r.y - 4, 4, 4);
+  g.globalAlpha = 1;
 }
 
-function drawEntity(x, y, color, deep, isGhost, pulse) {
-    ctx.save();
-    if (isGhost) {
-        ctx.globalAlpha = 0.55 + 0.2 * Math.sin(performance.now() / 90);
-        y += Math.sin(performance.now() / 300) * 1.5; // glitch bob
-    }
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 16;
-    const grad = ctx.createLinearGradient(x - HALF, y - HALF, x + HALF, y + HALF);
-    grad.addColorStop(0, color);
-    grad.addColorStop(1, deep);
-    ctx.fillStyle = grad;
-    const r = 5;
-    ctx.beginPath();
-    ctx.roundRect(x - HALF, y - HALF, SIZE, SIZE, r);
-    ctx.fill();
-    ctx.restore();
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-    // core dot
-    ctx.fillStyle = "rgba(255,255,255,0.9)";
-    ctx.fillRect(x - 2, y - 2, 4, 4);
-}
-
-/* ---------- Input ---------- */
-window.addEventListener("keydown", (e) => {
-    if (!MOVE_KEYS.has(e.code)) return;
-    e.preventDefault();
-    if (state !== "playing") return;
-    if (player.keys[e.code]) return; // ignore auto-repeat
-    player.keys[e.code] = true;
-    recording.push([Math.round(time), e.code, 1]);
+/* ---------- input ---------- */
+addEventListener("keydown", (e) => {
+  if (DIRS[e.code]) { e.preventDefault(); if (!e.repeat) setKey(DIRS[e.code], true); }
+  else if (e.code === "KeyR" && state !== "menu") startRun();
+  else if ((e.code === "Enter" || e.code === "Space") && state !== "play" && document.activeElement.tagName !== "BUTTON" && document.activeElement.tagName !== "A") { e.preventDefault(); startRun(); }
 });
-window.addEventListener("keyup", (e) => {
-    if (!MOVE_KEYS.has(e.code)) return;
-    if (state !== "playing") { player.keys[e.code] = false; return; }
-    player.keys[e.code] = false;
-    recording.push([Math.round(time), e.code, 0]);
-});
+addEventListener("keyup", (e) => { if (DIRS[e.code]) setKey(DIRS[e.code], false); });
+addEventListener("blur", () => ["U", "D", "L", "R"].forEach((d) => setKey(d, false)));
+Arcade.bindPad((c) => setKey(DIRS[c], true), (c) => setKey(DIRS[c], false));
+$("start-btn").addEventListener("click", startRun);
+$("again-btn").addEventListener("click", startRun);
 
-/* ---------- Main loop ---------- */
-function frame(ts) {
-    requestAnimationFrame(frame);
-    if (!lastFrame) lastFrame = ts;
-    const dt = Math.min(ts - lastFrame, 100);
-    lastFrame = ts;
-    if (state === "playing") {
-        acc += dt;
-        while (acc >= TICK) { tick(); acc -= TICK; if (state !== "playing") { acc = 0; break; } }
-    }
-    render();
-}
-
-/* ---------- Wire up ---------- */
-document.getElementById("start-btn").addEventListener("click", startRun);
-document.getElementById("again-btn-win").addEventListener("click", startRun);
-document.getElementById("again-btn-lose").addEventListener("click", startRun);
-document.getElementById("mute-btn").addEventListener("click", (e) => {
-    muted = !muted;
-    e.target.textContent = muted ? "SOUND: OFF" : "SOUND: ON";
-});
-
-document.getElementById("hud-seed").textContent = SEED;
-fetchGhost();
+$("hud-seed").textContent = new Date(SEED + "T00:00:00Z").toLocaleDateString(undefined, { day: "numeric", month: "short", timeZone: "UTC" });
+reset();
+fetchGhost().then(() => { if (state !== "play") reset(); });
+Arcade.setupFullscreen();
 requestAnimationFrame(frame);
-
-// debug hook (harmless in production)
-window.__gd = () => ({
-    state, time,
-    player: { x: Math.round(player.x), y: Math.round(player.y) },
-    pk: Object.keys(player.keys).filter(k => player.keys[k]),
-    ghost: { x: Math.round(ghost.x), y: Math.round(ghost.y), wpIdx: ghost.wpIdx, pause: ghost.pause },
-    pExit: map.pExit, gExit: map.gExit, ghostLabel
-});

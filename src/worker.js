@@ -247,7 +247,8 @@ async function handleContactSubmit(request, env) {
   }
 }
 
-/* ---------------- GHOST//DEPLOY API ----------------
+/* ---------------- Ghost Deploy API ----------------
+   Run format v2: inputs are [ms, "U"|"D"|"L"|"R", 1|0].
    Async ghost relay on Cloudflare KV (free tier).
    GET  /api/ghost?seed=YYYY-MM-DD  -> { ghost, plays }
    POST /api/ghost                  -> stores a winning run as the
@@ -270,11 +271,11 @@ async function handleGhostGet(request, env) {
   const kv = env?.PORTFOLIO_KV;
   if (!kv) return jsonResponse({ ghost: null, plays: 0, mode: "offline" });
 
-  const [ghost, plays] = await Promise.all([
-    kv.get(`ghost:${seed}`, "json"),
-    kv.get(`stats:${seed}`, "json")
-  ]);
-  return jsonResponse({ ghost: ghost || null, plays: plays || 0 });
+  const ghost = await kv.get(`ghost:${seed}`, { type: "json", cacheTtl: 60 });
+  const res = jsonResponse({ ghost: ghost || null });
+  // the ghost changes rarely; let the edge and browsers reuse it briefly
+  res.headers.set("Cache-Control", "public, max-age=30");
+  return res;
 }
 
 async function handleGhostPost(request, env) {
@@ -293,7 +294,7 @@ async function handleGhostPost(request, env) {
     const seedOk = /^\d{4}-\d{2}-\d{2}$/.test(seed || "");
     const today = new Date().toISOString().slice(0, 10);
     const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-    if (v !== 1 || !seedOk || (seed !== today && seed !== yesterday)) {
+    if (v !== 2 || !seedOk || (seed !== today && seed !== yesterday)) {
       return jsonResponse({ stored: false, reason: "bad-seed" }, 400);
     }
 
@@ -303,7 +304,7 @@ async function handleGhostPost(request, env) {
     }
 
     // Input recording validation: monotonic timestamps, sane key codes
-    if (!Array.isArray(inputs) || inputs.length > 1500) {
+    if (!Array.isArray(inputs) || inputs.length < 2 || inputs.length > 1500) {
       return jsonResponse({ stored: false, reason: "invalid-inputs" }, 400);
     }
     let lastT = -1;
@@ -321,29 +322,29 @@ async function handleGhostPost(request, env) {
       lastT = t;
     }
 
-    // Per-IP rate limit: 5 submissions per minute (protects the 1k writes/day quota)
-    const ip = request.headers.get("CF-Connecting-IP") || "anon";
-    const rlKey = `rl:ghost:${ip}:${Math.floor(Date.now() / 60000)}`;
-    const hits = (await kv.get(rlKey, "json")) || 0;
-    if (hits >= 5) return jsonResponse({ stored: false, reason: "rate-limited" }, 429);
-    await kv.put(rlKey, JSON.stringify(hits + 1), { expirationTtl: 130 });
+    if (durationMs < inputs[inputs.length - 1][0]) {
+      return jsonResponse({ stored: false, reason: "invalid-run" }, 400);
+    }
 
-    // Replace the active ghost only if this run is faster (saves write quota)
+    // Compare first: a slower run costs no writes at all (free plan: 1,000 writes a day)
     const ghostKey = `ghost:${seed}`;
     const existing = await kv.get(ghostKey, "json");
     if (existing && typeof existing.durationMs === "number" && existing.durationMs <= durationMs) {
       return jsonResponse({ stored: false, reason: "slower-than-active-ghost" });
     }
 
+    // Per-IP rate limit, written only for runs that would be stored
+    const ip = request.headers.get("CF-Connecting-IP") || "anon";
+    const rlKey = `rl:ghost:${ip}:${Math.floor(Date.now() / 60000)}`;
+    const hits = (await kv.get(rlKey, "json")) || 0;
+    if (hits >= 3) return jsonResponse({ stored: false, reason: "rate-limited" }, 429);
+    await kv.put(rlKey, JSON.stringify(hits + 1), { expirationTtl: 130 });
+
     await kv.put(
       ghostKey,
       JSON.stringify({ v, seed, inputs, durationMs, result, createdAt: new Date().toISOString() }),
       { expirationTtl: 172800 } // ghost expires after 48h
     );
-
-    const statsKey = `stats:${seed}`;
-    const plays = (await kv.get(statsKey, "json")) || 0;
-    await kv.put(statsKey, JSON.stringify(plays + 1), { expirationTtl: 172800 });
 
     return jsonResponse({ stored: true });
   } catch (err) {

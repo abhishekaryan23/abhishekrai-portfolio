@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>try{var t=localStorage.getItem("site-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <title>Rollback Street: a side-scrolling brawler | AbhishekrAI.dev</title>
+  <meta name="description" content="Rollback Street: a side-scrolling beat 'em up for one or two players. Four stages, four bosses, combos, rolling kicks and specials.">
+  <link rel="canonical" href="https://abhishekrai.dev/game/street/">
+  <meta name="theme-color" content="#a8186a">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 6L92 48L50 90L8 48Z' fill='none' stroke='%23a8186a' stroke-width='9'/%3E%3Cpath d='M50 30L68 48L50 66L32 48Z' fill='%23a8186a'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site.css">
+  <link rel="stylesheet" href="/game/style.css?v=5">
+</head>
+<body>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="AbhishekrAI.dev, home">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6L92 48L50 90L8 48Z" fill="none" stroke="currentColor" stroke-width="9"/><path d="M50 30L68 48L50 66L32 48Z" fill="currentColor"/></svg>
+      <span class="wordmark">Abhishekr<b>AI</b><i>.dev</i></span>
+    </a>
+    <div class="game-actions">
+      <button class="icon-btn" type="button" id="mute-btn">Sound on</button>
+      <button class="icon-btn" type="button" id="theme-btn" aria-label="Switch colour theme">Dark</button>
+    </div>
+  </div>
+</header>
+
+<main class="arcade" id="main">
+  <div class="wrap">
+    <div class="arcade-head">
+      <div>
+        <h1>Rollback Street</h1>
+        <p>A side-scrolling brawler in the style of the late-80s arcade classics. Fight through the street, the subway, the rooftops and the foundry, alone or with a friend on the same keyboard.</p>
+      </div>
+      <nav class="game-tabs" aria-label="Games">
+        <a href="/game/">Ghost Deploy</a>
+        <a href="/game/street/" aria-current="page">Rollback Street</a>
+      </nav>
+    </div>
+
+    <div class="play-bar"><button class="btn ghost" id="fs-btn" type="button">Full screen</button></div>
+    <div class="stage-wrap" id="stage-wrap">
+    <div class="screen solo">
+      <canvas id="game" width="768" height="432" aria-label="Game screen"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="card" id="card-menu">
+          <h2>Rollback Street</h2>
+          <p>Four stages, four bosses. Clear a stage to unlock it here next time.</p>
+          <div class="chips" id="stages" role="group" aria-label="Starting stage"></div>
+          <details class="moves">
+            <summary>Move list</summary>
+            <ul>
+              <li><b>Combos:</b> punch, punch, punch (uppercut). Punch, punch, kick (spin heel kick). Kick, kick (roundhouse).</li>
+              <li><b>Back elbow:</b> tap away from the way you face, then punch, to hit someone behind you.</li>
+              <li><b>Dash:</b> double-tap a direction. Then punch for a shoulder tackle, kick for a flying kick, jump for a long jump.</li>
+              <li><b>Grab:</b> walk into a dazed enemy. Punch to knee, kick to throw them into the others.</li>
+              <li><b>Specials</b> use the SP bar, which fills as you land hits:
+                rolling kick (special, or punch and kick together, 30 SP), cyclone kick (special in the air, 25 SP),
+                rising dragon (down, forward, punch, or down and special, 40 SP).</li>
+              <li><b>Pickups:</b> pipes swing (every hit knocks down), knives throw, apples heal, cans refill SP. Jump over thrown knives and shockwaves.</li>
+            </ul>
+          </details>
+          <ul class="keys">
+            <li>Player 1: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>J</kbd> punch, <kbd>K</kbd> kick, <kbd>L</kbd> jump, <kbd>I</kbd> special</li>
+            <li>Player 2: arrows, <kbd>1</kbd> punch, <kbd>2</kbd> kick, <kbd>3</kbd> jump, <kbd>4</kbd> special (or <kbd>,</kbd> <kbd>.</kbd> <kbd>/</kbd> <kbd>'</kbd>)</li>
+            <li><kbd>P</kbd> pause</li>
+          </ul>
+          <div class="btn-row">
+            <button class="btn" id="start1" type="button">1 player</button>
+            <button class="btn ghost" id="start2" type="button" data-keyboard>2 players</button>
+          </div>
+          <p class="small muted" id="best-line" style="margin:12px 0 0"></p>
+        </div>
+        <div class="card" id="card-end" hidden>
+          <h2 id="end-title">Street cleared</h2>
+          <p class="result" id="end-result"></p>
+          <p id="end-note"></p>
+          <div class="btn-row"><button class="btn" id="continue" type="button">Continue</button><button class="btn ghost" id="again" type="button">Back to stage select</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pad">
+      <div class="stick" data-codes="KeyW,KeyS,KeyA,KeyD" role="presentation"><span></span></div>
+      <div class="grp act">
+        <button tabindex="-1" data-code="KeyL">Jump</button><button tabindex="-1" data-code="KeyI">Special</button><button tabindex="-1" data-code="KeyP">Pause</button>
+        <button tabindex="-1" data-code="KeyJ">Punch</button><button tabindex="-1" data-code="KeyK">Kick</button>
+      </div>
+    </div>
+    <button class="fs-exit" id="fs-exit" type="button">Exit full screen</button>
+    </div>
+    <p class="small muted" style="margin-top:18px"><a href="/">Back to abhishekrai.dev</a></p>
+  </div>
+</main>
+
+<script src="/game/arcade.js?v=3"></script>
+<script src="/game/street/street.js?v=4"></script>
+</body>
+</html>

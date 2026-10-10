@@ -11,3 +11,4 @@ build/
 .system_generated/
 repos/
 .wrangler/
+.claude/

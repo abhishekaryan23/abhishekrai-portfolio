@@ -1,110 +1,95 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>GHOST//DEPLOY — Async Co-op Puzzle | AbhishekrAI.Dev</title>
-    <meta name="description" content="GHOST//DEPLOY: a 60-second asynchronous co-op puzzle. Deploy to Production alongside the ghost of the last engineer who tried. Your run becomes the next player's teammate."/>
-    <meta name="robots" content="index, follow"/>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 5L90 45L50 85L10 45L50 5Z' stroke='%23d84315' stroke-width='4' stroke-linecap='square'/%3E%3Cpath d='M50 25L70 45L50 65L30 45L50 25Z' fill='%23ff7043'/%3E%3C/svg%3E"/>
-    <link href="https://fonts.googleapis.com" rel="preconnect"/>
-    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
-    <link rel="stylesheet" href="/game/style.css"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>try{var t=localStorage.getItem("site-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <title>Ghost Deploy: a daily race to production | AbhishekrAI.dev</title>
+  <meta name="description" content="Ghost Deploy: a one-minute daily puzzle race. Open each firewall gate, slip past the scanners and reach production, racing a replay of the fastest run.">
+  <link rel="canonical" href="https://abhishekrai.dev/game/">
+  <meta name="theme-color" content="#a8186a">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 6L92 48L50 90L8 48Z' fill='none' stroke='%23a8186a' stroke-width='9'/%3E%3Cpath d='M50 30L68 48L50 66L32 48Z' fill='%23a8186a'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site.css">
+  <link rel="stylesheet" href="/game/style.css?v=5">
 </head>
 <body>
-    <div class="scanlines"></div>
-    <div class="vignette"></div>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="AbhishekrAI.dev, home">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6L92 48L50 90L8 48Z" fill="none" stroke="currentColor" stroke-width="9"/><path d="M50 30L68 48L50 66L32 48Z" fill="currentColor"/></svg>
+      <span class="wordmark">Abhishekr<b>AI</b><i>.dev</i></span>
+    </a>
+    <div class="game-actions">
+      <button class="icon-btn" type="button" id="mute-btn">Sound on</button>
+      <button class="icon-btn" type="button" id="theme-btn" aria-label="Switch colour theme">Dark</button>
+    </div>
+  </div>
+</header>
 
-    <header class="topbar">
-        <a href="/" class="brand">
-            <span class="brand-mark">◆</span> Abhishekr<span class="brand-ai">AI</span>.Dev
-        </a>
-        <span class="topbar-sep">//</span>
-        <span class="topbar-game">GHOST//DEPLOY</span>
-        <button id="mute-btn" class="mute-btn" title="Toggle sound">SOUND: ON</button>
-    </header>
+<main class="arcade" id="main">
+  <div class="wrap">
+    <div class="arcade-head">
+      <div>
+        <h1>Ghost Deploy</h1>
+        <p>Get your build from your laptop to production in under a minute. A new map every day, and you race a replay of the fastest run.</p>
+      </div>
+      <nav class="game-tabs" aria-label="Games">
+        <a href="/game/" aria-current="page">Ghost Deploy</a>
+        <a href="/game/street/">Rollback Street</a>
+      </nav>
+    </div>
 
-    <main class="stage">
-        <div class="hud">
-            <div class="hud-cell">
-                <span class="hud-label">T-MINUS</span>
-                <span id="hud-time" class="hud-value hud-time">60.0</span>
-            </div>
-            <div class="hud-cell">
-                <span class="hud-label">LINK</span>
-                <span id="hud-link" class="hud-value hud-ghost">…</span>
-            </div>
-            <div class="hud-cell">
-                <span class="hud-label">INSTANCE</span>
-                <span id="hud-seed" class="hud-value">…</span>
-            </div>
-            <div class="hud-cell">
-                <span class="hud-label">DEPLOYS TODAY</span>
-                <span id="hud-plays" class="hud-value">…</span>
-            </div>
+    <div class="play-bar"><button class="btn ghost" id="fs-btn" type="button">Full screen</button></div>
+    <div class="stage-wrap" id="stage-wrap">
+    <div class="hud" aria-live="off">
+      <div><small>Time</small><b id="hud-time">0.00 s</b></div>
+      <div><small>Your best today</small><b id="hud-best">none yet</b></div>
+      <div><small>Ghost</small><b id="hud-ghost" class="accent">loading</b></div>
+      <div><small>Map</small><b id="hud-seed">today</b></div>
+    </div>
+    <div class="screen">
+      <canvas id="game" width="800" height="480" aria-label="Game board"></canvas>
+      <div class="overlay" id="overlay">
+        <div class="card" id="card-menu">
+          <h2>How to play</h2>
+          <ol>
+            <li>Step on a <b>switch</b> to open the gate in the next firewall. It stays open for 4 seconds, and the ring around the switch counts down.</li>
+            <li>Scanners sweep the far zones. If one touches you, you go back to the last gate you passed.</li>
+            <li>Reach <b>PROD</b> on the right. Faster is better.</li>
+          </ol>
+          <p>The faded runner is the ghost: a replay of the best run on today's map. Beat it and yours becomes the ghost.</p>
+          <div class="btn-row"><button class="btn" id="start-btn" type="button">Start run</button></div>
+          <ul class="keys"><li><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to move</li><li><kbd>R</kbd> restart</li></ul>
         </div>
-
-        <div class="canvas-wrap" id="canvas-wrap">
-            <canvas id="game" width="800" height="480"></canvas>
-
-            <div id="overlay" class="overlay">
-                <div class="panel" id="panel-menu">
-                    <div class="panel-tag">ZERO-TRUST DATACENTER // SIMULATION</div>
-                    <h1 class="panel-title">GHOST<span class="slash">//</span>DEPLOY</h1>
-                    <p class="panel-copy">
-                        One rule: <b>reach PROD before the clock dies.</b>
-                    </p>
-                    <p class="panel-copy">
-                        <span class="c-player">■</span> Step on <b>SW1</b> to open the firewall.<br/>
-                        <span class="c-ghost">■</span> The ghost sees it, slams it shut from <b>SW2</b>,<br/>
-                        then turns <b>red and hunts you</b> — faster than you.
-                    </p>
-                    <p class="panel-copy">
-                        You cannot outrun the hunt. You can only out<b>time</b> it.<br/>
-                        Flip SW1 when the ghost is far away. Cross. Reach PROD.<br/>
-                        <b>Nobody has beaten it yet.</b>
-                    </p>
-                    <div class="controls-row">
-                        <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
-                        <span class="controls-or">or</span>
-                        <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span>
-                    </div>
-                    <button id="start-btn" class="cta">TRY ANYWAY ▸</button>
-                    <div id="menu-link-status" class="menu-link-status">ESTABLISHING UPLINK…</div>
-                </div>
-
-                <div class="panel hidden" id="panel-win">
-                    <div class="panel-tag ok">200 OK // SHIPPED</div>
-                    <h1 class="panel-title c-ok">DEPLOY SUCCESSFUL</h1>
-                    <p class="panel-copy" id="win-detail">Both engineers reached Production.</p>
-                    <p class="panel-copy dim" id="win-ghost-status">Transmitting your run to the relay…</p>
-                    <button id="again-btn-win" class="cta">RUN IT BACK ▸</button>
-                </div>
-
-                <div class="panel hidden" id="panel-lose">
-                    <div class="panel-tag err">500 // ROLLBACK INITIATED</div>
-                    <h1 class="panel-title c-err">DEPLOY FAILED</h1>
-                    <p class="panel-copy" id="lose-detail">Time expired. The pipeline rolls back.</p>
-                    <p class="panel-copy dim">The ghost is faster than you think. Chain your flip closer to the gap — every millisecond of travel time is a millisecond the gate is already closing.</p>
-                    <button id="again-btn-lose" class="cta">RE-DEPLOY ▸</button>
-                </div>
-            </div>
+        <div class="card" id="card-end" hidden>
+          <h2 id="end-title">Shipped</h2>
+          <p class="result" id="end-result"></p>
+          <p id="end-note"></p>
+          <div class="btn-row"><button class="btn" id="again-btn" type="button">Run again</button><a class="btn ghost" href="/game/street/">Try Rollback Street</a></div>
         </div>
+      </div>
+    </div>
 
-        <div class="legend">
-            <span><span class="sw sw-player"></span> YOU — flip SW1, cross, reach PROD</span>
-            <span><span class="sw sw-ghost"></span> GHOST — slams your gate, then hunts you (faster)</span>
-            <span><span class="sw sw-switch"></span> SW1 opens you / SW2 kills you</span>
-            <span><span class="sw sw-exit"></span> PROD — touch = caught</span>
-        </div>
-    </main>
+    <div class="pad">
+      <div class="stick" data-codes="ArrowUp,ArrowDown,ArrowLeft,ArrowRight" role="presentation"><span></span></div>
+    </div>
+    <button class="fs-exit" id="fs-exit" type="button">Exit full screen</button>
+    </div>
 
-    <footer class="page-footer">
-        <a href="/">← back to abhishekrai.dev</a>
-        <span>runs on 100% Cloudflare free tier — Workers + KV, zero servers, zero websockets</span>
-    </footer>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>You</span>
+      <span><i style="background:var(--muted);opacity:.6"></i>Ghost (best run)</span>
+      <span><i class="sw-teal"></i>Switch and gate</span>
+      <span><i class="sw-red"></i>Scanner</span>
+    </div>
+    <p class="small muted" style="margin-top:18px"><a href="/">Back to abhishekrai.dev</a></p>
+  </div>
+</main>
 
-    <script src="/game/game.js"></script>
+<script src="/game/arcade.js?v=3"></script>
+<script src="/game/game.js?v=4"></script>
 </body>
 </html>
