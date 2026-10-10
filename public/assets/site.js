@@ -104,6 +104,26 @@
     }).catch(() => {});
   });
 
+  /* ---------- a small secret: seven quick clicks on the logo ---------- */
+  const brand = document.querySelector(".brand");
+  if (brand) {
+    let n = 0, t0 = 0;
+    brand.addEventListener("click", () => {
+      const now = Date.now(); n = now - t0 < 2500 ? n + 1 : 1; t0 = now;
+      if (n < 7) return;
+      n = 0;
+      let list = [];
+      try { list = JSON.parse(localStorage.getItem("arcade:secrets")) || []; } catch (e) { /* ignore */ }
+      const isNew = !list.includes("neon");
+      if (isNew) { list.push("neon"); try { localStorage.setItem("arcade:secrets", JSON.stringify(list)); } catch (e) { /* ignore */ } }
+      const t = document.createElement("a");
+      t.className = "toast"; t.href = "/game/street/"; t.setAttribute("role", "status");
+      t.textContent = isNew ? "Secret found: a neon costume is waiting in Rollback Street" : "You already found this one. The neon costume is in Rollback Street";
+      document.body.appendChild(t); requestAnimationFrame(() => t.classList.add("in"));
+      setTimeout(() => { t.classList.remove("in"); setTimeout(() => t.remove(), 400); }, 4500);
+    });
+  }
+
   /* ---------- contact form (posts to the Worker at /functions/submit-contact) ---------- */
   const form = document.getElementById("contact-form");
   if (form) {

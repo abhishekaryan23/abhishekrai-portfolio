@@ -27,6 +27,7 @@ const tms = (k) => Math.round(k * TICK);
 function hashStr(s) { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function rng32(a) { return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const SEED = new URLSearchParams(location.search).get("seed") || new Date().toISOString().slice(0, 10);
+const FRIDAY = new Date(SEED + "T00:00:00Z").getUTCDay() === 5;
 
 /* ---------- map ---------- */
 const at = (x, y) => y * COLS + x;
@@ -66,6 +67,7 @@ function makeMap(seed) {
       { ax: vx2, ay: 1, bx: vx2, by: ROWS - 2, period: ri(90, 130), phase: r() },
       { ax: 14, ay: hy, bx: 17, by: hy, period: ri(80, 110), phase: r() }
     ];
+    if (FRIDAY) scanners.forEach((sc) => (sc.period = Math.round(sc.period * 0.85)));
     if (switches[1].x === vx1) switches[1].x = vx1 === 11 ? 10 : vx1 + 1;
     const onTrack = (x, y) => scanners.some((s) => (s.ax === s.bx ? x === s.ax : y === s.ay && x >= s.ax));
 
@@ -212,9 +214,12 @@ function reset() {
   if (ghost) { ghost.evs = ghostRun.inputs; ghost.ev = 0; }
   k = 0; started = false; rec = []; fx = []; banner = null;
 }
+let restarts = 0, duck = false;
+try { duck = localStorage.getItem("ghost-deploy:duck") === "1"; } catch (e) { /* ignore */ }
 function startRun() {
+  if (state !== "menu" && ++restarts === 10) Arcade.secret("reboot");
   reset(); state = "play"; $("overlay").hidden = true; canvas.focus && canvas.focus();
-  banner = { text: "Move to start the clock", t: 120 };
+  banner = { text: FRIDAY ? "Deploying on a Friday? Bold. Move to start" : "Move to start the clock", t: 140 };
 }
 
 function setKey(dir, down) {
@@ -241,6 +246,9 @@ function finish(won) {
     if (!ghostRun) note.textContent = "No one had finished today's map on this device yet, so your run is now the ghost.";
     else if (beat) note.textContent = "You beat the ghost (" + ghostSource + ") by " + ((ghostRun.durationMs - ms) / 1000).toFixed(2) + " s. Your run is the new ghost on this device.";
     else note.textContent = "The ghost (" + ghostSource + ") was " + ((ms - ghostRun.durationMs) / 1000).toFixed(2) + " s faster. Watch where it waits.";
+    if (ms < 6000) Arcade.secret("speed");
+    if (!me.scans) Arcade.secret("clean");
+    if (FRIDAY) Arcade.secret("friday");
     const run = { v: 2, seed: SEED, inputs: rec, durationMs: ms, result: "win" };
     if (!prev || ms < prev.durationMs) save("best:" + SEED, run);
     if (beat) submit(run, note);
@@ -357,6 +365,15 @@ function drawRunner(r, color, alpha, T) {
   if (r.stun > 0 && Math.floor(r.stun / 4) % 2) return;
   if (r.safe > 0 && Math.floor(r.safe / 5) % 2) alpha *= 0.4;
   g.globalAlpha = alpha;
+  if (duck && r === me) {
+    // a rubber duck: every engineer needs one
+    const f = r.face, x = r.x, y = r.y;
+    g.fillStyle = "#f2c230"; g.beginPath(); g.ellipse(x - f * 2, y + 3, 11, 8, 0, 0, 7); g.fill();
+    g.beginPath(); g.arc(x + f * 5, y - 6, 6.5, 0, 7); g.fill();
+    g.fillStyle = "#e0702a"; g.beginPath(); g.moveTo(x + f * 10, y - 7); g.lineTo(x + f * 16, y - 5); g.lineTo(x + f * 10, y - 3); g.fill();
+    g.fillStyle = "#1d1b18"; g.fillRect(x + f * 6 - 1, y - 9, 2.5, 2.5);
+    g.globalAlpha = 1; return;
+  }
   rr(r.x - HALF, r.y - HALF, SIZE, SIZE, 5); g.fillStyle = color; g.fill();
   g.fillStyle = T.paper; g.fillRect(r.x + r.face * 4 - 2, r.y - 4, 4, 4);
   g.globalAlpha = 1;
@@ -378,4 +395,8 @@ $("hud-seed").textContent = new Date(SEED + "T00:00:00Z").toLocaleDateString(und
 reset();
 fetchGhost().then(() => { if (state !== "play") reset(); });
 Arcade.setupFullscreen();
+Arcade.onWord("duck", () => {
+  duck = !duck; try { localStorage.setItem("ghost-deploy:duck", duck ? "1" : "0"); } catch (e) { /* ignore */ }
+  Arcade.toast(duck ? "Quack. Rubber duck mode on" : "Rubber duck mode off"); Arcade.secret("duck");
+});
 requestAnimationFrame(frame);

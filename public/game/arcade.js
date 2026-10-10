@@ -156,5 +156,66 @@
     });
   }
 
-  window.Arcade = { tokens, onTheme: (f) => listeners.push(f), tone, noise, bindPad, setupFullscreen, isFullscreen: () => fs.on };
+  /* secrets: a shared list across both games (and the home page logo),
+     saved in this browser. Unfound ones show a hint, not the answer. */
+  const CATALOG = [
+    ["bighead", "Big heads", "Rollback Street: an old arcade code works on the title. On a phone, the title itself listens."],
+    ["cat", "Alley cat", "Rollback Street: someone small on Market Street wants attention. Get close and press up."],
+    ["hydrant", "Hydrant", "Rollback Street: some street furniture is not as solid as it looks."],
+    ["vending", "Vending machine", "Rollback Street: the subway sells more than tickets. Ask firmly."],
+    ["pigeon", "Patience", "Rollback Street: on the rooftops, stand very still near the birds."],
+    ["train", "Mind the gap", "Rollback Street: knock someone toward the tracks while a train passes."],
+    ["walls", "Wall to wall", "Rollback Street: bounce three enemies off the screen edge in one stage."],
+    ["taunt", "Showboat", "Rollback Street: hold up and press special with a thug close by."],
+    ["onecredit", "One credit", "Rollback Street: beat Mr. Rollback without using a continue. Unlocks a costume."],
+    ["neon", "Neon costume", "Home page: the logo likes attention. Seven quick clicks."],
+    ["duck", "Rubber duck", "Ghost Deploy: every engineer needs one. Type it."],
+    ["speed", "Speedrunner", "Ghost Deploy: reach PROD in under 6 seconds."],
+    ["clean", "Clean deploy", "Ghost Deploy: reach PROD without a single scan."],
+    ["friday", "Friday deploy", "Ghost Deploy: ship on a Friday (UTC). Scanners are twitchy that day."],
+    ["reboot", "Off and on again", "Ghost Deploy: restart ten times in one visit."]
+  ];
+  const SKEY = "arcade:secrets";
+  function found() { try { return JSON.parse(localStorage.getItem(SKEY)) || []; } catch (e) { return []; } }
+  function hasSecret(id) { return found().includes(id); }
+  function toast(msg) {
+    const host = fs.on ? fs.wrap : document.body, t = document.createElement("div");
+    t.className = "toast"; t.setAttribute("role", "status"); t.textContent = msg;
+    host.appendChild(t); requestAnimationFrame(() => t.classList.add("in"));
+    setTimeout(() => { t.classList.remove("in"); setTimeout(() => t.remove(), 400); }, 3200);
+  }
+  function secret(id) {
+    const list = found(); if (list.includes(id)) return false;
+    list.push(id); try { localStorage.setItem(SKEY, JSON.stringify(list)); } catch (e) { /* private mode */ }
+    const item = CATALOG.find((c) => c[0] === id);
+    toast("Secret found: " + (item ? item[1] : id) + " (" + list.length + " of " + CATALOG.length + ")");
+    [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, 0.1, "triangle", 0.05), i * 80));
+    renderSecrets();
+    return true;
+  }
+  function renderSecrets() {
+    const box = document.getElementById("secrets"); if (!box) return;
+    const got = found();
+    box.innerHTML = "";
+    const sum = document.createElement("summary"); sum.textContent = "Secrets found: " + got.filter((id) => CATALOG.some((c) => c[0] === id)).length + " of " + CATALOG.length;
+    const ul = document.createElement("ul");
+    for (const [id, title, hint] of CATALOG) {
+      const li = document.createElement("li"), have = got.includes(id);
+      li.className = have ? "got" : "";
+      const b = document.createElement("b"); b.textContent = have ? title : "???";
+      li.append(b, document.createTextNode(" " + hint));
+      ul.appendChild(li);
+    }
+    box.append(sum, ul);
+  }
+  // typed words (letters only) and key sequences such as the arcade code
+  function onSequence(codes, cb) {
+    let i = 0;
+    addEventListener("keydown", (e) => { if (e.repeat) return; i = e.code === codes[i] ? i + 1 : e.code === codes[0] ? 1 : 0; if (i === codes.length) { i = 0; cb(); } });
+  }
+  const onWord = (w, cb) => onSequence(w.toUpperCase().split("").map((c) => "Key" + c), cb);
+  console.log("%cAbhishekrAI.dev arcade", "font: 600 14px serif; color: #a8186a", "\nThere are " + CATALOG.length + " secrets across the two games. The list under each game gives hints. No peeking in localStorage.");
+
+  window.Arcade = { tokens, onTheme: (f) => listeners.push(f), tone, noise, bindPad, setupFullscreen, isFullscreen: () => fs.on, secret, hasSecret, toast, renderSecrets, onSequence, onWord };
+  renderSecrets();
 })();

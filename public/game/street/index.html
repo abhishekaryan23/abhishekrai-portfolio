@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site.css">
-  <link rel="stylesheet" href="/game/style.css?v=5">
+  <link rel="stylesheet" href="/game/style.css?v=6">
 </head>
 <body>
 <header class="site-head">
@@ -51,6 +51,7 @@
           <h2>Rollback Street</h2>
           <p>Four stages, four bosses. Clear a stage to unlock it here next time.</p>
           <div class="chips" id="stages" role="group" aria-label="Starting stage"></div>
+          <div class="chips" id="costumes" role="group" aria-label="Costume" hidden></div>
           <details class="moves">
             <summary>Move list</summary>
             <ul>
@@ -93,11 +94,12 @@
     </div>
     <button class="fs-exit" id="fs-exit" type="button">Exit full screen</button>
     </div>
+    <details class="secrets" id="secrets"></details>
     <p class="small muted" style="margin-top:18px"><a href="/">Back to abhishekrai.dev</a></p>
   </div>
 </main>
 
-<script src="/game/arcade.js?v=3"></script>
-<script src="/game/street/street.js?v=4"></script>
+<script src="/game/arcade.js?v=4"></script>
+<script src="/game/street/street.js?v=5"></script>
 </body>
 </html>

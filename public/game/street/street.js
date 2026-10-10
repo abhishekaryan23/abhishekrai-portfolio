@@ -38,13 +38,13 @@ const STAGES = [
     { name: "Back Alley", waves: [["grunt", "grunt", "bruiser"], ["kicker", "grunt"]] },
     { name: "Loading Dock", waves: [["bruiser", "kicker", "pipeGrunt"], ["grunt", "grunt", "grunt"]] },
     { boss: "ox", waves: [["ox"]], adds: [[0.5, ["grunt", "pipeGrunt"]]] }],
-    barrels: [[320, 160, "food"], [720, 196, "pipe"], [1160, 170, "drink"]] },
+    barrels: [[420, 172, "food"], [720, 196, "pipe"], [1160, 170, "drink"], [319, 152, "food", "hydrant"], [831, 152, "oneup", "hydrant"], [1343, 152, "food", "hydrant"]] },
   { name: "Line 9 Subway", theme: "subway", blocks: [
     { name: "Ticket Hall", waves: [["grunt", "kicker"], ["thrower", "grunt", "grunt"]] },
     { name: "Platform 2", waves: [["bruiser", "kicker", "grunt"], ["thrower", "thrower", "grunt"]] },
     { name: "Service Tunnel", waves: [["kicker", "kicker", "pipeGrunt"], ["bruiser", "thrower", "grunt"]] },
     { boss: "rook", waves: [["rook"]], adds: [[0.5, ["kicker", "kicker"]]] }],
-    barrels: [[300, 192, "knife"], [760, 165, "food"], [1180, 196, "drink"]] },
+    barrels: [[300, 192, "knife"], [760, 165, "food"], [1180, 196, "drink"], [1030, 151, "drink", "vending"]] },
   { name: "Rooftops", theme: "roof", blocks: [
     { name: "Water Towers", waves: [["kicker", "thrower", "grunt"], ["grunt", "grunt", "kicker"]] },
     { name: "Billboard", waves: [["bruiser", "bruiser", "thrower"], ["kicker", "pipeGrunt", "thrower"]] },
@@ -113,6 +113,10 @@ let players = [], enemies = [], items = [], barrels = [], fx = [], texts = [], s
 let stageIdx = 0, cam = 0, blockIdx = 0, waveIdx = 0, queue = [], locked = false, goT = 0, banner = null, shake = 0;
 let stageStart = 0, runStart = 0, bossRef = null, addsDone = 0, lastHit = null, clearT = 0, clearBonus = 0, train = null;
 let chosenStage = 0, startPlayers = 1, lastKnife = -999, cleanHp = null;
+// hidden features
+let wallCount = 0, spray = [], cat = null, pigeons = null, continued = false, fromStart = true;
+let bigHead = false, costume = "classic";
+try { bigHead = localStorage.getItem("street:bighead") === "1"; costume = localStorage.getItem("street:costume") || "classic"; } catch (e) { /* ignore */ }
 const blocks = () => STAGES[stageIdx].blocks;
 const lockOf = (i) => i * BLOCK_W;
 const stageEnd = () => lockOf(blocks().length - 1) + LW;
@@ -162,7 +166,8 @@ function togglePause() {
 }
 
 /* ---------- flow ---------- */
-function start(stage, n) {
+function start(stage, n, viaContinue) {
+  if (viaContinue) continued = true; else { continued = false; fromStart = stage === 0; }
   startPlayers = n; players = [];
   join(0); if (n === 2) join(1);
   state = "play"; paused = false; runStart = performance.now();
@@ -172,7 +177,10 @@ function start(stage, n) {
 }
 function loadStage(si) {
   stageIdx = si; cam = 0; blockIdx = 0; enemies = []; items = []; fx = []; texts = []; shots = []; lastHit = null; bossRef = null; addsDone = 0; train = null;
-  barrels = STAGES[si].barrels.map(([x, y, drop]) => ({ x, y, drop, hp: 2, shake: 0 }));
+  barrels = STAGES[si].barrels.map(([x, y, drop, kind = "barrel"]) => ({ x, y, drop, kind, hp: kind === "barrel" ? 2 : 3, shake: 0 }));
+  wallCount = 0; spray = [];
+  cat = si === 0 ? { x: 560, y: 151, st: "sit", t: 0 } : null;
+  pigeons = si === 2 ? { x: 640, st: "sit", t: 0 } : null;
   players.forEach((p, i) => { if (!p) return; Object.assign(p, { x: 50 + i * 24, y: i ? 192 : 172, z: 0, vz: 0, st: p.lives > 0 ? "idle" : "out", hp: p.max, inv: 90, hold: null, airAtk: null }); });
   enterBlock(); stageStart = performance.now();
   banner = { text: "Stage " + (si + 1) + ": " + STAGES[si].name, t: 150, big: true };
@@ -206,7 +214,9 @@ function endGame(won) {
   if (score > best) { try { localStorage.setItem("street:best", String(score)); } catch (e) { /* ignore */ } }
   $("end-title").textContent = won ? "All four stages cleared" : "Game over on stage " + (stageIdx + 1);
   $("end-result").textContent = "Score " + score.toLocaleString() + ", " + Math.floor(secs / 60) + ":" + String(secs % 60).padStart(2, "0");
-  $("end-note").textContent = (score > best ? "New best on this device. " : "Best on this device: " + best.toLocaleString() + ". ") + (won ? "Mr. Rollback has been rolled back." : "");
+  const oneCredit = won && fromStart && !continued;
+  $("end-note").textContent = (score > best ? "New best on this device. " : "Best on this device: " + best.toLocaleString() + ". ") + (won ? "Mr. Rollback has been rolled back." : "") + (oneCredit ? " One credit, no continues: the gold costume is yours." : "");
+  if (oneCredit) Arcade.secret("onecredit");
   $("continue").hidden = won; $("continue").textContent = "Continue from stage " + (stageIdx + 1);
   $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
   (won ? $("again") : $("continue")).focus({ preventScroll: true });
@@ -300,6 +310,12 @@ function flashSpecial(f) { fx.push({ kind: "ring", x: f.x, y: f.y - 30, t: 14, b
 
 function groundAction(p, btn, mx) {
   const i = p.pi, wantDown = held(i, "down");
+  if (btn === "S" && held(i, "up")) {
+    setState(p, "taunt", 44);
+    p.tauntNear = enemies.some((e) => !DOWN_STATES.includes(e.st) && Math.abs(e.x - p.x) < 60 && Math.abs(e.y - p.y) < 20);
+    Arcade.tone(330, 0.1, "square", 0.04); setTimeout(() => Arcade.tone(440, 0.12, "square", 0.04), 120);
+    return true;
+  }
   if (btn === "S") {
     if (wantDown) { if (useSP(p, 40)) { startAir(p, "dragon", 6.2, p.face * 0.8); p.inv = 16; } return true; }
     if (useSP(p, 30)) { startAttack(p, "roll"); p.inv = 30; }
@@ -360,6 +376,9 @@ function updatePlayer(p) {
     p.lastTap[key] = frameNo;
   }
   if (tapped(i, "down")) p.cmd.push(["D", frameNo]);
+  if (tapped(i, "up")) p.upTap = frameNo;
+  const anyHeld = ["up", "down", "left", "right", "punch", "kick", "jump", "special"].some((a) => held(i, a));
+  p.stillT = p.st === "idle" && !anyHeld ? (p.stillT || 0) + 1 : 0;
   if (p.cmd.length > 8) p.cmd.shift();
 
   const mx = (held(i, "right") ? 1 : 0) - (held(i, "left") ? 1 : 0);
@@ -397,6 +416,12 @@ function updatePlayer(p) {
       break;
     }
     case "pickup": if (--p.t <= 0) setState(p, "idle"); break;
+    case "taunt":
+      if (--p.t <= 0) {
+        setState(p, "idle"); p.sp = Math.min(100, p.sp + 15); texts.push({ x: p.x, y: p.y - 66, s: "+15 SP", t: 50 });
+        if (p.tauntNear) Arcade.secret("taunt");
+      }
+      break;
     case "air": {
       p.x += p.vx; p.airT++;
       if (!p.airAtk && p.buf) {
@@ -556,7 +581,7 @@ function physics(f) {
     f.z += f.vz; f.vz -= GRAV;
     if (f.st === "fly" || f.st === "thrown") {
       f.x += f.vx; f.vx *= 0.99;
-      if (f.team === "e" && !f.bounced && (f.x < cam + 8 || f.x > cam + LW - 8)) { f.bounced = true; f.vx = -f.vx * 0.8; f.vz = Math.max(f.vz, 2.4); damage(f, 3, f.lastBy || f); burst(f.x, f.y - 20, 6, PAL.spark); texts.push({ x: f.x, y: f.y - 60, s: "Wall bounce", t: 50 }); Arcade.noise(0.08, 0.08); }
+      if (f.team === "e" && !f.bounced && (f.x < cam + 8 || f.x > cam + LW - 8)) { f.bounced = true; f.vx = -f.vx * 0.8; f.vz = Math.max(f.vz, 2.4); damage(f, 3, f.lastBy || f); burst(f.x, f.y - 20, 6, PAL.spark); texts.push({ x: f.x, y: f.y - 60, s: "Wall bounce", t: 50 }); Arcade.noise(0.08, 0.08); if (++wallCount === 3) Arcade.secret("walls"); }
     }
     if (f.z <= 0) {
       f.z = 0; f.vz = 0;
@@ -633,7 +658,7 @@ function resolveHits() {
       const dx = atk.both ? Math.abs(b.x - a.x) : (b.x - a.x) * (atk.back ? -a.face : a.face);
       if (dx > -6 && dx < atk.reach + 6 && Math.abs(b.y - a.y) < 10) {
         a.hits.add(b); b.hp--; b.shake = 10; Arcade.noise(0.06, 0.06);
-        if (b.hp <= 0) { items.push({ kind: b.drop, x: b.x, y: b.y, z: 14, vz: 2 }); burst(b.x, b.y - 12, 10, PAL.wood); }
+        if (b.hp <= 0) breakProp(b);
       }
     }
   }
@@ -642,9 +667,24 @@ function resolveHits() {
   }
 }
 
+function breakProp(b) {
+  if (b.kind === "hydrant") {
+    spray.push({ x: b.x, y: b.y, t: 240 }); Arcade.noise(0.5, 0.06);
+    items.push({ kind: b.drop, x: b.x + 10, y: Math.min(Y1, b.y + 12), z: 30, vz: 3 });
+    if (b.drop === "oneup") texts.push({ x: b.x, y: b.y - 50, s: "Something was stuck in there", t: 90 });
+    Arcade.secret("hydrant");
+  } else if (b.kind === "vending") {
+    for (let i = 0; i < 3; i++) items.push({ kind: "drink", x: b.x - 10 + i * 10, y: Math.min(Y1, b.y + 8 + i * 4), z: 20, vz: 2 + i * 0.5 });
+    texts.push({ x: b.x, y: b.y - 50, s: "Out of order", t: 80 }); Arcade.secret("vending");
+  } else {
+    items.push({ kind: b.drop, x: b.x, y: b.y, z: 14, vz: 2 });
+  }
+  burst(b.x, b.y - 12, 10, b.kind === "barrel" ? PAL.wood : PAL.spark);
+}
+
 function hurt(d, a, atk) {
   if (d.heldBy && d.heldBy !== a) { d.heldBy.hold = null; d.heldBy = null; }
-  const dmg = a.team === "e" ? Math.round(atk.dmg * diff()) : atk.dmg;
+  const dmg = (a.team === "e" ? Math.round(atk.dmg * diff()) : atk.dmg) * (d.st === "taunt" ? 2 : 1);
   damage(d, dmg, a.owner || a);
   const dir = Math.sign(d.x - a.x) || a.face;
   let knock = atk.knock || d.hp <= 0;
@@ -689,10 +729,11 @@ function dust(x, y) { for (let i = 0; i < 5; i++) fx.push({ kind: "dust", x: x +
 function updateItems() {
   for (const it of items) if (it.z > 0 || it.vz) { it.z += it.vz; it.vz -= GRAV; if (it.z <= 0) { it.z = 0; it.vz = 0; } }
   for (const p of alivePlayers()) {
-    const it = items.find((it) => (it.kind === "food" || it.kind === "drink") && it.z === 0 && Math.abs(it.x - p.x) < 14 && Math.abs(it.y - p.y) < 9);
+    const it = items.find((it) => (it.kind === "food" || it.kind === "drink" || it.kind === "oneup") && it.z === 0 && Math.abs(it.x - p.x) < 14 && Math.abs(it.y - p.y) < 9);
     if (!it) continue;
     if (it.kind === "food" && p.hp < p.max) { p.hp = Math.min(p.max, p.hp + 30); texts.push({ x: p.x, y: p.y - 66, s: "+30 health", t: 60 }); }
     else if (it.kind === "drink" && p.sp < 100) { p.sp = Math.min(100, p.sp + 50); texts.push({ x: p.x, y: p.y - 66, s: "+50 SP", t: 60 }); }
+    else if (it.kind === "oneup") { p.lives = Math.min(5, p.lives + 1); texts.push({ x: p.x, y: p.y - 66, s: "1UP", t: 80 }); }
     else continue;
     items.splice(items.indexOf(it), 1); p.score += 50;
     Arcade.tone(660, 0.08, "triangle", 0.06); setTimeout(() => Arcade.tone(990, 0.1, "triangle", 0.06), 80);
@@ -705,11 +746,34 @@ function updateItems() {
 /* stage life: subway trains, foundry sparks, rooftop steam */
 function updateStageFx() {
   const th = STAGES[stageIdx].theme;
+  for (const w of spray) { w.t--; if (w.t > 0 && frameNo % 2 === 0) fx.push({ kind: "water", x: w.x + rand(-2, 2), y: w.y - 10, vx: rand(-1.2, 1.2), vy: rand(-3.4, -2), t: 40 }); }
+  spray = spray.filter((w) => w.t > 0);
+  if (cat) {
+    cat.t++;
+    const near = alivePlayers().find((p) => Math.abs(p.x - cat.x) < 20 && p.y < Y0 + 12);
+    const rough = players.some((p) => p && activeAtk(p) && Math.abs(p.x - cat.x) < 40) || enemies.some((e) => (e.st === "fly" || e.st === "thrown") && Math.abs(e.x - cat.x) < 30);
+    if (cat.st === "sit" && rough) { cat.st = "run"; texts.push({ x: cat.x, y: cat.y - 30, s: "Hiss", t: 50 }); Arcade.tone(900, 0.15, "sawtooth", 0.03, -500); }
+    else if (cat.st === "sit" && near && frameNo - (near.upTap || -99) < 3) {
+      cat.st = "purr"; cat.t = 0; near.hp = Math.min(near.max, near.hp + 10);
+      for (let i = 0; i < 4; i++) fx.push({ kind: "heart", x: cat.x + rand(-6, 6), y: cat.y - 14, vx: rand(-0.3, 0.3), vy: -0.5, t: 50 + i * 8 });
+      texts.push({ x: cat.x, y: cat.y - 36, s: "Purr. +10 health", t: 70 }); Arcade.secret("cat");
+    }
+    if (cat.st === "run") { cat.x -= 3; if (cat.x < cam - 40) cat = null; }
+  }
+  if (pigeons) {
+    pigeons.t++;
+    const scare = players.some((p) => p && (activeAtk(p) || p.st === "run") && Math.abs(p.x - pigeons.x) < 70);
+    if (pigeons.st === "sit" && scare) { pigeons.st = "fly"; pigeons.t = 0; Arcade.noise(0.15, 0.04); players.forEach((p) => p && (p.pigeon = false)); }
+    if (pigeons.st === "fly" && pigeons.t > 600) { pigeons.st = "sit"; pigeons.t = 0; }
+    const calm = alivePlayers().find((p) => Math.abs(p.x - pigeons.x) < 60 && p.stillT > 300 && !p.pigeon);
+    if (pigeons.st === "sit" && calm) { calm.pigeon = true; calm.sp = Math.min(100, calm.sp + 30); texts.push({ x: calm.x, y: calm.y - 70, s: "A friend. +30 SP", t: 80 }); Arcade.secret("pigeon"); }
+  }
+  for (const p of players) if (p && p.pigeon && (activeAtk(p) || DOWN_STATES.includes(p.st) || p.st === "hurt")) p.pigeon = false;
   if (th === "subway") {
     if (!train && frameNo % 600 === 300) train = { x: LW + 40, dir: -1 };
     if (train) {
       train.x += train.dir * 9; if (train.x < -900) train = null; else if (frameNo % 6 === 0) shake = Math.max(shake, 0.8);
-      if (train) for (const e of enemies) if ((e.st === "fly" || e.st === "thrown") && e.y < Y0 + 8 && e.z > 6 && !e.trained) { e.trained = true; damage(e, 20, e.lastBy || e); texts.push({ x: e.x, y: e.y - 60, s: "Mind the gap", t: 60 }); Arcade.noise(0.2, 0.1); }
+      if (train) for (const e of enemies) if ((e.st === "fly" || e.st === "thrown") && e.y < Y0 + 8 && e.z > 6 && !e.trained) { e.trained = true; damage(e, 20, e.lastBy || e); texts.push({ x: e.x, y: e.y - 60, s: "Mind the gap", t: 60 }); Arcade.noise(0.2, 0.1); Arcade.secret("train"); }
     }
   }
   if (th === "factory" && frameNo % 7 === 0) {
@@ -828,8 +892,7 @@ function drawStreet(P) {
     const wx = px + cam;
     R(px + 2, 92, 3, 60, P.dark ? "#4a4540" : "#5d5852"); R(px - 4, 90, 14, 4, P.dark ? "#4a4540" : "#5d5852"); R(px - 2, 94, 10, 2, P.lamp);
     g.globalAlpha = P.dark ? 0.12 : 0.06; g.fillStyle = P.lamp; g.beginPath(); g.moveTo(px - 2, 96); g.lineTo(px + 8, 96); g.lineTo(px + 26, 168); g.lineTo(px - 20, 168); g.fill(); g.globalAlpha = 1;
-    if (Math.floor(wx / 256) % 2) { R(px + 60, 140, 7, 12, P.T.red); R(px + 59, 138, 9, 3, P.T.red); R(px + 57, 143, 2, 3, P.T.red); R(px + 68, 143, 2, 3, P.T.red); }
-    else { g.fillStyle = P.dark ? "#1d1c1f" : "#3b3832"; g.beginPath(); g.ellipse(px + 70, 149, 8, 6, 0, 0, 7); g.ellipse(px + 80, 150, 6, 5, 0, 0, 7); g.fill(); }
+    if (Math.floor(wx / 256) % 2 === 0) { g.fillStyle = P.dark ? "#1d1c1f" : "#3b3832"; g.beginPath(); g.ellipse(px + 70, 149, 8, 6, 0, 0, 7); g.ellipse(px + 80, 150, 6, 5, 0, 0, 7); g.fill(); }
   }
 }
 
@@ -962,9 +1025,14 @@ function drawForeground(P) {
    figure is mirrored and scaled. Each body part is drawn twice: a dark
    outline pass and a colour pass, in three layers (back limbs, body,
    front limbs) so overlapping parts keep their edges. */
+const COSTUME = {
+  classic: { rai: (P) => ({ jacket: P.T.accent, shirt: "#f4efe6" }), kai: (P) => ({ jacket: P.T.teal, shirt: "#22252b" }) },
+  neon:    { rai: (P) => ({ jacket: "#141218", shirt: "#f07ab8" }), kai: (P) => ({ jacket: "#141218", shirt: "#5cc8c0" }) },
+  gold:    { rai: (P) => ({ jacket: "#c9a227", shirt: "#1d1b18" }), kai: (P) => ({ jacket: "#c9a227", shirt: "#13756f" }) }
+};
 const LOOKS = {
-  rai:       (P) => ({ skin: P.skin[0], jacket: P.T.accent, shirt: "#f4efe6", pants: "#2f3448", shoe: "#ece6dc", sole: "#8b8478", hair: P.hair, hairStyle: "spiky", band: "#f4efe6", glove: P.skin[0] }),
-  kai:       (P) => ({ skin: P.skin[2], jacket: P.T.teal, shirt: "#22252b", pants: "#4f4335", shoe: "#2b2622", sole: "#14110f", hair: "#5a3a22", hairStyle: "pony", band: P.T.teal, glove: P.T.teal, vest: true }),
+  rai:       (P) => ({ skin: P.skin[0], ...COSTUME[costume].rai(P), shirt0: "#f4efe6", pants: "#2f3448", shoe: "#ece6dc", sole: "#8b8478", hair: P.hair, hairStyle: "spiky", band: "#f4efe6", glove: P.skin[0] }),
+  kai:       (P) => ({ skin: P.skin[2], ...COSTUME[costume].kai(P), shirt0: "#22252b", pants: "#4f4335", shoe: "#2b2622", sole: "#14110f", hair: "#5a3a22", hairStyle: "pony", band: P.T.teal, glove: P.T.teal, vest: true }),
   grunt:     (P) => ({ skin: P.skin[1], shirt: P.T.amber, pants: "#4a5560", shoe: "#2a2420", sole: "#111", hair: P.hair, hairStyle: "cap", cap: "#2f3a4a", sleeves: "short" }),
   pipeGrunt: (P) => ({ skin: P.skin[0], jacket: "#6d7a45", shirt: "#3a3a32", pants: "#4a4038", shoe: "#2a2420", sole: "#111", hair: "#6b3b24", hairStyle: "beanie", cap: "#8a2f2f" }),
   kicker:    (P) => ({ skin: P.skin[3], shirt: null, vest: true, jacket: "#26242a", pants: "#1f1d22", stripe: P.T.red, shoe: "#d9d2c6", sole: "#555", hair: P.T.red, hairStyle: "mohawk", sleeves: "none" }),
@@ -1040,6 +1108,7 @@ function pose(f) {
     p.sh = [-2 + q, -30]; p.head = [-3 + q, -37]; p.hf = [-7, -27]; p.ef = [-2, -29]; p.hb = [-9, -24];
     if (f.atkName === "charge" || f.atkName === "eRoll") { p.sh = [-4, -28]; p.head = [-5, -34]; p.ff = [9, 0]; p.kf = [8, -8]; p.hip = [0, -16]; }
   }
+  if (s === "taunt") { const w = Math.sin(t / 3) * 4; p.hf = [12, -38 + w]; p.ef = [8, -32]; p.hb = [-3, -19]; p.eb = [-4, -24]; p.head = [3, -39]; }
   if (s === "pickup") { p.sh = [6, -24]; p.head = [9, -30]; p.hf = [12, -6]; p.ef = [9, -15]; p.kf = [9, -10]; p.kb = [-1, -10]; p.hip = [1, -15]; }
   if (s === "air") {
     const k = f.airAtk;
@@ -1118,8 +1187,9 @@ function drawFighter(f) {
   layer(torso);
   g.restore();
 
-  // head
+  // head (bigger in big-head mode, scaled around the neck)
   const hx = p.head[0], hy = p.head[1];
+  g.save(); if (bigHead) { g.translate(hx, hy + 6); g.scale(1.7, 1.7); g.translate(-hx, -(hy + 6)); }
   const head = [{ t: "r", x: hx - 4.5, y: hy - 5, w: 9.5, h: 10.5, c: L.skin }, { t: "r", x: hx - 2, y: hy + 5, w: 5, h: 2, c: L.skin }];
   const hs = L.hairStyle, H = L.hair;
   if (hs === "spiky") head.push({ t: "p", pts: [[hx - 6, hy - 1], [hx - 7, hy - 7], [hx - 3, hy - 6], [hx - 2, hy - 10], [hx + 1, hy - 7], [hx + 4, hy - 10], [hx + 5, hy - 5], [hx + 5, hy - 3], [hx - 3, hy - 3], [hx - 3, hy + 2]], c: H });
@@ -1143,6 +1213,8 @@ function drawFighter(f) {
   if (L.beard) fd(hx - 1, hy + 2, 6, 3.5, H);
   if (L.scar) fd(hx + 1, hy - 4, 1, 4, "#e9b9a0");
   if (L.band) { fd(hx - 5, hy - 4, 10, 1.6, L.band); const fl = Math.sin(frameNo / 6) * 1.5; fd(hx - 9, hy - 3 + fl, 4, 1.2, L.band); fd(hx - 11, hy - 1 + fl, 3, 1.2, L.band); }
+  if (f.pigeon) { const pc = P.dark ? "#8c8794" : "#6f6a78"; R(hx - 3, hy - 12, 7, 4, pc); R(hx + 3, hy - 14, 3, 3, pc); R(hx + 6, hy - 13, 1, 1, P.amber); }
+  g.restore();
 
   layer(leg(p.hip, p.kf, p.ff, (c) => c));
   if (f.weapon && !["lying", "fly", "dead", "thrown"].includes(f.st)) {
@@ -1164,9 +1236,20 @@ function drawFighter(f) {
 
 function drawItems() {
   const P = PAL;
+  if (cat) drawCat(P);
+  if (pigeons) drawPigeons(P);
   for (const b of barrels) {
-    if (b.hp <= 0) continue;
     const x = Math.round(b.x - cam + (b.shake ? (b.shake % 2 ? 1 : -1) : 0)), y = b.y;
+    if (b.kind === "hydrant") { const c = b.hp > 0 ? P.T.red : shade(P.T.red, -0.3); R(x - 4, y - 13, 9, 13, P.ol); R(x - 3, y - 12, 7, 12, c); R(x - 4, y - 14, 9, 3, c); R(x - 6, y - 8, 2, 3, c); R(x + 5, y - 8, 2, 3, c); continue; }
+    if (b.kind === "vending") {
+      const lit = b.hp > 0 && frameNo % 90 > 3;
+      R(x - 10, y - 36, 20, 36, P.ol); R(x - 9, y - 35, 18, 34, P.T.teal); R(x - 7, y - 32, 10, 20, lit ? "#f7f4ee" : "#555");
+      for (let r = 0; r < 4; r++) R(x - 6, y - 31 + r * 5, 8, 2, [P.T.red, P.T.amber, P.T.accent, P.T.good][r]);
+      R(x + 4, y - 30, 3, 8, "#1d1b18"); R(x - 7, y - 9, 14, 4, "#1d1b18");
+      if (b.hp <= 0) { R(x - 7, y - 32, 10, 20, "#2a2a2a"); R(x - 4, y - 28, 6, 1, "#888"); }
+      continue;
+    }
+    if (b.hp <= 0) continue;
     g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x, y, 10, 3, 0, 0, 7); g.fill();
     R(x - 9, y - 21, 18, 21, P.ol); R(x - 8, y - 20, 16, 20, P.wood);
     R(x - 8, y - 15, 16, 2, shade(P.wood, -0.35)); R(x - 8, y - 6, 16, 2, shade(P.wood, -0.35)); R(x - 5, y - 20, 2, 20, shade(P.wood, 0.15));
@@ -1177,6 +1260,7 @@ function drawItems() {
     if (it.kind === "pipe") { g.strokeStyle = P.ol; g.lineWidth = 4; g.beginPath(); g.moveTo(x - 9, y - 2); g.lineTo(x + 9, y - 4); g.stroke(); g.strokeStyle = P.dark ? "#a3abb4" : "#7a828b"; g.lineWidth = 2.4; g.stroke(); }
     else if (it.kind === "knife") { R(x - 6, y - 4, 4, 3, "#3b2a1d"); R(x - 2, y - 4, 9, 2, "#d8dde2"); }
     else if (it.kind === "food") { g.fillStyle = P.ol; g.beginPath(); g.arc(x, y - 4, 5, 0, 7); g.fill(); g.fillStyle = P.T.red; g.beginPath(); g.arc(x, y - 4, 4, 0, 7); g.fill(); R(x - 2, y - 7, 2, 2, "#fff"); R(x, y - 11, 2, 3, P.T.good); }
+    else if (it.kind === "oneup") { R(x - 9, y - 10, 18, 9, P.ol); R(x - 8, y - 9, 16, 7, P.T.good); text("1UP", x, y - 3.5, 6, "#fff"); }
     else { R(x - 4, y - 11, 8, 11, P.ol); R(x - 3, y - 10, 6, 9, P.T.teal); R(x - 3, y - 7, 6, 3, "#f7f4ee"); text("SP", x, y - 4.5, 3.5, P.T.teal); }
     if (frameNo % 40 < 20) R(x - 1, y - 16, 2, 2, P.spark);
   }
@@ -1184,6 +1268,26 @@ function drawItems() {
     const x = Math.round(s.x - cam), y = Math.round(s.y - s.z);
     if (s.kind === "knife") { g.fillStyle = P.shadow; g.fillRect(x - 4, s.y - 1, 8, 2); g.save(); g.translate(x, y); g.scale(s.face, 1); R(-6, -1.5, 4, 3, "#3b2a1d"); R(-2, -1, 9, 2, "#e4e8ec"); g.restore(); }
     else { g.strokeStyle = P.amber; g.lineWidth = 2; for (let r = 0; r < 3; r++) { g.globalAlpha = 0.8 - r * 0.25; g.beginPath(); g.ellipse(x - s.face * r * 6, s.y, 6 + r * 3, 3 + r, 0, Math.PI, 0); g.stroke(); } g.globalAlpha = 1; }
+  }
+}
+
+function drawCat(P) {
+  const x = Math.round(cat.x - cam), y = cat.y, sw = Math.sin(frameNo / 12) * 3;
+  const c = P.dark ? "#0b0a0c" : "#1d1b18";
+  if (cat.st === "run") { const b = Math.abs(Math.sin(frameNo / 3)) * 2; R(x - 7, y - 7 - b, 14, 5, c); R(x - 9, y - 10 - b, 5, 5, c); R(x + 6, y - 9 - b, 5, 2, c); return; }
+  R(x - 5, y - 9, 10, 9, c); R(x - 4, y - 15, 8, 7, c); R(x - 4, y - 17, 2, 2, c); R(x + 2, y - 17, 2, 2, c);
+  R(x - 3, y - 12, 2, 2, P.amber); R(x + 1, y - 12, 2, 2, P.amber);
+  g.strokeStyle = c; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 5, y - 2); g.quadraticCurveTo(x + 12, y - 4, x + 10 + sw, y - 12); g.stroke();
+  if (cat.st === "purr" && frameNo % 60 < 30) text("z", x + 8, y - 18, 6, P.T.muted);
+}
+function drawPigeons(P) {
+  const base = Math.round(pigeons.x - cam), c = P.dark ? "#8c8794" : "#6f6a78";
+  for (let i = 0; i < 3; i++) {
+    let x = base + i * 12, y = 119;
+    if (pigeons.st === "fly") { x += pigeons.t * (1 + i * 0.4); y -= pigeons.t * (0.7 + i * 0.2); if (y < -10) continue; }
+    const flap = pigeons.st === "fly" && frameNo % 8 < 4;
+    R(x - 3, y - 4, 7, 4, c); R(x + 3, y - 6, 3, 3, c); R(x + 6, y - 5, 1, 1, P.amber);
+    R(x - 2, y - (flap ? 8 : 5), 5, flap ? 3 : 1, shade(c, -0.2));
   }
 }
 
@@ -1196,6 +1300,8 @@ function drawFx() {
     if (f.kind === "ember") { f.x += f.vx; f.y += f.vy; g.globalAlpha = Math.min(1, f.t / 30); R(x, f.y, 1.5, 1.5, f.t % 6 < 3 ? P.amber : P.T.red); g.globalAlpha = 1; }
     if (f.kind === "steam") { f.x += f.vx; f.y += f.vy; g.globalAlpha = f.t / 140; g.fillStyle = P.dark ? "#8f8a96" : "#ffffff"; g.beginPath(); g.arc(x, f.y, 3 + (70 - f.t) * 0.08, 0, 7); g.fill(); g.globalAlpha = 1; }
     if (f.kind === "ring") { g.strokeStyle = f.big ? P.T.accent : P.spark; g.lineWidth = 1.5; g.beginPath(); g.arc(x, f.y, (f.big ? 22 : 12) - f.t, 0, 7); g.stroke(); }
+    if (f.kind === "water") { f.x += f.vx; f.y += f.vy; f.vy += 0.18; R(x, f.y, 2, 2, P.dark ? "#6fb7d8" : "#4a90b8"); }
+    if (f.kind === "heart") { f.x += f.vx; f.y += f.vy; g.globalAlpha = Math.min(1, f.t / 20); g.fillStyle = P.T.accent; g.beginPath(); g.arc(x - 1.5, f.y, 1.8, 0, 7); g.arc(x + 1.5, f.y, 1.8, 0, 7); g.fill(); g.beginPath(); g.moveTo(x - 3.2, f.y + 0.6); g.lineTo(x, f.y + 4); g.lineTo(x + 3.2, f.y + 0.6); g.fill(); g.globalAlpha = 1; }
     if (f.kind === "star") { g.fillStyle = P.spark; g.beginPath(); for (let i = 0; i < 8; i++) { const r = i % 2 ? 2 : 6, a = i * Math.PI / 4; g.lineTo(x + Math.cos(a) * r, f.y + Math.sin(a) * r); } g.fill(); }
   }
   for (const t of texts) { g.globalAlpha = Math.min(1, t.t / 20); text(t.s, t.x - cam, t.y - (60 - t.t) * 0.2, 7, P.T.ink, "center", "IBM Plex Sans"); }
@@ -1218,7 +1324,7 @@ function drawHud() {
     bar(x + 4, 15, 82, 6, p.hp / p.max, c);
     bar(x + 4, 25, 82, 3, p.sp / 100, P.amber);
     text("SP", x + 90, 29, 5, P.T.muted, "left");
-    for (let i = 0; i < 3; i++) R(x + 96 + i * 8, 15, 6, 6, i < p.lives ? c : (P.dark ? "#3a3632" : "#cfc6b7"));
+    for (let i = 0; i < Math.max(3, p.lives); i++) R(x + 96 + i * (p.lives > 3 ? 5 : 8), 15, p.lives > 3 ? 4 : 6, 6, i < p.lives ? c : (P.dark ? "#3a3632" : "#cfc6b7"));
     if (p.combo >= 2 && p.comboT > 0) { g.globalAlpha = Math.min(1, p.comboT / 20); text(p.combo + " hits", x + 4, 46, 10, c, "left", "Newsreader"); g.globalAlpha = 1; }
   };
   if (players[0]) panel(players[0], 4);
@@ -1269,7 +1375,8 @@ function draw() {
 /* menu backdrop: the chosen stage with a few idle fighters */
 function demo(si) {
   stageIdx = si; cam = 0; blockIdx = 0;
-  barrels = STAGES[si].barrels.map(([x, y, drop]) => ({ x, y, drop, hp: 2, shake: 0 }));
+  barrels = STAGES[si].barrels.map(([x, y, drop, kind = "barrel"]) => ({ x, y, drop, kind, hp: kind === "barrel" ? 2 : 3, shake: 0 }));
+  cat = si === 0 ? { x: 560, y: 151, st: "sit", t: 0 } : null; pigeons = si === 2 ? { x: 640, st: "sit", t: 0 } : null;
   const cast = [["ox", "kicker", "thrower"], ["rook", "kicker", "grunt"], ["crane", "thrower", "bruiser"], ["rollback", "bruiser", "pipeGrunt"]][si];
   enemies = cast.map((k, i) => { const e = fighter(k, 300 - i * 34, 168 + i * 12, "e"); e.face = -1; return e; });
   const r = fighter("rai", 90, 180, "p"); r.pi = 0; players = [r];
@@ -1277,7 +1384,28 @@ function demo(si) {
   items = []; shots = []; fx = [];
 }
 
+function toggleBigHead() {
+  bigHead = !bigHead; try { localStorage.setItem("street:bighead", bigHead ? "1" : "0"); } catch (e) { /* ignore */ }
+  Arcade.toast(bigHead ? "Big head mode on" : "Big head mode off");
+  Arcade.secret("bighead");
+}
+Arcade.onSequence(["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "KeyB", "KeyA"], toggleBigHead);
+(() => { let n = 0, t0 = 0; const h = document.querySelector("#card-menu h2"); if (h) h.addEventListener("click", () => { const now = performance.now(); n = now - t0 < 3000 ? n + 1 : 1; t0 = now; if (n >= 5) { n = 0; toggleBigHead(); } }); })();
+
+function buildCostumes() {
+  const box = $("costumes"); if (!box) return;
+  const opts = [["classic", "Classic"]].concat(Arcade.hasSecret("neon") ? [["neon", "Neon"]] : [], Arcade.hasSecret("onecredit") ? [["gold", "Gold"]] : []);
+  if (!opts.some((o) => o[0] === costume)) costume = "classic";
+  box.hidden = opts.length < 2; box.innerHTML = "";
+  for (const [id, name] of opts) {
+    const b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = name; b.setAttribute("aria-pressed", String(id === costume));
+    b.addEventListener("click", () => { costume = id; try { localStorage.setItem("street:costume", id); } catch (e) { /* ignore */ } buildCostumes(); });
+    box.appendChild(b);
+  }
+}
+
 function buildStageChips() {
+  buildCostumes();
   const box = $("stages"); if (!box) return;
   box.innerHTML = "";
   const max = unlocked();
@@ -1303,7 +1431,7 @@ function loop(now) {
 $("start1").addEventListener("click", () => start(chosenStage, 1));
 $("start2").addEventListener("click", () => start(chosenStage, 2));
 $("again").addEventListener("click", () => { $("card-end").hidden = true; $("card-menu").hidden = false; state = "menu"; chosenStage = Math.min(chosenStage, unlocked()); showBest(); buildStageChips(); demo(chosenStage); });
-$("continue").addEventListener("click", () => { $("card-end").hidden = true; $("card-menu").hidden = false; start(stageIdx, startPlayers); });
+$("continue").addEventListener("click", () => { $("card-end").hidden = true; $("card-menu").hidden = false; start(stageIdx, startPlayers, true); });
 function showBest() { try { const b = +localStorage.getItem("street:best"); if (b) $("best-line").textContent = "Best on this device: " + b.toLocaleString(); } catch (e) { /* ignore */ } }
 showBest();
 palette();
