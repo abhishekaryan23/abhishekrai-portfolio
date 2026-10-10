@@ -6,6 +6,10 @@ export default {
     let response;
     if (url.pathname === "/functions/submit-contact" && request.method === "POST") {
       response = await handleContactSubmit(request, env);
+    } else if (url.pathname === "/api/ghost" && request.method === "GET") {
+      response = await handleGhostGet(request, env);
+    } else if (url.pathname === "/api/ghost" && request.method === "POST") {
+      response = await handleGhostPost(request, env);
     } else if (env.ASSETS) {
       response = await env.ASSETS.fetch(request);
     } else {
@@ -240,5 +244,110 @@ async function handleContactSubmit(request, env) {
       JSON.stringify({ success: false, message: "Transmission failed." }), // Generic error response to hide details
       { status: 500, headers: { "Content-Type": "application/json" } }
     );
+  }
+}
+
+/* ---------------- GHOST//DEPLOY API ----------------
+   Async ghost relay on Cloudflare KV (free tier).
+   GET  /api/ghost?seed=YYYY-MM-DD  -> { ghost, plays }
+   POST /api/ghost                  -> stores a winning run as the
+                                       active ghost if it is the fastest
+   --------------------------------------------------- */
+
+function jsonResponse(obj, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
+async function handleGhostGet(request, env) {
+  const url = new URL(request.url);
+  const seed = url.searchParams.get("seed") || "";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(seed)) {
+    return jsonResponse({ error: "Invalid seed." }, 400);
+  }
+  const kv = env?.PORTFOLIO_KV;
+  if (!kv) return jsonResponse({ ghost: null, plays: 0, mode: "offline" });
+
+  const [ghost, plays] = await Promise.all([
+    kv.get(`ghost:${seed}`, "json"),
+    kv.get(`stats:${seed}`, "json")
+  ]);
+  return jsonResponse({ ghost: ghost || null, plays: plays || 0 });
+}
+
+async function handleGhostPost(request, env) {
+  try {
+    const kv = env?.PORTFOLIO_KV;
+    if (!kv) return jsonResponse({ stored: false, reason: "relay-offline" }, 503);
+
+    // Payload size guard (~16 KB max — a full 60s recording is ~4-8 KB)
+    const len = Number(request.headers.get("Content-Length") || 0);
+    if (len > 20000) return jsonResponse({ stored: false, reason: "payload-too-large" }, 413);
+
+    const body = await request.json();
+    const { v, seed, inputs, durationMs, result } = body || {};
+
+    // Seed must be today or yesterday (UTC) so replays always match the live map
+    const seedOk = /^\d{4}-\d{2}-\d{2}$/.test(seed || "");
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    if (v !== 1 || !seedOk || (seed !== today && seed !== yesterday)) {
+      return jsonResponse({ stored: false, reason: "bad-seed" }, 400);
+    }
+
+    // Only winning runs may become ghosts (a losing ghost can never exit)
+    if (result !== "win" || typeof durationMs !== "number" || durationMs <= 0 || durationMs > 61000) {
+      return jsonResponse({ stored: false, reason: "invalid-run" }, 400);
+    }
+
+    // Input recording validation: monotonic timestamps, sane key codes
+    if (!Array.isArray(inputs) || inputs.length > 1500) {
+      return jsonResponse({ stored: false, reason: "invalid-inputs" }, 400);
+    }
+    let lastT = -1;
+    for (const ev of inputs) {
+      if (!Array.isArray(ev) || ev.length !== 3) {
+        return jsonResponse({ stored: false, reason: "invalid-inputs" }, 400);
+      }
+      const [t, code, type] = ev;
+      if (typeof t !== "number" || t < 0 || t > 61000 || t < lastT) {
+        return jsonResponse({ stored: false, reason: "invalid-inputs" }, 400);
+      }
+      if (typeof code !== "string" || code.length > 20 || (type !== 0 && type !== 1)) {
+        return jsonResponse({ stored: false, reason: "invalid-inputs" }, 400);
+      }
+      lastT = t;
+    }
+
+    // Per-IP rate limit: 5 submissions per minute (protects the 1k writes/day quota)
+    const ip = request.headers.get("CF-Connecting-IP") || "anon";
+    const rlKey = `rl:ghost:${ip}:${Math.floor(Date.now() / 60000)}`;
+    const hits = (await kv.get(rlKey, "json")) || 0;
+    if (hits >= 5) return jsonResponse({ stored: false, reason: "rate-limited" }, 429);
+    await kv.put(rlKey, JSON.stringify(hits + 1), { expirationTtl: 130 });
+
+    // Replace the active ghost only if this run is faster (saves write quota)
+    const ghostKey = `ghost:${seed}`;
+    const existing = await kv.get(ghostKey, "json");
+    if (existing && typeof existing.durationMs === "number" && existing.durationMs <= durationMs) {
+      return jsonResponse({ stored: false, reason: "slower-than-active-ghost" });
+    }
+
+    await kv.put(
+      ghostKey,
+      JSON.stringify({ v, seed, inputs, durationMs, result, createdAt: new Date().toISOString() }),
+      { expirationTtl: 172800 } // ghost expires after 48h
+    );
+
+    const statsKey = `stats:${seed}`;
+    const plays = (await kv.get(statsKey, "json")) || 0;
+    await kv.put(statsKey, JSON.stringify(plays + 1), { expirationTtl: 172800 });
+
+    return jsonResponse({ stored: true });
+  } catch (err) {
+    console.error("Ghost submit error:", err.message);
+    return jsonResponse({ stored: false, reason: "server-error" }, 500);
   }
 }

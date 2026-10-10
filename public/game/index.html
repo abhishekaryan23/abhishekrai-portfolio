@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>GHOST//DEPLOY — Async Co-op Puzzle | AbhishekrAI.Dev</title>
+    <meta name="description" content="GHOST//DEPLOY: a 60-second asynchronous co-op puzzle. Deploy to Production alongside the ghost of the last engineer who tried. Your run becomes the next player's teammate."/>
+    <meta name="robots" content="index, follow"/>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 100 100' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 5L90 45L50 85L10 45L50 5Z' stroke='%23d84315' stroke-width='4' stroke-linecap='square'/%3E%3Cpath d='M50 25L70 45L50 65L30 45L50 25Z' fill='%23ff7043'/%3E%3C/svg%3E"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Inter:wght@400;600&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="/game/style.css"/>
+</head>
+<body>
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+
+    <header class="topbar">
+        <a href="/" class="brand">
+            <span class="brand-mark">◆</span> Abhishekr<span class="brand-ai">AI</span>.Dev
+        </a>
+        <span class="topbar-sep">//</span>
+        <span class="topbar-game">GHOST//DEPLOY</span>
+        <button id="mute-btn" class="mute-btn" title="Toggle sound">SOUND: ON</button>
+    </header>
+
+    <main class="stage">
+        <div class="hud">
+            <div class="hud-cell">
+                <span class="hud-label">T-MINUS</span>
+                <span id="hud-time" class="hud-value hud-time">60.0</span>
+            </div>
+            <div class="hud-cell">
+                <span class="hud-label">LINK</span>
+                <span id="hud-link" class="hud-value hud-ghost">…</span>
+            </div>
+            <div class="hud-cell">
+                <span class="hud-label">INSTANCE</span>
+                <span id="hud-seed" class="hud-value">…</span>
+            </div>
+            <div class="hud-cell">
+                <span class="hud-label">DEPLOYS TODAY</span>
+                <span id="hud-plays" class="hud-value">…</span>
+            </div>
+        </div>
+
+        <div class="canvas-wrap" id="canvas-wrap">
+            <canvas id="game" width="800" height="480"></canvas>
+
+            <div id="overlay" class="overlay">
+                <div class="panel" id="panel-menu">
+                    <div class="panel-tag">ZERO-TRUST DATACENTER // SIMULATION</div>
+                    <h1 class="panel-title">GHOST<span class="slash">//</span>DEPLOY</h1>
+                    <p class="panel-copy">
+                        One rule: <b>reach PROD before the clock dies.</b>
+                    </p>
+                    <p class="panel-copy">
+                        <span class="c-player">■</span> Step on <b>SW1</b> to open the firewall.<br/>
+                        <span class="c-ghost">■</span> The ghost sees it, slams it shut from <b>SW2</b>,<br/>
+                        then turns <b>red and hunts you</b> — faster than you.
+                    </p>
+                    <p class="panel-copy">
+                        You cannot outrun the hunt. You can only out<b>time</b> it.<br/>
+                        Flip SW1 when the ghost is far away. Cross. Reach PROD.<br/>
+                        <b>Nobody has beaten it yet.</b>
+                    </p>
+                    <div class="controls-row">
+                        <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span>
+                        <span class="controls-or">or</span>
+                        <span class="key">↑</span><span class="key">←</span><span class="key">↓</span><span class="key">→</span>
+                    </div>
+                    <button id="start-btn" class="cta">TRY ANYWAY ▸</button>
+                    <div id="menu-link-status" class="menu-link-status">ESTABLISHING UPLINK…</div>
+                </div>
+
+                <div class="panel hidden" id="panel-win">
+                    <div class="panel-tag ok">200 OK // SHIPPED</div>
+                    <h1 class="panel-title c-ok">DEPLOY SUCCESSFUL</h1>
+                    <p class="panel-copy" id="win-detail">Both engineers reached Production.</p>
+                    <p class="panel-copy dim" id="win-ghost-status">Transmitting your run to the relay…</p>
+                    <button id="again-btn-win" class="cta">RUN IT BACK ▸</button>
+                </div>
+
+                <div class="panel hidden" id="panel-lose">
+                    <div class="panel-tag err">500 // ROLLBACK INITIATED</div>
+                    <h1 class="panel-title c-err">DEPLOY FAILED</h1>
+                    <p class="panel-copy" id="lose-detail">Time expired. The pipeline rolls back.</p>
+                    <p class="panel-copy dim">The ghost is faster than you think. Chain your flip closer to the gap — every millisecond of travel time is a millisecond the gate is already closing.</p>
+                    <button id="again-btn-lose" class="cta">RE-DEPLOY ▸</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <span><span class="sw sw-player"></span> YOU — flip SW1, cross, reach PROD</span>
+            <span><span class="sw sw-ghost"></span> GHOST — slams your gate, then hunts you (faster)</span>
+            <span><span class="sw sw-switch"></span> SW1 opens you / SW2 kills you</span>
+            <span><span class="sw sw-exit"></span> PROD — touch = caught</span>
+        </div>
+    </main>
+
+    <footer class="page-footer">
+        <a href="/">← back to abhishekrai.dev</a>
+        <span>runs on 100% Cloudflare free tier — Workers + KV, zero servers, zero websockets</span>
+    </footer>
+
+    <script src="/game/game.js"></script>
+</body>
+</html>

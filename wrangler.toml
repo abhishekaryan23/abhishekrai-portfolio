@@ -5,3 +5,15 @@ compatibility_date = "2026-07-17"
 [assets]
 directory = "./public"
 binding = "ASSETS"
+# Free-tier friendly: static files are served directly by Cloudflare (free, not
+# counted as Worker requests). The Worker only runs for the two API routes.
+run_worker_first = ["/functions/*", "/api/*"]
+not_found_handling = "404-page"
+
+# --- GHOST//DEPLOY async ghost relay (also used by the contact form) ---
+# One-time setup:  npx wrangler kv namespace create PORTFOLIO_KV
+# Then uncomment below and paste the id wrangler prints:
+# [[kv_namespaces]]
+# binding = "PORTFOLIO_KV"
+# id = "<your-namespace-id>"
+# (If PORTFOLIO_KV is already bound in the Cloudflare dashboard, no change needed.)
