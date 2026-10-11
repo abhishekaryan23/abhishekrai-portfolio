@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site.css?v=3">
-  <link rel="stylesheet" href="/game/style.css?v=20">
+  <link rel="stylesheet" href="/game/style.css?v=21">
 </head>
 <body>
 <header class="site-head">
@@ -53,6 +53,7 @@
     <div class="stage-wrap" id="stage-wrap">
     <div class="screen solo">
       <canvas id="game" width="768" height="432" aria-label="Game screen"></canvas>
+      <button class="btn screen-start" type="button" data-start="start1" aria-label="Start game">Start</button>
       <div class="overlay" id="overlay">
         <div class="card card-wide" id="card-menu">
           <div class="col">
@@ -64,9 +65,12 @@
           </div>
           <div class="col">
           <div class="chips" id="settings" role="group" aria-label="Settings"></div>
+          <div class="chips" id="players" role="group" aria-label="Players" data-keyboard>
+            <button class="chip" type="button" data-players="1" aria-pressed="true">1 player</button>
+            <button class="chip" type="button" data-players="2" aria-pressed="false">2 players</button>
+          </div>
           <div class="btn-row">
-            <button class="btn" id="start1" type="button">1 player</button>
-            <button class="btn ghost" id="start2" type="button" data-keyboard>2 players</button>
+            <button class="btn" id="start1" type="button">Start game</button>
           </div>
           <p class="small muted" id="best-line" style="margin:8px 0 0"></p>
           <details class="moves">
@@ -131,9 +135,9 @@
 </footer>
 
 <script src="/assets/nav.js" defer></script>
-<script src="/game/arcade.js?v=10"></script>
+<script src="/game/arcade.js?v=11"></script>
 <script src="/game/street/fighters.js?v=7"></script>
-<script src="/game/street/street.js?v=33"></script>
+<script src="/game/street/street.js?v=37"></script>
 <script src="/game/street/story.js?v=11"></script>
 </body>
 </html>

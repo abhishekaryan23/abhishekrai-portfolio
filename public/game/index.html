@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site.css?v=3">
-  <link rel="stylesheet" href="/game/style.css?v=20">
+  <link rel="stylesheet" href="/game/style.css?v=21">
 </head>
 <body>
 <header class="site-head">
@@ -59,6 +59,7 @@
     </div>
     <div class="screen">
       <canvas id="game" width="800" height="480" aria-label="Game board"></canvas>
+      <button class="btn screen-start" type="button" data-start="start-btn" aria-label="Start run">Start</button>
       <div class="overlay" id="overlay">
         <div class="card" id="card-menu">
           <h2>How to play</h2>
@@ -112,7 +113,7 @@
 </footer>
 
 <script src="/assets/nav.js" defer></script>
-<script src="/game/arcade.js?v=10"></script>
+<script src="/game/arcade.js?v=11"></script>
 <script src="/game/game.js?v=6"></script>
 </body>
 </html>

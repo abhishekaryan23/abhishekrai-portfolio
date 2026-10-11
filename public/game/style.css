@@ -39,15 +39,22 @@
   .card-wide p:not(.small) { font-size: 0.95rem; }
   .card-wide .btn-row { margin-top: 0; margin-bottom: 4px; }
 }
+/* a big Start on the game screen, for when the menu card sits under the screen */
+/* centred on the canvas, not on the screen box (which also holds the card below it):
+   a percentage margin-top is measured against the width, so half the canvas's aspect ratio */
+.screen-start { display: none; position: absolute; left: 50%; top: 0; margin-top: 30%; transform: translate(-50%, -50%); z-index: 3; font-size: 1.15rem; padding: 12px 34px; box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35); }
+.screen.solo .screen-start { margin-top: 28.125%; }   /* 432 / 768 / 2 */
 /* below 820px wide Ghost Deploy's screen is too short for its card: show it underneath, as on phones */
 @media (max-width: 819px) {
   .stage-wrap:not(.fs) .screen:not(.solo) .overlay { position: static; padding: 12px; background: var(--paper); border-top: 1px solid var(--line); }
   .stage-wrap:not(.fs) .screen:not(.solo) .overlay > .card { border: 0; padding: 4px; background: transparent; max-height: none; }
+  .stage-wrap:not(.fs) .screen:not(.solo):has(#overlay:not([hidden]) #card-menu:not([hidden])) .screen-start { display: block; }
 }
 /* below 900px wide the brawler's screen is too short to hold its menu: show it underneath, as on phones */
 @media (max-width: 899px) {
   .stage-wrap:not(.fs) .screen.solo .overlay { position: static; padding: 12px; background: var(--paper); border-top: 1px solid var(--line); }
   .stage-wrap:not(.fs) .screen.solo .overlay > .card { border: 0; padding: 4px; background: transparent; max-height: none; }
+  .stage-wrap:not(.fs) .screen.solo:has(#overlay:not([hidden]) #card-menu:not([hidden])) .screen-start { display: block; }
 }
 .card p { color: var(--ink2); margin-bottom: 0.8em; }
 .card .result { font-family: var(--mono); font-size: 0.95rem; color: var(--ink); }

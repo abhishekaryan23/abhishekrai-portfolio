@@ -172,7 +172,6 @@ const tapped = (i, a) => BIND[i][a].some((c) => pressed.has(c));
 addEventListener("keydown", (e) => {
   if ((keyOf(e.code) || e.code === "KeyP") && state === "play") e.preventDefault();
   if (e.repeat) return;
-  if (e.code === "Enter" && state === "menu" && !["BUTTON", "A"].includes(document.activeElement.tagName)) { e.preventDefault(); start(chosenStage, 1); return; }
   onDown(e.code);
 });
 addEventListener("keyup", (e) => onUp(e.code));
@@ -2162,8 +2161,22 @@ function loop(now) {
   requestAnimationFrame(loop);
 }
 
-$("start1").addEventListener("click", () => { if (TOUCH && !Arcade.isFullscreen()) Arcade.enterFullscreen(); start(chosenStage, 1); });
-$("start2").addEventListener("click", () => start(chosenStage, 2));
+// pick 1 or 2 players (a keyboard-only choice), then Start game
+let playerCount = 1;
+for (const b of document.querySelectorAll("#players [data-players]")) b.addEventListener("click", () => {
+  playerCount = +b.dataset.players; startPlayers = playerCount; demo(chosenStage);
+  for (const o of document.querySelectorAll("#players [data-players]")) o.setAttribute("aria-pressed", String(o === b));
+});
+$("start1").addEventListener("click", () => {
+  if (TOUCH && !Arcade.isFullscreen()) Arcade.enterFullscreen();
+  start(chosenStage, playerCount);   // the 2-player choice is only shown where there is a keyboard
+});
+// Enter starts a game with the chosen player count from the menu (unless a button or link has focus)
+addEventListener("keydown", (e) => {
+  if (e.code !== "Enter" || state !== "menu" || $("overlay").hidden || $("card-menu").hidden) return;
+  if (["BUTTON", "A", "INPUT", "SUMMARY"].includes(document.activeElement.tagName)) return;
+  e.preventDefault(); $("start1").click();
+});
 $("again").addEventListener("click", () => { $("card-end").hidden = true; $("card-menu").hidden = false; state = "menu"; chosenStage = Math.min(chosenStage, unlocked()); showBest(); buildStageChips(); demo(chosenStage); });
 $("continue").addEventListener("click", () => { $("card-end").hidden = true; $("card-menu").hidden = false; start(stageIdx, startPlayers, true); });
 function showBest() { try { const b = +localStorage.getItem("street:best"); if (b) $("best-line").textContent = "Best on this device: " + b.toLocaleString(); } catch (e) { /* ignore */ } }

@@ -238,5 +238,7 @@
   }
   const onWord = (w, cb) => onSequence(w.toUpperCase().split("").map((c) => "Key" + c), cb);
 
+  // the big Start on the game screen (shown when the menu sits under the screen) presses the menu's own start button
+  for (const b of document.querySelectorAll("[data-start]")) b.addEventListener("click", () => { const t = document.getElementById(b.dataset.start); if (t) t.click(); });
   window.Arcade = { tokens, onTheme: (f) => listeners.push(f), tone, noise, bindPad, setupFullscreen, isFullscreen: () => fs.on, enterFullscreen: () => enterFs(), secret, hasSecret, toast, onSequence, onWord };
 })();
