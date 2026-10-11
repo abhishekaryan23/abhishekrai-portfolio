@@ -194,24 +194,24 @@
   /* secrets: a shared list across both games (and the home page logo),
      saved in this browser. Unfound ones show a hint, not the answer. */
   const CATALOG = [
-    ["bighead", "Big heads", "Rollback Street: an old arcade code works on the title. On a phone, the title itself listens."],
-    ["cat", "Gali cat", "Rollback Street: someone small on Chandni Lane wants attention. Get close and press up."],
-    ["hydrant", "Hand pump", "Rollback Street: some street furniture on Chandni Lane is not as solid as it looks."],
-    ["vending", "Chai machine", "Rollback Street: the station sells more than tickets. Ask firmly."],
-    ["pigeon", "Patience", "Rollback Street: on the rooftops, stand very still near the birds."],
-    ["train", "Mind the gap", "Rollback Street: knock someone toward the tracks while a train passes."],
-    ["walls", "Wall to wall", "Rollback Street: bounce three enemies off the screen edge in one stage."],
-    ["taunt", "Showboat", "Rollback Street: hold up and press special with a thug close by."],
-    ["onecredit", "One credit", "Rollback Street: beat Mr. Rollback without using a continue. Unlocks a costume."],
-    ["letters", "Nani's letters", "Rollback Street: four letters are hidden in barrels, one per stage. They unlock the true ending."],
-    ["unleash", "Fan of the Avatar", "Rollback Street: a fan-made poster on the rooftops salutes Unleash The Avatar, an upcoming game by Aeos Games (no affiliation). Stand under it and press up."],
-    ["chakra", "Chakra", "Rollback Street: while the Avatar glow lasts, knock out five enemies with the chakra. Unlocks a costume."],
-    ["neon", "Neon costume", "Home page: the logo likes attention. Seven quick clicks."],
-    ["duck", "Rubber duck", "Ghost Deploy: every engineer needs one. Type it."],
-    ["speed", "Speedrunner", "Ghost Deploy: reach PROD in under 6 seconds."],
-    ["clean", "Clean deploy", "Ghost Deploy: reach PROD without a single scan."],
-    ["friday", "Friday deploy", "Ghost Deploy: ship on a Friday (UTC). Scanners are twitchy that day."],
-    ["reboot", "Off and on again", "Ghost Deploy: restart ten times in one visit."]
+    ["bighead", "Big heads", "Rollback Street: an old arcade habit, entered at the right moment."],
+    ["cat", "Gali cat", "Rollback Street: someone on Chandni Lane only wants a little attention."],
+    ["hydrant", "Hand pump", "Rollback Street: not everything on the pavement is as sturdy as it looks."],
+    ["vending", "Chai machine", "Rollback Street: the station sells more than tickets."],
+    ["pigeon", "Patience", "Rollback Street: patience is rewarded up high."],
+    ["train", "Mind the gap", "Rollback Street: timing matters on the Harbour Line."],
+    ["walls", "Wall to wall", "Rollback Street: the edge of the screen can hit back."],
+    ["taunt", "Showboat", "Rollback Street: confidence has its own move."],
+    ["onecredit", "One credit", "Rollback Street: finish the whole night in one go."],
+    ["letters", "Nani's letters", "Rollback Street: Nani wrote more than one letter."],
+    ["unleash", "Fan of the Avatar", "Rollback Street: high above the lane, a fan poster (a nod to Aeos Games, no affiliation) is more than decoration."],
+    ["chakra", "Chakra", "Rollback Street: once the glow is yours, keep it busy."],
+    ["neon", "Neon costume", "Home page: the logo likes attention."],
+    ["duck", "Rubber duck", "Ghost Deploy: debugging has a famous companion."],
+    ["speed", "Speedrunner", "Ghost Deploy: be very, very quick."],
+    ["clean", "Clean deploy", "Ghost Deploy: never be seen."],
+    ["friday", "Friday deploy", "Ghost Deploy: some days are riskier than others."],
+    ["reboot", "Off and on again", "Ghost Deploy: the oldest fix in IT."]
   ];
   const SKEY = "arcade:secrets";
   function found() { try { return JSON.parse(localStorage.getItem(SKEY)) || []; } catch (e) { return []; } }

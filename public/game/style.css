@@ -44,7 +44,7 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
 /* touch pad: only on touch screens */
 .pad { display: none; gap: 12px; justify-content: space-between; align-items: flex-end; margin-top: 12px; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .pad .grp { display: grid; gap: 8px; }
-.pad .act { grid-template-columns: repeat(3, 60px); grid-template-rows: repeat(2, 54px); }
+.pad .act { grid-template-columns: repeat(2, 64px); grid-template-rows: repeat(2, 56px); }
 .pad button { appearance: none; border: 1px solid var(--line2); background: var(--surface); color: var(--ink); border-radius: 8px; font: 600 0.85rem var(--sans); touch-action: none; }
 .pad button.on { background: var(--accent-bg); border-color: var(--accent); color: var(--accent); }
 .stick { position: relative; width: 148px; height: 148px; flex: none; border-radius: 50%; border: 1px solid var(--line2); background: var(--surface); touch-action: none; }
@@ -79,7 +79,7 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
   .stage-wrap.fs .stick::before { border-color: rgba(255, 255, 255, 0.25); }
   .stage-wrap.fs .stick span { background: rgba(240, 122, 184, 0.35); border-color: rgba(240, 122, 184, 0.9); }
   .stage-wrap.fs .stick.on span { background: rgba(240, 122, 184, 0.75); }
-  .stage-wrap.fs .pad .act { grid-template-columns: repeat(3, 64px); grid-template-rows: repeat(2, 64px); }
+  .stage-wrap.fs .pad .act { grid-template-columns: repeat(2, 68px); grid-template-rows: repeat(2, 68px); }
   .stage-wrap.fs .pad button { border-radius: 50%; background: rgba(20, 18, 22, 0.35); border-color: rgba(255, 255, 255, 0.4); color: #fff; font-size: 0.78rem; }
   .stage-wrap.fs .pad button.on { background: rgba(240, 122, 184, 0.7); border-color: #f07ab8; color: #fff; }
 }
@@ -135,3 +135,16 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
 .pad, .pad * { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 .fs-lock, .fs-lock body { touch-action: none; }
 .screen canvas { touch-action: manipulation; }
+/* on phones the exit button sits small in the corner, out of the way of the HUD */
+@media (pointer: coarse) {
+  .stage-wrap.fs .fs-exit { top: 6px; right: 6px; left: auto; transform: none; font-size: 0.72rem; padding: 4px 8px; opacity: 0.75; }
+}
+
+/* full screen: the pad covers the whole stage so Pause can sit in the top-left corner */
+@media (pointer: coarse) { .stage-wrap.fs .pad { top: 0; } }
+/* narrow phones in portrait: shrink the pad so Pause stays on screen */
+@media (max-width: 420px) {
+  .pad .act { grid-template-columns: repeat(2, 56px); grid-template-rows: repeat(2, 52px); }
+  .stick { width: 128px; height: 128px; }
+  .stick span { width: 50px; height: 50px; margin: -25px 0 0 -25px; }
+}

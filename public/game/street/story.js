@@ -76,7 +76,7 @@ const SCENES = {
     { who: "N", text: "Nani sets out a plate that no one comes for. Some of her letters are still out there." },
     { who: "N", text: "The end, for now. Find all four letters to see what happens the next morning." }
   ],
-  join: [{ who: "kai", text: "Changed my mind, bhaiya. The phone can ring without me." }]
+  join: [{ who: "kai", swap: true, text: "Changed my mind, bhaiya. The phone can ring without me." }]
 };
 // Nani's letters, one hidden in a barrel on each stage
 const LETTERS = [
@@ -96,7 +96,7 @@ function playScene(name, then, extra) {
   // in single player the sibling not being played stays by the phone;
   // when a boss is picked, the siblings' phone lines are left out
   const solo = !players[1], p1 = players[0] ? players[0].kind : "rai", sibling = p1 === "rai" || p1 === "kai";
-  const swap = (p) => (p1 === "kai" && p.solo ? { ...p, who: p.who === "rai" ? "kai" : p.who === "kai" ? "rai" : p.who, text: p.text.replace("Kai,", "Bhaiya,").replace("Go, bhaiya.", "Go, Kai.").replace("Bhaiya? Her", "Kai? Her") } : p);
+  const swap = (p) => (p1 === "kai" && (p.solo || p.swap) ? { ...p, who: p.who === "rai" ? "kai" : p.who === "kai" ? "rai" : p.who, text: p.text.replace("Kai,", "Bhaiya,").replace("Go, bhaiya.", "Go, Kai.").replace("Bhaiya? Her", "Kai? Her").replace("Changed my mind, bhaiya.", "Changed my mind, Kai.") } : p);
   const panels = (extra || []).concat(SCENES[name] || []).filter((p) => (!p.solo || (solo && sibling)) && (!p.duo || !solo || !sibling)).map(swap);
   if (!storyOn || !panels.length) { then(); return; }
   if (scene) { const prev = scene.then; scene.panels.push(...panels); scene.then = () => { prev(); then(); }; return; }

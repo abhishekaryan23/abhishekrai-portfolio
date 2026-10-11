@@ -174,14 +174,19 @@ addEventListener("keydown", (e) => {
   onDown(e.code);
 });
 addEventListener("keyup", (e) => onUp(e.code));
-addEventListener("blur", () => { down.clear(); if (state === "play" && !paused) togglePause(); });
-document.addEventListener("visibilitychange", () => { if (document.hidden) { down.clear(); if (state === "play" && !paused) togglePause(); } });
+// leaving the game (another app, another tab, the screen locking) always pauses it
+const autoPause = () => { down.clear(); if (state === "play" && !paused) togglePause(); };
+addEventListener("blur", autoPause);
+addEventListener("pagehide", autoPause);
+document.addEventListener("visibilitychange", () => { if (document.hidden) autoPause(); });
 Arcade.bindPad(onDown, onUp);
 let savedBanner = null;
+let countdown = 0;   // frames of "get ready" before play resumes
 function togglePause() {
   paused = !paused;
-  if (paused) { savedBanner = banner; banner = { text: TOUCH ? "Paused. Tap Pause" : "Paused. Press P", t: 1e9 }; }
-  else { banner = savedBanner; savedBanner = null; }
+  const btn = document.querySelector(".pad .pause-btn");
+  if (paused) { countdown = 0; savedBanner = banner; banner = { text: TOUCH ? "Paused. Tap Resume" : "Paused. Press P to resume", t: 1e9 }; if (btn) btn.textContent = "Resume"; }
+  else { banner = savedBanner; savedBanner = null; countdown = 120; if (btn) btn.textContent = "Pause"; }
 }
 
 /* ---------- flow ---------- */
@@ -191,6 +196,8 @@ function start(stage, n, viaContinue) {
   if (typeof scene !== "undefined" && scene) { scene = null; const w = document.getElementById("stage-wrap"); if (w) w.classList.remove("story"); }
   join(0); if (n === 2) { join(1); joinedOnce = true; }
   state = "play"; paused = false; runStart = performance.now();
+  countdown = TOUCH && Arcade.isFullscreen() ? 180 : 0;   // Android shows its own full-screen tip now
+  { const pb = document.querySelector(".pad .pause-btn"); if (pb) pb.textContent = "Pause"; }
   $("overlay").hidden = true;
   loadStage(stage);
   if (!viaContinue) playScene(stage === 0 ? "prologue" : "intro" + stage, () => {});
@@ -260,6 +267,7 @@ function update() {
     fx = fx.filter((f) => --f.t > 0); pressed.clear(); return;
   }
   if (state === "story") { storyUpdate(); return; }
+  if (state === "play" && countdown > 0) { countdown--; down.clear(); pressed.clear(); return; }
   if (state !== "play" || paused) { pressed.clear(); return; }
 
   const b = blocks()[blockIdx];
@@ -822,7 +830,7 @@ function hint(id, p, msg) {
 function hints() {
   if (!TOUCH || frameNo % 10) return;
   const p = alivePlayers()[0]; if (!p) return;
-  if (stageIdx === 0 && blockIdx === 0 && frameNo > 200) hint("dash", p, "Push the stick to the edge, or hold Dash while moving, to run");
+  if (stageIdx === 0 && blockIdx === 0 && frameNo > 200) hint("dash", p, "Push the stick all the way to the edge to run");
   if (enemies.some((e) => e.st === "hurt" && Math.abs(e.x - p.x) < 26 && Math.abs(e.y - p.y) < 8)) hint("grab", p, "Walk into a dazed enemy to grab them");
   if (p.sp >= 30) hint("special", p, "Special is ready: " + (SPECIALS[p.kind] || SPECIALS.rai)[2]);
   if (shots.some((s) => s.kind === "knife" && s.team === "e")) hint("knife", p, "Jump over thrown knives");
@@ -883,6 +891,15 @@ function updateStageFx() {
 
 /* ---------- palette ---------- */
 let PAL = null;
+/* Generated sprites (OpenArt: GPT Image 2.5 Flare stills, PixVerse V6 for
+   the cow's idle loop), cut from a green screen and shrunk to game scale.
+   Each has a drawn fallback until it loads. */
+const SPRITES = {};
+function sprite(name, src) { const im = new Image(); im.onload = () => (SPRITES[name] = im); im.src = src; }
+sprite("cow", "/game/street/sprites/cow.png?v=3");
+sprite("kulhad", "/game/street/sprites/kulhad.png?v=1");
+const COW_LOOP = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1];
+
 const SHADES = new Map();
 function shade(hex, f) {
   const key = hex + f; let v = SHADES.get(key); if (v) return v;
@@ -1005,6 +1022,7 @@ function drawStreet(P) {
   for (let sx = -(cam % 32); sx < LW; sx += 32) R(sx, 150, 1, 24, P.sideLine);
   R(0, 160, LW, 1, P.sideLine); R(0, 174, LW, 3, P.curb); R(0, 177, LW, LH - 177, P.road);
   for (let lx = -(cam % 48); lx < LW; lx += 48) R(lx, 197, 24, 2, P.lane);
+  for (let mx = -(cam % 300) + 140; mx < LW; mx += 300) { g.fillStyle = P.sideLine; g.beginPath(); g.ellipse(mx, 188, 9, 3, 0, 0, 7); g.fill(); }
   // an auto-rickshaw parked at the kerb, and a cow who owns the road
   for (let ax = -(cam % 512) + 300; ax < LW + 40; ax += 512) {
     // a black-and-yellow auto-rickshaw: canopy, open side, single headlight
@@ -1016,14 +1034,19 @@ function drawStreet(P) {
     R(ax + 7, 176, 2, 2, "#8a8278"); R(ax + 32, 176, 2, 2, "#8a8278");
   }
   for (let cx = -((cam + 200) % 768) + 600; cx < LW + 40; cx += 768) {
-    // a white cow resting on the road, chewing, with a hump and curved horns
+    // a white zebu cow resting on the road with a marigold garland
+    if (SPRITES.cow) {
+      const fr = COW_LOOP[Math.floor(frameNo / 9) % COW_LOOP.length];
+      g.fillStyle = P.shadow; g.beginPath(); g.ellipse(cx + 28, 197, 30, 3.5, 0, 0, 7); g.fill();
+      g.drawImage(SPRITES.cow, fr * 136, 0, 136, 71, Math.round(cx - 8), 165.5, 68, 35.5);
+      continue;
+    }
     const cw = "#ece6dc", cs = "#b9ad98", chew = frameNo % 40 < 20 ? 0 : 1;
     R(cx - 1, 183, 38, 14, P.ol); R(cx, 184, 36, 12, cw); R(cx + 22, 181, 8, 5, cw); R(cx + 4, 188, 10, 6, cs);
     R(cx + 33, 178, 11, 10, P.ol); R(cx + 34, 179, 9, 8, cw); R(cx + 40, 183 + chew, 3, 3, "#d9b9a0");
     R(cx + 34, 176, 1, 3, "#8a7f70"); R(cx + 33, 175, 2, 1, "#8a7f70"); R(cx + 41, 176, 1, 3, "#8a7f70"); R(cx + 41, 175, 2, 1, "#8a7f70");
     R(cx + 38, 181, 1.5, 1.5, "#1d1b18"); R(cx - 4 + Math.sin(frameNo / 20) * 1.5, 186, 4, 1, cs); R(cx - 6 + Math.sin(frameNo / 20) * 2, 185, 2, 3, cs);
   }
-  for (let mx = -(cam % 300) + 140; mx < LW; mx += 300) { g.fillStyle = P.sideLine; g.beginPath(); g.ellipse(mx, 188, 9, 3, 0, 0, 7); g.fill(); }
   // street props along the back of the sidewalk
   for (let px = -(cam % 256); px < LW + 40; px += 256) {
     const wx = px + cam;
@@ -1064,7 +1087,7 @@ function drawSubway(P) {
     R(px + 110, 80, 34, 30, "#f7f4ee"); R(px + 111, 81, 32, 28, P.dark ? "#d9d4cb" : "#fffdf9");
     g.strokeStyle = P.neon; g.lineWidth = 1.5; g.beginPath(); g.moveTo(px + 114, 100); g.lineTo(px + 126, 90); g.lineTo(px + 140, 96); g.stroke();
     g.strokeStyle = P.neon2; g.beginPath(); g.moveTo(px + 116, 86); g.lineTo(px + 128, 104); g.stroke();
-    if (Math.floor((px + cam) / 256) % 2 === 0) drawAvatarPoster(px + 168, 80, 30, 38, true);
+    R(px + 170, 82, 26, 34, P.T.amber); R(px + 174, 88, 18, 3, "#1d1b18"); R(px + 174, 94, 14, 2, "#1d1b18"); R(px + 174, 104, 18, 8, P.neon);
     g.fillStyle = "#f7f4ee"; g.beginPath(); g.arc(px + 225, 44, 7, 0, 7); g.fill(); g.strokeStyle = "#1d1b18"; g.lineWidth = 1; g.stroke();
     g.strokeStyle = "#1d1b18"; g.lineWidth = 1; g.beginPath(); g.moveTo(px + 225.5, 44.5); g.lineTo(px + 224.5, 39); g.moveTo(px + 225.5, 44.5); g.lineTo(px + 223.6, 41.2); g.stroke();
   }
@@ -1230,7 +1253,9 @@ function drawFactory(P) {
 const POSTER_X = 660;
 let posterUsed = false, naniRef = null;
 function drawAvatarPoster(x, y, w, h, small) {
-  const glow = !small && stageIdx === 2 && !posterUsed && (frameNo % 120 < 60);
+  // a faint shimmer on the chakra, only when you stand right under it
+  const near = !small && stageIdx === 2 && !posterUsed && alivePlayers().some((q) => Math.abs(q.x - POSTER_X) < 46 && q.y < Y0 + 14);
+  const glow = near && frameNo % 90 < 12;
   R(x - 1, y - 1, w + 2, h + 2, "#0b0912"); R(x, y, w, h, "#1b1530");
   R(x, y + h * 0.62, w, h * 0.38, "#2a1a3a");
   // the chakra: a spinning ring of spokes behind the figure
@@ -1244,12 +1269,11 @@ function drawAvatarPoster(x, y, w, h, small) {
   g.fillStyle = "#33254f"; g.beginPath(); g.moveTo(cx - fw, y + h * 0.86); g.lineTo(cx - fw * 0.6, cy - fh * 0.15); g.lineTo(cx, cy - fh * 0.42); g.lineTo(cx + fw * 0.6, cy - fh * 0.15); g.lineTo(cx + fw, y + h * 0.86); g.fill();
   R(cx - fw * 0.35, cy - fh * 0.62, fw * 0.7, fh * 0.22, "#1a1030");
   R(cx + fw * 0.2, cy - fh * 0.9, Math.max(1, w * 0.02), fh * 0.3, "#1f7a6a"); R(cx + fw * 0.1, cy - fh * 0.95, Math.max(1.5, w * 0.04), Math.max(1.5, w * 0.04), "#2b54a8");
-  if (glow) { g.globalAlpha = 0.25; g.fillStyle = "#ffd75e"; g.beginPath(); g.arc(cx, cy, r * 1.4, 0, 7); g.fill(); g.globalAlpha = 1; }
+  if (glow) { g.globalAlpha = 0.12; g.fillStyle = "#ffd75e"; g.beginPath(); g.arc(cx, cy, r * 1.15, 0, 7); g.fill(); g.globalAlpha = 1; }
   if (small) { text("UNLEASH", cx, y + h - 8, 4, "#f2c230", "center", "Newsreader"); text("THE AVATAR", cx, y + h - 3, 3.2, "#f2c230", "center", "Newsreader"); return; }
   text("UNLEASH THE AVATAR", cx, y + h - 13, 10, "#f2c230", "center", "Newsreader");
   text("AEOS GAMES", cx, y + h - 4, 5, "#cfc6b7", "center", "IBM Plex Sans");
   text("fan art", x + w - 3, y + 7, 4, "#8a7f9a", "right", "IBM Plex Sans");
-  if (glow) text("press up", cx, y - 4, 6, "#ffd75e", "center", "IBM Plex Sans");
 }
 function drawForeground(P) {
   const th = STAGES[stageIdx].theme;
@@ -1612,7 +1636,7 @@ function drawFighter(f) {
   if (f.warn > 0 && f.st === "windup") { const wy = y - f.z - 58 * sc; text("!", x, wy, 14, P.T.red, "center", "IBM Plex Sans"); }
   // rolling / cyclone motion trail
   if ((f.st === "attack" && ["roll", "eRoll", "kroll"].includes(f.atkName)) || (f.st === "air" && f.airAtk === "cyclone")) {
-    g.globalAlpha = 0.25; g.strokeStyle = f.team === "p" ? (f.pi ? P.T.teal : P.T.accent) : P.T.red; g.lineWidth = 2;
+    g.globalAlpha = 0.25; g.strokeStyle = f.team === "p" ? fighterColour(f, P) : P.T.red; g.lineWidth = 2;
     g.beginPath(); g.arc(x, y - f.z - 16 * sc, 16 * sc, 0, 7); g.stroke(); g.globalAlpha = 1;
   }
 }
@@ -1663,6 +1687,7 @@ function drawItem(it, P) {
       g.fillStyle = "#d9a441"; g.beginPath(); g.moveTo(x - 5.5, y - 1); g.lineTo(x, y - 9); g.lineTo(x + 5.5, y - 1); g.closePath(); g.fill(); R(x - 1, y - 6, 2, 1, "#a8742a"); R(x - 3, y - 3, 2, 1, "#a8742a"); }
     else if (it.kind === "letter") { R(x - 8, y - 9, 16, 10, P.ol); R(x - 7, y - 8, 14, 8, "#f7f1e3"); g.strokeStyle = "#b9ad98"; g.lineWidth = 1; g.beginPath(); g.moveTo(x - 7, y - 8); g.lineTo(x, y - 3); g.lineTo(x + 7, y - 8); g.stroke(); R(x - 1.5, y - 5, 3, 3, P.T.accent); }
     else if (it.kind === "oneup") { R(x - 9, y - 10, 18, 9, P.ol); R(x - 8, y - 9, 16, 7, P.T.good); text("1UP", x, y - 3.5, 6, "#fff"); }
+    else if (SPRITES.kulhad) { g.drawImage(SPRITES.kulhad, 0, 0, 22, 39, x - 5.5, y - 19.5, 11, 19.5); }
     else { // chai in a clay kulhad
       R(x - 5, y - 9, 10, 9, P.ol); R(x - 4, y - 8, 8, 8, "#a5532e"); R(x - 4, y - 8, 8, 2, "#c98a5a");
       g.globalAlpha = 0.6; R(x - 2 + Math.sin(frameNo / 8), y - 14, 1, 4, "#ffffff"); R(x + 1 + Math.sin(frameNo / 9), y - 15, 1, 4, "#ffffff"); g.globalAlpha = 1; }
@@ -1721,11 +1746,15 @@ function bar(x, y, w, h, frac, c) {
   R(x, y, Math.round(w * clamp(frac, 0, 1)), h, c);
   if (h > 3) R(x, y, Math.round(w * clamp(frac, 0, 1)), 1, shade(c, 0.3));
 }
+// each fighter has their own colour in the HUD: Rai magenta, Kai teal, bosses their outfit colour
+function fighterColour(f, P) {
+  return { rai: P.T.accent, kai: P.T.teal, pOx: P.T.red, pRook: P.T.amber, pCrane: P.dark ? "#a58fe0" : "#5b45a8", pRollback: P.dark ? "#cfc6b7" : "#5d5852" }[f.kind] || P.T.accent;
+}
 function drawHud() {
   const P = PAL;
   const panel = (p, x) => {
     g.fillStyle = P.dark ? "rgba(0,0,0,0.6)" : "rgba(255,253,249,0.86)"; g.fillRect(x, 4, 124, 31);
-    const c = p.pi ? P.T.teal : P.T.accent;
+    const c = fighterColour(p, P);
     text(KINDS[p.kind].name.toUpperCase(), x + 4, 12, 7, c, "left");
     text(String(p.score).padStart(7, "0"), x + 120, 12, 7, P.T.ink, "right");
     bar(x + 4, 15, 82, 6, p.hp / p.max, c);
@@ -1780,6 +1809,13 @@ function draw() {
   drawForeground(PAL);
   g.restore();
   if (state !== "menu" && state !== "story") drawHud();
+  if (state === "play" && countdown > 0 && !paused) {
+    g.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    const n = Math.ceil(countdown / 60);
+    R(LW / 2 - 46, LH / 2 - 26, 92, 44, "rgba(14,13,12,0.72)");
+    text(String(n), LW / 2, LH / 2 + 2, 22, "#f07ab8", "center", "Newsreader");
+    text("Get ready", LW / 2, LH / 2 + 13, 7, "#f7f4ee", "center", "IBM Plex Sans");
+  }
   if (state === "story") drawStory();
 }
 
@@ -1871,7 +1907,10 @@ $("continue").addEventListener("click", () => { $("card-end").hidden = true; $("
 function showBest() { try { const b = +localStorage.getItem("street:best"); if (b) $("best-line").textContent = "Best on this device: " + b.toLocaleString(); } catch (e) { /* ignore */ } }
 showBest();
 palette();
-Arcade.setupFullscreen((on) => { if (!on && state === "play" && !paused) togglePause(); });
+Arcade.setupFullscreen((on) => {
+  if (!on && state === "play" && !paused) togglePause();
+  if (on && state === "play" && !paused) countdown = 180;
+});
 buildStageChips();
 demo(0);
 requestAnimationFrame(loop);
