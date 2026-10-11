@@ -260,7 +260,7 @@ function endGame(won) {
   $("continue").hidden = won; $("continue").textContent = "Continue from stage " + (stageIdx + 1);
   $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
   (won ? $("again") : $("continue")).focus({ preventScroll: true });
-  if (!Arcade.isFullscreen() && innerWidth <= 640) $("card-end").scrollIntoView({ behavior: "smooth", block: "center" });
+  if (!Arcade.isFullscreen() && innerWidth <= 899) $("card-end").scrollIntoView({ behavior: "smooth", block: "center" });
   if (!won) Arcade.tone(160, 0.6, "sawtooth", 0.05, -90);
 }
 

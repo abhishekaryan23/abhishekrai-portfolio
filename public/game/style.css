@@ -26,6 +26,29 @@
 .overlay[hidden] { display: none; }
 .card { max-width: 460px; width: 100%; background: var(--surface); border: 1px solid var(--line2); border-radius: var(--radius); padding: 22px 24px; }
 .card h2 { font-size: 1.7rem; margin-bottom: 8px; }
+/* a card never grows past the game screen: it scrolls inside it instead */
+.overlay > .card { max-height: 100%; overflow: auto; overscroll-behavior: contain; }
+/* The brawler's menu lays itself out for the space the overlay really has
+   (a size container, so this also holds when full screen turns it sideways):
+   story and picks on the left, settings and start on the right. */
+.screen.solo .overlay { container-type: inline-size; }
+.card[hidden] { display: none !important; }   /* a layout display must never un-hide a card */
+@container (min-width: 600px) {
+  .card-wide { max-width: 780px; display: grid; grid-template-columns: 1.1fr 1fr; gap: 0 24px; align-items: start; padding: 18px 22px; }
+  .card-wide h2 { font-size: 1.5rem; }
+  .card-wide p:not(.small) { font-size: 0.95rem; }
+  .card-wide .btn-row { margin-top: 0; margin-bottom: 4px; }
+}
+/* below 820px wide Ghost Deploy's screen is too short for its card: show it underneath, as on phones */
+@media (max-width: 819px) {
+  .stage-wrap:not(.fs) .screen:not(.solo) .overlay { position: static; padding: 12px; background: var(--paper); border-top: 1px solid var(--line); }
+  .stage-wrap:not(.fs) .screen:not(.solo) .overlay > .card { border: 0; padding: 4px; background: transparent; max-height: none; }
+}
+/* below 900px wide the brawler's screen is too short to hold its menu: show it underneath, as on phones */
+@media (max-width: 899px) {
+  .stage-wrap:not(.fs) .screen.solo .overlay { position: static; padding: 12px; background: var(--paper); border-top: 1px solid var(--line); }
+  .stage-wrap:not(.fs) .screen.solo .overlay > .card { border: 0; padding: 4px; background: transparent; max-height: none; }
+}
 .card p { color: var(--ink2); margin-bottom: 0.8em; }
 .card .result { font-family: var(--mono); font-size: 0.95rem; color: var(--ink); }
 .card ol, .card ul { margin: 0 0 1em; padding-left: 1.2em; color: var(--ink2); }
@@ -148,4 +171,5 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
   .stick { width: 128px; height: 128px; }
   .stick span { width: 50px; height: 50px; margin: -25px 0 0 -25px; }
 }
-.chip .chip-face { width: 22px; height: 22px; object-fit: cover; object-position: top; border-radius: 3px; margin-right: 6px; vertical-align: middle; image-rendering: pixelated; background: var(--surface2); }
+.chip:has(.chip-face) { display: inline-flex; align-items: center; }
+.chip .chip-face { flex: none; width: 22px; height: 22px; object-fit: cover; object-position: top; border-radius: 3px; margin-right: 6px; vertical-align: middle; image-rendering: pixelated; background: var(--surface2); }

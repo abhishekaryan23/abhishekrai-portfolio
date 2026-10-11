@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site.css?v=3">
-  <link rel="stylesheet" href="/game/style.css?v=13">
+  <link rel="stylesheet" href="/game/style.css?v=19">
 </head>
 <body>
 <header class="site-head">
@@ -54,13 +54,21 @@
     <div class="screen solo">
       <canvas id="game" width="768" height="432" aria-label="Game screen"></canvas>
       <div class="overlay" id="overlay">
-        <div class="card" id="card-menu">
+        <div class="card card-wide" id="card-menu">
+          <div class="col">
           <h2>Rollback Street</h2>
           <p>Nani has vanished from her dhaba on Chandni Lane, and the only clue is a card signed R. Four stages, four bosses, one long night. Beat Raghav or Cheel and they change sides.</p>
           <div class="chips" id="stages" role="group" aria-label="Starting stage"></div>
           <div class="chips" id="fighters" role="group" aria-label="Fighter"></div>
           <div class="chips" id="costumes" role="group" aria-label="Costume" hidden></div>
+          </div>
+          <div class="col">
           <div class="chips" id="settings" role="group" aria-label="Settings"></div>
+          <div class="btn-row">
+            <button class="btn" id="start1" type="button">1 player</button>
+            <button class="btn ghost" id="start2" type="button" data-keyboard>2 players</button>
+          </div>
+          <p class="small muted" id="best-line" style="margin:8px 0 0"></p>
           <details class="moves">
             <summary>Move list</summary>
             <ul>
@@ -81,12 +89,8 @@
             <li>Player 2: arrows, <kbd>1</kbd> punch, <kbd>2</kbd> kick, <kbd>3</kbd> jump, <kbd>4</kbd> special (or <kbd>,</kbd> <kbd>.</kbd> <kbd>/</kbd> <kbd>'</kbd>)</li>
             <li><kbd>P</kbd> pause</li>
           </ul>
-          <div class="btn-row">
-            <button class="btn" id="start1" type="button">1 player</button>
-            <button class="btn ghost" id="start2" type="button" data-keyboard>2 players</button>
-          </div>
-          <p class="small muted" id="best-line" style="margin:12px 0 0"></p>
           <details class="moves" id="letters" hidden></details>
+          </div>
         </div>
         <div class="card" id="card-end" hidden>
           <h2 id="end-title">Street cleared</h2>
@@ -130,7 +134,7 @@
 <script src="/assets/nav.js" defer></script>
 <script src="/game/arcade.js?v=9"></script>
 <script src="/game/street/fighters.js?v=3"></script>
-<script src="/game/street/street.js?v=25"></script>
+<script src="/game/street/street.js?v=26"></script>
 <script src="/game/street/story.js?v=10"></script>
 </body>
 </html>
