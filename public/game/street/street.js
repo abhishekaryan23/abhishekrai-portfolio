@@ -160,7 +160,7 @@ function keyOf(code) { for (let i = 0; i < 2; i++) for (const [a, list] of Objec
 function onDown(code) {
   if (code === "KeyP" || code === "Escape") { if (state === "play") togglePause(); return; }
   const k = keyOf(code); if (!k) return;
-  if (!down.has(code)) pressed.add(code);
+  pressed.add(code);            // keyboard auto-repeat is already filtered by e.repeat
   down.add(code);
   if (state === "play" && k[0] === 1 && (!players[1] || players[1].lives <= 0) && (k[1] === "punch" || k[1] === "kick")) join(1, true);
 }
@@ -822,7 +822,7 @@ function hint(id, p, msg) {
 function hints() {
   if (!TOUCH || frameNo % 10) return;
   const p = alivePlayers()[0]; if (!p) return;
-  if (stageIdx === 0 && blockIdx === 0 && frameNo > 200) hint("dash", p, "Push the stick to the edge, or tap Dash, to run");
+  if (stageIdx === 0 && blockIdx === 0 && frameNo > 200) hint("dash", p, "Push the stick to the edge, or hold Dash while moving, to run");
   if (enemies.some((e) => e.st === "hurt" && Math.abs(e.x - p.x) < 26 && Math.abs(e.y - p.y) < 8)) hint("grab", p, "Walk into a dazed enemy to grab them");
   if (p.sp >= 30) hint("special", p, "Special is ready: " + (SPECIALS[p.kind] || SPECIALS.rai)[2]);
   if (shots.some((s) => s.kind === "knife" && s.team === "e")) hint("knife", p, "Jump over thrown knives");

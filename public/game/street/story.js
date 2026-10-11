@@ -101,6 +101,7 @@ function playScene(name, then, extra) {
   if (!storyOn || !panels.length) { then(); return; }
   if (scene) { const prev = scene.then; scene.panels.push(...panels); scene.then = () => { prev(); then(); }; return; }
   scene = { panels, i: 0, shown: 0, then, name };
+  down.clear();
   const wrapEl = document.getElementById("stage-wrap"); if (wrapEl) wrapEl.classList.add("story");
   state = "story";
 }

@@ -70,7 +70,7 @@
   function fitStage() {
     if (!fs.on) return;
     const vw = window.innerWidth, vh = window.innerHeight;
-    fs.rot = matchMedia("(pointer: coarse)").matches && vh > vw;
+    fs.rot = !(document.fullscreenElement || document.webkitFullscreenElement) && matchMedia("(pointer: coarse)").matches && vh > vw;
     fs.wrap.classList.toggle("rot", fs.rot);
     const W = fs.rot ? vh : vw, H = fs.rot ? vw : vh;
     fs.wrap.style.width = W + "px"; fs.wrap.style.height = H + "px";
@@ -84,8 +84,7 @@
     if (req) {
       try {
         const pr = req.call(fs.wrap, { navigationUI: "hide" });
-        fs.api = true;
-        Promise.resolve(pr).then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape")).catch(() => {}).finally(fitStage);
+        Promise.resolve(pr).then(() => { fs.api = true; return screen.orientation && screen.orientation.lock && screen.orientation.lock("landscape"); }).catch(() => {}).finally(fitStage);
       } catch (e) { fs.api = false; }
     }
     fitStage(); if (fs.onChange) fs.onChange(true);
@@ -140,24 +139,42 @@
       set(next);
     };
     const end = (e) => { if (e.pointerId !== id) return; id = null; set(new Set()); if (knob) knob.style.transform = ""; el.classList.remove("on"); };
-    el.addEventListener("pointerdown", (e) => { e.preventDefault(); id = e.pointerId; el.setPointerCapture(id); el.classList.add("on"); move(e); });
+    el.addEventListener("pointerdown", (e) => { e.preventDefault(); id = e.pointerId; try { el.setPointerCapture(id); } catch (x) { /* ignore */ } el.classList.add("on"); move(e); });
     el.addEventListener("pointermove", (e) => { if (e.pointerId === id) move(e); });
     el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
   }
   function bindGroup(grp, onDown, onUp) {
+    // One finger can slide across the buttons. Hit-testing uses each button's
+    // own rectangle in the same coordinates as the touch (like the stick), not
+    // elementFromPoint, which can be offset on phones after a zoom or when the
+    // browser bars move.
+    const buttons = [...grp.querySelectorAll("button[data-code]")];
     const fingers = new Map();     // pointerId -> button under that finger
-    const under = (e) => { const el = document.elementFromPoint(e.clientX, e.clientY); return el && el.closest && el.closest("button[data-code]"); };
+    const at = (e) => {
+      for (const b of buttons) { const r = b.getBoundingClientRect(); if (e.clientX >= r.left - 4 && e.clientX <= r.right + 4 && e.clientY >= r.top - 4 && e.clientY <= r.bottom + 4) return b; }
+      return null;
+    };
     const press = (id, b) => {
       const was = fingers.get(id); if (was === b) return;
-      if (was) { was.classList.remove("on"); if (![...fingers.values()].some((o, k) => o === was && k !== id)) onUp(was.dataset.code); }
       fingers.set(id, b);
+      if (was) { was.classList.remove("on"); if (![...fingers.values()].includes(was)) onUp(was.dataset.code); }
       if (b) { b.classList.add("on"); onDown(b.dataset.code); if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* ignore */ } }
     };
-    grp.addEventListener("pointerdown", (e) => { e.preventDefault(); try { grp.releasePointerCapture(e.pointerId); } catch (x) { /* ignore */ } press(e.pointerId, under(e)); });
-    grp.addEventListener("pointermove", (e) => { if (fingers.has(e.pointerId)) { const b = under(e); if (b && grp.contains(b)) press(e.pointerId, b); } });
+    grp.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      const b = (e.target.closest && e.target.closest("button[data-code]")) || at(e);
+      try { if (e.target.hasPointerCapture && e.target.hasPointerCapture(e.pointerId)) e.target.releasePointerCapture(e.pointerId); } catch (x) { /* ignore */ }
+      press(e.pointerId, b);
+    });
+    const slide = (e) => { if (!fingers.has(e.pointerId)) return; const b = at(e); if (b) press(e.pointerId, b); };
+    grp.addEventListener("pointermove", slide);
+    document.addEventListener("pointermove", slide);
     const lift = (e) => { if (!fingers.has(e.pointerId)) return; press(e.pointerId, null); fingers.delete(e.pointerId); };
-    grp.addEventListener("pointerup", lift); grp.addEventListener("pointercancel", lift);
-    document.addEventListener("pointerup", lift);
+    for (const t of ["pointerup", "pointercancel"]) { grp.addEventListener(t, lift); document.addEventListener(t, lift); }
+    // stop long-press menus and the 300 ms click from interfering
+    grp.addEventListener("contextmenu", (e) => e.preventDefault());
+    const reset = () => { for (const [id] of fingers) press(id, null); fingers.clear(); };
+    addEventListener("blur", reset); document.addEventListener("visibilitychange", () => { if (document.hidden) reset(); });
   }
   function bindPad(onDown, onUp) {
     document.querySelectorAll(".pad .stick[data-codes]").forEach((el) => bindStick(el, onDown, onUp));

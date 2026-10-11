@@ -126,8 +126,12 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
 .stage-wrap.fs .pad button[data-code="KeyI"].on { color: #fff; }
 
 /* story panels: get the pad out of the way */
-.stage-wrap.story .pad { opacity: 0.12; pointer-events: none; }
+.stage-wrap.story .pad, .stage-wrap.story .pad > *, .stage-wrap.story .pad button { opacity: 0.12; pointer-events: none; }
 .stick[data-dash]::after { content: ""; position: absolute; inset: 16%; border-radius: 50%; border: 1px dotted var(--accent); opacity: 0.5; pointer-events: none; }
 .pad .pause-btn { align-self: flex-start; padding: 6px 12px; font-size: 0.8rem; }
 @media (pointer: coarse) { .stage-wrap.fs .pad .pause-btn { position: absolute; top: 8px; left: 8px; border-radius: 6px; padding: 6px 10px; } }
 #letters blockquote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface2); font-family: var(--serif); font-style: italic; color: var(--ink2); }
+/* no page zoom or scrolling from taps while playing */
+.pad, .pad * { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.fs-lock, .fs-lock body { touch-action: none; }
+.screen canvas { touch-action: manipulation; }
