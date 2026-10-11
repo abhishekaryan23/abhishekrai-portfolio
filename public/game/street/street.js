@@ -207,6 +207,7 @@ function start(stage, n, viaContinue) {
   Arcade.tone(392, 0.1, "square", 0.05); setTimeout(() => Arcade.tone(587, 0.16, "square", 0.05), 110);
 }
 function loadStage(si) {
+  prepareStage(si);
   stageIdx = si; cam = 0; blockIdx = 0; enemies = []; items = []; fx = []; texts = []; shots = []; lastHit = null; bossRef = null; addsDone = 0; train = null;
   barrels = STAGES[si].barrels.map(([x, y, drop, kind = "barrel"]) => ({ x, y, drop, kind, hp: kind === "barrel" ? 2 : 3, shake: 0 }));
   wallCount = 0; spray = []; posterUsed = false;
@@ -221,6 +222,7 @@ function loadStage(si) {
 function join(i, mid) {
   const k1 = pick1 || "rai", kind = i ? (k1 === "kai" ? "rai" : "kai") : k1;
   const p = fighter(kind, cam + 50 + i * 24, i ? 192 : 172, "p");
+  fighterArt(SHEET_OF[kind]);
   p.pi = i; p.inv = 90; if (EASY) p.lives = 5; if (KINDS[kind].guest) p.lives = 1; players[i] = p;
   if (mid) { startPlayers = 2; texts.push({ x: p.x, y: p.y - 64, s: KINDS[kind].name + " joins", t: 70 }); if (!joinedOnce) { joinedOnce = true; playScene("join", () => {}); } }
 }
@@ -899,17 +901,31 @@ let PAL = null;
    the cow's idle loop), cut from a green screen and shrunk to game scale.
    Each has a drawn fallback until it loads. */
 const SPRITES = {};
-function sprite(name, src) { const im = new Image(); im.onload = () => (SPRITES[name] = im); im.src = src; }
-sprite("cow", "/game/street/sprites/cow.png?v=3");
-sprite("kulhad", "/game/street/sprites/kulhad.png?v=1");
-sprite("poster", "/game/street/sprites/poster.png?v=2");
-for (const n of ["samosa", "lathi", "knife", "letter", "barrel", "barrel_broken", "pump", "chai_machine", "auto", "cat", "routemap", "ad_chai", "ad_film", "clock",
-  "kite_m", "kite_y", "kite_b", "kite_o", "cloth_sari", "cloth_dupatta", "cloth_kurta", "cloth_gamcha", "roof_exit", "roof_dish", "roof_ac", "roof_tanks"]) sprite(n, "/game/street/sprites/" + n + ".png?v=1");
-for (const n of ["rai", "kai", "nani", "ox", "rook", "crane", "rollback"]) sprite("p_" + n, "/game/street/sprites/portraits/" + n + ".png?v=1");
-for (const n of ["rai", "kai", "ox", "rook", "crane", "rollback", "grunt", "pipeGrunt", "kicker", "thrower", "bruiser", "pipeBare"]) {
-  sprite("f_" + n, "/game/street/sprites/fighters/" + n + ".png?v=3");
-  sprite("w_" + n, "/game/street/sprites/fighters/" + n + "_walk.png?v=1");   // 8-frame walk cycle
+// Art is fetched a stage at a time (plus the next stage, in the background), so a
+// phone only downloads what it is about to show. Anything not loaded yet is drawn
+// the old way, in code, so a slow connection never blocks play.
+const ART_V = 5, ART = "/game/street/sprites/", asked = new Set();
+function sprite(name, src) { if (asked.has(name)) return; asked.add(name); const im = new Image(); im.onload = () => (SPRITES[name] = im); im.src = src + "?v=" + ART_V; }
+const art = (names) => names.forEach((n) => sprite(n, ART + n + ".png"));
+const fighterArt = (sheet) => { if (!sheet) return; sprite("f_" + sheet, ART + "fighters/" + sheet + ".png"); sprite("w_" + sheet, ART + "fighters/" + sheet + "_walk.png"); };
+const STAGE_ART = [
+  ["cow", "auto", "cat", "st_lamp", "st_garbage", "st_cycle", "st_milk", "poster_film", "poster_circus", "poster_tuition", "dhaba_table", "dhaba_kettle", "dhaba_chairs",
+    "sign_0", "sign_1", "sign_2", "sign_3", "sign_4", "sign_5", "sign_6", "sign_7", "sign_8", "sign_9", "sign_10", "sign_11"],
+  ["routemap", "ad_chai", "ad_film", "clock", "sb_bench", "sb_cooler", "sb_scale", "sb_cagelamp", "train_coach"],
+  ["poster", "kite_m", "kite_y", "kite_b", "kite_o", "cloth_sari", "cloth_dupatta", "cloth_kurta", "cloth_gamcha", "roof_exit", "roof_dish", "roof_ac", "roof_tanks"],
+  ["mill_loom", "mill_firebox", "mill_lamp", "mill_bales", "bolt_m", "bolt_b", "bolt_o", "bolt_t"]
+];
+function stageArt(si) {
+  if (!STAGES[si]) return;
+  art(STAGE_ART[si]);
+  const kinds = new Set(JSON.stringify(STAGES[si].blocks).match(/[A-Za-z]+/g));
+  for (const k of Object.keys(SHEET_OF)) if (kinds.has(k)) fighterArt(SHEET_OF[k]);
+  if (kinds.has("pipeGrunt")) fighterArt("pipeBare");
 }
+function prepareStage(si) { stageArt(si); setTimeout(() => stageArt(si + 1), 3000); }
+// shared by every stage: pickups, barrels, story portraits
+art(["samosa", "kulhad", "lathi", "knife", "letter", "barrel", "barrel_broken", "pump", "chai_machine"]);
+for (const n of ["rai", "kai", "nani", "ox", "rook", "crane", "rollback"]) sprite("p_" + n, ART + "portraits/" + n + ".png");
 // draw a sprite at half its pixel size (the canvas is scaled 2x), bottom-centred on (x, y), snapped to device pixels
 function spr(name, x, y, flip) {
   const im = SPRITES[name]; if (!im) return false;
@@ -928,16 +944,22 @@ function shade(hex, f) {
   v = "#" + ((1 << 24) | (m(r) << 16) | (m(gg) << 8) | m(b)).toString(16).slice(1);
   SHADES.set(key, v); return v;
 }
+// blend two #rrggbb colours: t = 0 gives a, 1 gives b
+function mix(a, b, t) {
+  if (!/^#[0-9a-f]{6}$/i.test(a)) return a;
+  const p = (h, i) => parseInt(h.slice(1 + i * 2, 3 + i * 2), 16);
+  return "#" + [0, 1, 2].map((i) => Math.round(p(a, i) + (p(b, i) - p(a, i)) * t).toString(16).padStart(2, "0")).join("");
+}
 function palette() {
   const T = Arcade.tokens(), d = T.dark;
   PAL = {
     T, dark: d, ol: "#15121a", spark: d ? "#fff6e0" : "#ffffff", wood: d ? "#7a5233" : "#8a5d3b",
-    sky: d ? "#14121a" : "#e9dfe6", sky2: d ? "#1c1824" : "#ddd0dc", far: d ? "#221f27" : "#cfc3cc", farWin: d ? "#5a4a63" : "#f4ecf0",
-    walls: d ? ["#3a3531", "#3e383b", "#363339"] : ["#ddd2c4", "#d3c6b8", "#e3d9cc"],
+    sky: d ? "#17131b" : "#ece0d2", sky2: d ? "#1f1922" : "#e2d3c4", far: d ? "#261f26" : "#d4c4b6", farWin: d ? "#6a5338" : "#f6ead8",
+    walls: d ? ["#4a3e32", "#38403d", "#47383a"] : ["#e3cfae", "#cdd3c4", "#e4cbc2"],
     trim: d ? "#3b3631" : "#bfb2a2", brick: d ? "#3a2a2a" : "#c9ada0", brickLine: d ? "#2a1e1e" : "#b5978a",
-    glass: d ? "#1b2a33" : "#b8c9cf", glassLit: d ? "#4a3d24" : "#f3e3bf",
-    side: d ? "#3a3632" : "#cbc2b5", sideLine: d ? "#2e2a27" : "#b6ab9c", curb: d ? "#4a4540" : "#a99d8d",
-    road: d ? "#33302f" : "#9d968c", lane: d ? "#5d5852" : "#e9e4dc",
+    glass: d ? "#1e2a2c" : "#b9c6c2", glassLit: d ? "#5a4424" : "#f3dfb2",
+    side: d ? "#3d3731" : "#cdc1ae", sideLine: d ? "#2f2a25" : "#b8aa95", curb: d ? "#4d463e" : "#ab9d88",
+    road: d ? "#34302b" : "#9f9686", lane: d ? "#635a4c" : "#ece2cf",
     tile: d ? "#2c2d31" : "#e6e2da", tileLine: d ? "#232427" : "#cfc9be", ceil: d ? "#151417" : "#3b3832", lamp: d ? "#e9e2c8" : "#fffbe9",
     plat: d ? "#3a3836" : "#b9b2a7", platLine: d ? "#2f2d2b" : "#a39b8f", rail: d ? "#6b6560" : "#77706a", pit: d ? "#0f0e10" : "#4a4640",
     trainBody: d ? "#8d939b" : "#c9ced4", trainWin: d ? "#2a3440" : "#5d6b78",
@@ -945,7 +967,7 @@ function palette() {
     steel: d ? "#2f3236" : "#5d6168", steelHi: d ? "#43474d" : "#7a7f86", plate: d ? "#38373c" : "#6e6a66", plateDot: d ? "#4a494e" : "#807b77",
     corr: d ? "#2a292d" : "#4e4b52", corrLine: d ? "#343338" : "#59565d",
     skin: ["#c98e62", "#9a6440", "#e0b088", "#7b4a2c"], hair: d ? "#2a221e" : "#1d1b18", looks: {},
-    shadow: "rgba(0,0,0,0.28)", neon: T.accent, neon2: T.teal, amber: T.amber
+    shadow: "rgba(0,0,0,0.28)", neon: mix(T.accent, "#e8c39a", 0.22), neon2: mix(T.teal, "#e8c39a", 0.22), amber: T.amber
   };
 }
 Arcade.onTheme(palette);
@@ -1014,9 +1036,12 @@ function drawStreet(P) {
       R(x + 16, 128, 14, 16, shade(P.glass, -0.25)); R(x + 50, 124, 10, 20, shade(P.glass, -0.25));
       R(x + 94, 104, 24, 46, P.trim); R(x + 97, 108, 18, 42, shade(wall, -0.25)); R(x + 111, 128, 2, 2, P.amber);
       const sign = SIGNS[((i % SIGNS.length) + SIGNS.length) % SIGNS.length], neon = i % 2 ? P.neon : P.neon2;
-      R(x + 12, 84, 105, 15, P.dark ? "#18161b" : shade(wall, -0.08));
-      g.strokeStyle = neon; g.lineWidth = 1; g.strokeRect(x + 12.5, 84.5, 104, 14);
-      g.globalAlpha = (frameNo + i * 37) % 240 < 4 ? 0.35 : 1; text(sign, x + 64, 95, 9, neon); g.globalAlpha = 1;
+      const si = ((i % SIGNS.length) + SIGNS.length) % SIGNS.length;
+      if (!spr("sign_" + si, x + 64.5, 100)) {
+        R(x + 12, 84, 105, 15, P.dark ? "#18161b" : shade(wall, -0.08));
+        g.strokeStyle = neon; g.lineWidth = 1; g.strokeRect(x + 12.5, 84.5, 104, 14);
+        g.globalAlpha = (frameNo + i * 37) % 240 < 4 ? 0.35 : 1; text(sign, x + 64, 95, 9, neon); g.globalAlpha = 1;
+      }
       for (let s = 0; s < 8; s++) { g.globalAlpha = s % 2 ? 1 : 0.6; R(x + 8 + s * 10, 100, 10, 4, s % 2 ? P.trim : neon); }
       g.globalAlpha = 1;
       // a marigold toran with mango leaves strung under the awning
@@ -1024,13 +1049,13 @@ function drawStreet(P) {
       // the reflection of the sign on the wet road
       g.globalAlpha = P.dark ? 0.16 : 0.09; R(x + 28 + Math.sin(frameNo / 18 + i) * 1, 180, 70, 3, neon); R(x + 36 + Math.sin(frameNo / 15 + i) * 1.4, 188, 54, 2, neon); R(x + 46, 196, 34, 2, neon); g.globalAlpha = 1;
       // poster and a little graffiti
-      if (i % 3 === 1) { R(x + 86, 60, 12, 16, P.T.amber); R(x + 88, 63, 8, 2, P.ol); R(x + 88, 67, 6, 1, P.ol); }
+      if (i % 3 === 1 && !spr(["poster_film", "poster_circus", "poster_tuition"][((Math.floor(i / 3) % 3) + 3) % 3], x + 92, 77)) { R(x + 86, 60, 12, 16, P.T.amber); R(x + 88, 63, 8, 2, P.ol); R(x + 88, 67, 6, 1, P.ol); }
       if (i % 4 === 2) text("RAI", x + 40, 80, 8, shade(P.neon, 0.15), "center", "Newsreader");
       if (i === 0) {
         // Nani's dhaba: a steel kettle on the stove, a table and two tumblers, a bulb over the door
-        R(x + 14, 138, 22, 3, "#8a6a4a"); R(x + 15, 141, 2, 9, "#5d4630"); R(x + 33, 141, 2, 9, "#5d4630");
-        R(x + 18, 134, 3, 4, "#c9ced4"); R(x + 26, 134, 3, 4, "#c9ced4");
-        R(x + 54, 140, 18, 10, "#3b3832"); R(x + 58, 132, 10, 8, "#c9ced4"); R(x + 67, 134, 4, 1.5, "#c9ced4");
+        if (!spr("dhaba_table", x + 25, 151)) { R(x + 14, 138, 22, 3, "#8a6a4a"); R(x + 15, 141, 2, 9, "#5d4630"); R(x + 33, 141, 2, 9, "#5d4630"); R(x + 18, 134, 3, 4, "#c9ced4"); R(x + 26, 134, 3, 4, "#c9ced4"); }
+        spr("dhaba_chairs", x + 45, 151);
+        if (!spr("dhaba_kettle", x + 62, 151)) { R(x + 54, 140, 18, 10, "#3b3832"); R(x + 58, 132, 10, 8, "#c9ced4"); R(x + 67, 134, 4, 1.5, "#c9ced4"); }
         g.globalAlpha = 0.5; R(x + 61 + Math.sin(frameNo / 9), 126, 1, 5, "#ffffff"); g.globalAlpha = 1;
         R(x + 104, 100, 4, 4, P.lamp); g.globalAlpha = P.dark ? 0.2 : 0.08; g.fillStyle = P.lamp; g.beginPath(); g.arc(x + 106, 102, 14, 0, 7); g.fill(); g.globalAlpha = 1;
       }
@@ -1071,10 +1096,13 @@ function drawStreet(P) {
   // street props along the back of the sidewalk
   for (let px = -(cam % 256); px < LW + 40; px += 256) {
     const wx = px + cam;
-    R(px + 2, 92, 3, 60, P.dark ? "#4a4540" : "#5d5852"); R(px - 4, 90, 14, 4, P.dark ? "#4a4540" : "#5d5852"); R(px - 2, 94, 10, 2, P.lamp);
+    if (!spr("st_lamp", px - 5, 153)) { R(px + 2, 92, 3, 60, P.dark ? "#4a4540" : "#5d5852"); R(px - 4, 90, 14, 4, P.dark ? "#4a4540" : "#5d5852"); R(px - 2, 94, 10, 2, P.lamp); }
     g.globalAlpha = P.dark ? 0.12 : 0.06; g.fillStyle = P.lamp; g.beginPath(); g.moveTo(px - 2, 96); g.lineTo(px + 8, 96); g.lineTo(px + 26, 168); g.lineTo(px - 20, 168); g.fill();
     g.globalAlpha = P.dark ? 0.16 : 0.07; g.beginPath(); g.ellipse(px + 3, 170, 28, 6, 0, 0, 7); g.fill(); g.globalAlpha = 1;
-    if (Math.floor(wx / 256) % 2 === 0) { g.fillStyle = P.dark ? "#1d1c1f" : "#3b3832"; g.beginPath(); g.ellipse(px + 70, 149, 8, 6, 0, 0, 7); g.ellipse(px + 80, 150, 6, 5, 0, 0, 7); g.fill(); }
+    const lot = ((Math.floor(wx / 256) % 4) + 4) % 4;
+    if (lot % 2 === 0) { if (!spr("st_garbage", px + 76, 155)) { g.fillStyle = P.dark ? "#1d1c1f" : "#3b3832"; g.beginPath(); g.ellipse(px + 70, 149, 8, 6, 0, 0, 7); g.ellipse(px + 80, 150, 6, 5, 0, 0, 7); g.fill(); } }
+    else if (lot === 1) spr("st_cycle", px + 150, 155);
+    else spr("st_milk", px + 72, 155);
   }
 }
 
@@ -1100,7 +1128,7 @@ function drawSubway(P) {
       // the service tunnel: bare brick, a caged lamp, pipes
       R(px, 26, 256, 92, P.brick);
       for (let by = 30; by < 118; by += 6) { R(px, by, 256, 1, P.brickLine); for (let bx = (by / 6) % 2 ? 0 : 8; bx < 256; bx += 16) R(px + bx, by - 5, 1, 5, P.brickLine); }
-      R(px, 40, 256, 3, P.rail); R(px, 46, 256, 2, P.rail); R(px + 120, 60, 8, 8, P.lamp); R(px + 119, 59, 10, 1, P.rail); R(px + 119, 68, 10, 1, P.rail);
+      R(px, 40, 256, 3, P.rail); R(px, 46, 256, 2, P.rail); if (!spr("sb_cagelamp", px + 124, 71)) { R(px + 120, 60, 8, 8, P.lamp); R(px + 119, 59, 10, 1, P.rail); R(px + 119, 68, 10, 1, P.rail); }
       continue;
     }
     if (slot % 2 === 0) { R(px + 20, 34, 70, 20, "#f2c230"); text("BUNDER ROAD", px + 55, 44, 6.5, "#1d1b18"); text("बंदर रोड", px + 55, 52, 6.5, "#1d1b18", "center", "sans-serif"); }
@@ -1124,6 +1152,7 @@ function drawSubway(P) {
   if (train) {
     for (let c = 0; c < 4; c++) {
       const tx = train.x + c * 210;
+      if (spr("train_coach", tx + 102, 139)) continue;
       R(tx, 58, 204, 82, "#7a2230"); R(tx, 58, 204, 3, "#9a3a46"); R(tx, 104, 204, 5, "#f2c230"); R(tx, 112, 204, 2, "#f2c230");
       for (let w = 10; w < 196; w += 32) {
         R(tx + w, 70, 22, 22, P.trainWin);
@@ -1142,7 +1171,10 @@ function drawSubway(P) {
   for (let sx = -(cam % 40); sx < LW; sx += 40) R(sx, 147, 1, LH - 147, P.platLine);
   for (let sy = 166; sy < LH; sy += 20) R(0, sy, LW, 1, P.platLine);
   // benches along the back
-  for (let bx = -(cam % 192) + 60; bx < LW; bx += 192) { R(bx, 146, 40, 4, P.dark ? "#5b4a3a" : "#8a6a4a"); R(bx + 3, 150, 3, 6, P.rail); R(bx + 34, 150, 3, 6, P.rail); }
+  for (let bx = -(cam % 192) + 60; bx < LW + 120; bx += 192) {
+    if (!spr("sb_bench", bx + 20, 157)) { R(bx, 146, 40, 4, P.dark ? "#5b4a3a" : "#8a6a4a"); R(bx + 3, 150, 3, 6, P.rail); R(bx + 34, 150, 3, 6, P.rail); }
+    spr(Math.floor((bx + cam) / 192) % 2 ? "sb_scale" : "sb_cooler", bx + 112, 157);
+  }
 }
 
 function drawRoof(P) {
@@ -1241,9 +1273,13 @@ function drawFactory(P) {
   }
   // looms on the back wall, shuttles still flying
   for (let lx = -(cam * 0.95 % 140) + 20; lx < LW + 60; lx += 140) {
-    R(lx, 82, 56, 30, P.dark ? "#26252a" : "#5d5a62"); R(lx + 4, 86, 48, 18, ["#a8186a", "#2b54a8", "#d9741c", "#2f6b3a"][Math.abs(Math.floor((lx + cam * 0.95) / 140)) % 4]);
-    for (let w = 0; w < 48; w += 3) R(lx + 4 + w, 86, 1, 18, "rgba(255,255,255,0.18)");
-    const sh = (Math.sin(frameNo / 10 + lx) + 1) / 2; R(lx + 4 + sh * 42, 92, 6, 3, "#c9a227");
+    const sh = (Math.sin(frameNo / 10 + lx) + 1) / 2;
+    if (spr("mill_loom", lx + 28, 115)) R(lx + 15 + sh * 25, 93, 6, 2, "#c9a227");
+    else {
+      R(lx, 82, 56, 30, P.dark ? "#26252a" : "#5d5a62"); R(lx + 4, 86, 48, 18, ["#a8186a", "#2b54a8", "#d9741c", "#2f6b3a"][Math.abs(Math.floor((lx + cam * 0.95) / 140)) % 4]);
+      for (let w = 0; w < 48; w += 3) R(lx + 4 + w, 86, 1, 18, "rgba(255,255,255,0.18)");
+      R(lx + 4 + sh * 42, 92, 6, 3, "#c9a227");
+    }
     R(lx - 2, 112, 60, 3, P.steel);
   }
   // catwalk
@@ -1252,9 +1288,14 @@ function drawFactory(P) {
   R(0, 46, LW, 1, P.steelHi);
   // boiler fireboxes with flicker (the mill's steam came from here)
   for (let fx0 = -(cam % 512) + 256 - 40; fx0 < LW + 80; fx0 += 512) {
+    const fl = 0.65 + Math.sin(frameNo / 5) * 0.15 + Math.random() * 0.1;
+    if (spr("mill_firebox", fx0 + 40, 130)) {
+      g.globalAlpha = fl; g.fillStyle = P.amber; g.beginPath(); g.moveTo(fx0 + 30, 112); g.lineTo(fx0 + 30, 105); g.arc(fx0 + 40, 105, 10, Math.PI, 0); g.lineTo(fx0 + 50, 112); g.fill();
+      g.fillStyle = P.T.red; g.fillRect(fx0 + 31, 104, 18, 8); g.globalAlpha = 1;
+      continue;
+    }
     R(fx0, 70, 80, 60, P.steel); R(fx0 + 4, 74, 72, 52, P.steelHi);
     g.fillStyle = P.dark ? "#1a0f0a" : "#2b1a10"; g.beginPath(); g.moveTo(fx0 + 14, 126); g.lineTo(fx0 + 14, 96); g.arc(fx0 + 40, 96, 26, Math.PI, 0); g.lineTo(fx0 + 66, 126); g.fill();
-    const fl = 0.65 + Math.sin(frameNo / 5) * 0.15 + Math.random() * 0.1;
     g.globalAlpha = fl; g.fillStyle = P.amber; g.beginPath(); g.moveTo(fx0 + 20, 126); g.lineTo(fx0 + 20, 102); g.arc(fx0 + 40, 102, 20, Math.PI, 0); g.lineTo(fx0 + 60, 126); g.fill();
     g.fillStyle = P.T.red; g.fillRect(fx0 + 22, 112, 36, 14); g.globalAlpha = 1;
   }
@@ -1263,11 +1304,13 @@ function drawFactory(P) {
   // conveyor carrying bolts of cloth
   R(0, 128, LW, 4, P.steel); R(0, 138, LW, 2, P.steel);
   for (let rx = -((cam + frameNo * 0.8) % 12); rx < LW; rx += 12) { g.fillStyle = P.steelHi; g.beginPath(); g.arc(rx, 134, 3, 0, 7); g.fill(); }
-  for (let bx = -((cam + frameNo * 0.8) % 90); bx < LW; bx += 90) { const cc = ["#a8186a", "#2b54a8", "#d9741c", "#2f6b3a"][Math.abs(Math.floor((bx + cam + frameNo * 0.8) / 90)) % 4]; R(bx, 116, 22, 12, cc); R(bx, 118, 22, 1, shade(cc, 0.25)); R(bx, 124, 22, 1, shade(cc, -0.25)); g.fillStyle = shade(cc, -0.3); g.beginPath(); g.ellipse(bx + 22, 122, 2, 6, 0, 0, 7); g.fill(); }
+  for (let bx = -((cam + frameNo * 0.8) % 90); bx < LW; bx += 90) { const ci = Math.abs(Math.floor((bx + cam + frameNo * 0.8) / 90)) % 4, cc = ["#a8186a", "#2b54a8", "#d9741c", "#2f6b3a"][ci]; if (spr(["bolt_m", "bolt_b", "bolt_o", "bolt_t"][ci], bx + 12, 129)) continue; R(bx, 116, 22, 12, cc); R(bx, 118, 22, 1, shade(cc, 0.25)); R(bx, 124, 22, 1, shade(cc, -0.25)); g.fillStyle = shade(cc, -0.3); g.beginPath(); g.ellipse(bx + 22, 122, 2, 6, 0, 0, 7); g.fill(); }
   // steel columns and hanging lamps
   for (let cx = -(cam % 160); cx < LW + 20; cx += 160) {
     R(cx, 0, 10, 146, P.steel); R(cx - 2, 0, 14, 3, P.steelHi); R(cx + 4, 0, 2, 146, P.steelHi);
-    R(cx + 80, 0, 1, 34, P.rail); R(cx + 74, 34, 14, 5, P.steelHi);
+    R(cx + 80, 0, 1, 24, P.rail);
+    if (!spr("mill_lamp", cx + 81, 42)) { R(cx + 80, 24, 1, 10, P.rail); R(cx + 74, 34, 14, 5, P.steelHi); }
+    if (Math.floor((cx + cam) / 160) % 2) spr("mill_bales", cx + 30, 148);
     g.globalAlpha = P.dark ? 0.12 : 0.07; g.fillStyle = P.lamp; g.beginPath(); g.moveTo(cx + 74, 39); g.lineTo(cx + 88, 39); g.lineTo(cx + 110, 150); g.lineTo(cx + 52, 150); g.fill(); g.globalAlpha = 1;
     const sw = Math.sin(frameNo / 40 + cx) * 3; g.strokeStyle = P.rail; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + 120, 0); g.lineTo(cx + 120 + sw, 52); g.stroke(); R(cx + 117 + sw, 52, 6, 3, P.rail);
   }
@@ -1953,6 +1996,7 @@ function draw() {
   drawFx();
   drawForeground(PAL);
   g.restore();
+  drawGrade(PAL);
   if (state !== "menu" && state !== "story") drawHud();
   if (state === "play" && countdown > 0 && !paused) {
     g.setTransform(SCALE, 0, 0, SCALE, 0, 0);
@@ -1964,9 +2008,29 @@ function draw() {
   if (state === "story") drawStory();
 }
 
+/* the nostalgic look: a faint warm amber wash that lifts the blacks like an
+   old print, CRT scanlines and a soft vignette, as on a cabinet in a chai
+   shop. Built once per theme and drawn with a single drawImage, so it costs
+   next to nothing on a phone. */
+let gradeCanvas = null;
+function drawGrade(P) {
+  if (!gradeCanvas || gradeCanvas.dark !== P.dark) {
+    const c = document.createElement("canvas"); c.width = LW * SCALE; c.height = LH * SCALE; c.dark = P.dark;
+    const x = c.getContext("2d");
+    x.fillStyle = P.dark ? "rgba(70,40,12,0.10)" : "rgba(150,95,40,0.07)"; x.fillRect(0, 0, c.width, c.height);
+    for (let y = 0; y < c.height; y += 2) { x.fillStyle = "rgba(0,0,0," + (P.dark ? 0.08 : 0.045) + ")"; x.fillRect(0, y + 1, c.width, 1); }
+    const v = x.createRadialGradient(c.width / 2, c.height / 2, c.height * 0.45, c.width / 2, c.height / 2, c.width * 0.62);
+    v.addColorStop(0, "rgba(30,16,4,0)"); v.addColorStop(1, P.dark ? "rgba(20,10,2,0.42)" : "rgba(70,40,10,0.22)");
+    x.fillStyle = v; x.fillRect(0, 0, c.width, c.height);
+    gradeCanvas = c;
+  }
+  g.save(); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(gradeCanvas, 0, 0); g.restore();
+}
+
 /* menu backdrop: the chosen stage with a few idle fighters */
 function demo(si) {
   stageIdx = si; cam = 0; blockIdx = 0;
+  prepareStage(si); fighterArt(SHEET_OF[pick1]); fighterArt(pick1 === "kai" ? "rai" : "kai");
   barrels = STAGES[si].barrels.map(([x, y, drop, kind = "barrel"]) => ({ x, y, drop, kind, hp: kind === "barrel" ? 2 : 3, shake: 0 }));
   cat = si === 0 ? { x: 560, y: 151, st: "sit", t: 0 } : null; pigeons = si === 2 ? { x: 640, st: "sit", t: 0 } : null;
   const cast = [["ox", "kicker", "thrower"], ["rook", "kicker", "grunt"], ["crane", "thrower", "bruiser"], ["rollback", "bruiser", "pipeGrunt"]][si];
