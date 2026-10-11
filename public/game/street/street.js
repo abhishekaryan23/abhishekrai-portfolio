@@ -213,7 +213,7 @@ function loadStage(si) {
   placeLetter();
   cat = si === 0 ? { x: 560, y: 151, st: "sit", t: 0 } : null;
   pigeons = si === 2 ? { x: 640, st: "sit", t: 0 } : null;
-  players.forEach((p, i) => { if (!p) return; Object.assign(p, { x: 50 + i * 24, y: i ? 192 : 172, z: 0, vz: 0, st: p.lives > 0 ? "idle" : "out", hp: p.max, inv: 90, hold: null, airAtk: null }); });
+  players.forEach((p, i) => { if (!p) return; Object.assign(p, { x: 50 + i * 24, y: i ? 192 : 172, z: 0, vz: 0, st: p.lives > 0 ? "idle" : "out", hp: p.max, inv: 90, hold: null, airAtk: null, avatarT: 0 }); });
   enterBlock(); stageStart = performance.now();
   banner = { text: "Stage " + (si + 1) + ": " + STAGES[si].name, t: 150, big: true };
   state = "play";
@@ -378,7 +378,8 @@ function groundAction(p, btn, mx) {
   if (btn === "J") { startAir(p, null, (p.st === "run" ? 5 : 5.4) * (KINDS[p.kind].jump ? KINDS[p.kind].jump / 5.4 : 1), p.st === "run" ? p.face * 2.8 : mx * 1.5); return true; }
   if (btn === "P") {
     if (p.weapon) { startAttack(p, p.weapon.kind === "knife" ? "toss" : "pipe"); return true; }
-    const it = items.find((it) => (it.kind === "pipe" || it.kind === "knife") && Math.abs(it.x - p.x) < 16 && Math.abs(it.y - p.y) < 9);
+    // the Avatar's divine form fights bare-handed
+    const it = !p.avatarT && items.find((it) => (it.kind === "pipe" || it.kind === "knife") && Math.abs(it.x - p.x) < 16 && Math.abs(it.y - p.y) < 9);
     if (it) { items.splice(items.indexOf(it), 1); p.weapon = { kind: it.kind, uses: 8 }; setState(p, "pickup", 10); Arcade.tone(700, 0.06); return true; }
     // down, forward, punch: rising dragon
     const dn = p.cmd.find((c) => c[0] === "D" && frameNo - c[1] < 18), fw = p.cmd.find((c) => c[0] === "F" && frameNo - c[1] < 8);
@@ -867,7 +868,9 @@ function updateStageFx() {
   if (th === "roof" && !posterUsed) {
     const p = alivePlayers().find((q) => Math.abs(q.x - POSTER_X) < 46 && q.y < Y0 + 14 && frameNo - (q.upTap || -99) < 3);
     if (p) {
-      posterUsed = true; p.avatarT = 720; p.inv = Math.max(p.inv, 30);
+      posterUsed = true; p.avatarT = 600; p.inv = Math.max(p.inv, 30);
+      if (p.weapon) dropWeapon(p);   // the divine form fights bare-handed
+      fx.push({ kind: "ring", x: p.x, y: p.y - 30, t: 18, gold: true });
       for (let i = 0; i < 24; i++) { const a = i / 24 * 6.28; fx.push({ kind: "dot", x: p.x, y: p.y - 30, vx: Math.cos(a) * 2.4, vy: Math.sin(a) * 2.4, c: i % 2 ? "#f2c230" : "#d9741c", t: 30 }); }
       Arcade.tone(392, 0.2, "triangle", 0.06); setTimeout(() => Arcade.tone(587, 0.2, "triangle", 0.06), 140); setTimeout(() => Arcade.tone(784, 0.4, "triangle", 0.06), 280);
       texts.push({ x: p.x, y: p.y - 80, s: "Avatar unleashed. Special throws a chakra", t: 120 });
@@ -910,7 +913,7 @@ const SPRITES = {};
 // Art is fetched a stage at a time (plus the next stage, in the background), so a
 // phone only downloads what it is about to show. Anything not loaded yet is drawn
 // the old way, in code, so a slow connection never blocks play.
-const ART_V = 7, ART = "/game/street/sprites/", asked = new Set(), failed = new Set();
+const ART_V = 8, ART = "/game/street/sprites/", asked = new Set(), failed = new Set();
 function sprite(name, src) { if (asked.has(name)) return; asked.add(name); const im = new Image(); im.onload = () => (SPRITES[name] = im); im.onerror = () => failed.add(name); im.src = src + "?v=" + ART_V; }
 // When a stage opens, hold play for a moment (6 s at most) until the fighters on screen
 // have their 8-bit sheets, so nobody flashes up in the old drawn style first.
@@ -938,6 +941,7 @@ function stageArt(si) {
   for (const k of Object.keys(SHEET_OF)) if (kinds.has(k)) fighterArt(SHEET_OF[k]);
   if (kinds.has("pipeGrunt")) fighterArt("pipeBare");
   if (si === 3) sprite("f_nani", ART + "fighters/nani.png");   // she waits at the back of the mill
+  if (si === 2) fighterArt("avatar");   // the divine form, from the poster on the roof
 }
 function prepareStage(si) { artWaitUntil = performance.now() + 6000; stageArt(si); setTimeout(() => stageArt(si + 1), 3000); }
 // shared by every stage: pickups, barrels, story portraits
@@ -1589,6 +1593,7 @@ function spriteFrame(f, sheet) {
     if (at === "eToss") return { i: f.t < ATK.eToss.spawn ? 4 : 6 };
     if (at === "pipe") return { i: f.t < f.atk.a0 ? 4 : 3 };
     if (at === "toss") return { i: f.t < ATK.toss.spawn ? 4 : 3 };
+    if (at === "chakra") return { i: sheet === "avatar" ? 11 : 3 };
     if (at === "upper") return { i: 4 };
     // Bhola's heavy is a two-fisted hammer: fists overhead, then the slam (his 13th frame)
     if (at === "heavy" && FIGHTER_FRAMES[sheet][12]) return { i: f.t < f.atk.a0 ? 4 : f.t <= f.atk.a1 + 8 ? 12 : 0 };
@@ -1652,12 +1657,13 @@ function costumeAtlas(im, base, key) {
 }
 // a red silhouette of one atlas frame, built once and reused: the rage glow
 const RAGE_SIL = new Map();
-function rageSilhouette(im, key, sx, sy, w, h) {
+function rageSilhouette(im, key, sx, sy, w, h, col = "#ff2a1a") {
+  key += col;
   let c = RAGE_SIL.get(key);
   if (!c) {
     c = document.createElement("canvas"); c.width = w; c.height = h;
     const x = c.getContext("2d"); x.drawImage(im, sx, sy, w, h, 0, 0, w, h);
-    x.globalCompositeOperation = "source-in"; x.fillStyle = "#ff2a1a"; x.fillRect(0, 0, w, h);
+    x.globalCompositeOperation = "source-in"; x.fillStyle = col; x.fillRect(0, 0, w, h);
     RAGE_SIL.set(key, c);
   }
   return c;
@@ -1673,8 +1679,9 @@ function drawSpriteFighter(f, x, y) {
   g.translate(x, y - Math.round(f.z));
   g.scale(face * sc, sc);
   if (fr.rot) { g.translate(0, -h / 4); g.rotate(fr.rot); g.translate(0, h / 4); }
-  // enraged: a pulsing red outline around the body and a red cast over it
-  const sil = f.rage && f.st !== "dead" ? rageSilhouette(im, (fr.walk ? "w_" : "f_") + sheet + ":" + fr.i, sx, sy, w, h) : null, pulse = 0.5 + Math.sin(frameNo / 5) * 0.5;
+  // a pulsing outline: red for an enraged boss, gold for a player in the Avatar's divine form
+  const glow = f.st === "dead" ? null : f.rage ? "#ff2a1a" : f.avatarT > 0 ? "#ffd23a" : null;
+  const sil = glow ? rageSilhouette(im, ikey + ":" + fr.i, sx, sy, w, h, glow) : null, pulse = 0.5 + Math.sin(frameNo / 5) * 0.5;
   if (sil) {
     g.globalAlpha = 0.55 + pulse * 0.35;
     for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1.5, -1], [1.5, -1]]) g.drawImage(sil, -ax / 2 + ox, -ay / 2 + oy, w / 2, h / 2);
@@ -1683,7 +1690,8 @@ function drawSpriteFighter(f, x, y) {
   if (f.flash > 0) { f.flash--; g.filter = "brightness(2.6)"; }
   g.drawImage(im, sx, sy, w, h, -ax / 2, -ay / 2, w / 2, h / 2);
   g.filter = "none";
-  if (sil) { g.globalAlpha = 0.14 + pulse * 0.14; g.drawImage(sil, -ax / 2, -ay / 2, w / 2, h / 2); g.globalAlpha = 1; }
+  // a red cast over an enraged boss; only a faint shimmer on the divine form, so skin keeps its natural colour
+  if (sil) { g.globalAlpha = f.rage ? 0.14 + pulse * 0.14 : 0.03 + pulse * 0.05; g.drawImage(sil, -ax / 2, -ay / 2, w / 2, h / 2); g.globalAlpha = 1; }
   if (bigHead || (base && costume === "avatar")) {
     const [hx, hy] = headTop(im, ikey + ":" + fr.i, sx, sy, w, h), hh = Math.round(h * 0.24), hw = Math.round(hh * 1.2);
     const cx = (hx - ax) / 2, top = (hy - ay) / 2;
@@ -1716,6 +1724,7 @@ function spriteWeapon(f, i) {
 }
 const spriteSheet = (f) => {
   if (f.kind === "pipeGrunt" && !f.weapon) return "pipeBare";
+  if (f.team === "p" && f.avatarT > 0 && SPRITES.f_avatar && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES.avatar) return "avatar";
   const base = SHEET_OF[f.kind], armed = base + "Lathi";
   return f.team === "p" && f.weapon && f.weapon.kind === "pipe" && SPRITES["f_" + armed] && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES[armed] ? armed : base;
 };
@@ -1932,7 +1941,8 @@ function drawFighter(f) {
 }
 // aura, special-move warning and motion trail, shared by sprite and drawn fighters
 function fighterExtras(f, x, y, sc, P) {
-  if (f.avatarT > 0) { g.globalAlpha = 0.35 + Math.sin(frameNo / 6) * 0.15; g.strokeStyle = "#f2c230"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y - f.z - 26 * sc, 14 * sc, 30 * sc, 0, 0, 7); g.stroke(); g.globalAlpha = 1; }
+  // golden motes rising around the divine form
+  if (f.avatarT > 0 && f.st !== "dead") for (let m = 0; m < 4; m++) { const ph = (frameNo * 0.6 + m * 23) % 46; g.globalAlpha = 1 - ph / 46; R(x + Math.sin(m * 2.1 + frameNo / 20) * 12 * sc, y - f.z - ph * sc, 1.5, 1.5, m % 2 ? "#ffd23a" : "#fff4c2"); g.globalAlpha = 1; }
   // special move warning: a red "!" over bosses and specialists
   if (f.warn > 0 && f.st === "windup") { const wy = y - f.z - 58 * sc; text("!", x, wy, 14, P.T.red, "center", "IBM Plex Sans"); }
   // rolling / cyclone motion trail
@@ -2071,7 +2081,8 @@ function drawFx() {
     if (f.kind === "dust") { f.x += f.vx; f.y += f.vy; g.globalAlpha = f.t / 24; R(x, f.y - 2, 3, 3, P.curb); g.globalAlpha = 1; }
     if (f.kind === "ember") { f.x += f.vx; f.y += f.vy; g.globalAlpha = Math.min(1, f.t / 30); R(x, f.y, 1.5, 1.5, f.t % 6 < 3 ? P.amber : P.T.red); g.globalAlpha = 1; }
     if (f.kind === "steam") { f.x += f.vx; f.y += f.vy; g.globalAlpha = f.t / 140; g.fillStyle = P.dark ? "#8f8a96" : "#ffffff"; g.beginPath(); g.arc(x, f.y, 3 + (70 - f.t) * 0.08, 0, 7); g.fill(); g.globalAlpha = 1; }
-    if (f.kind === "ring") { g.strokeStyle = f.big ? P.T.accent : P.spark; g.lineWidth = 1.5; g.beginPath(); g.arc(x, f.y, (f.big ? 22 : 12) - f.t, 0, 7); g.stroke(); }
+    if (f.kind === "ring" && f.gold) { g.globalAlpha = f.t / 18; g.strokeStyle = "#ffd23a"; g.lineWidth = 2.5; g.beginPath(); g.arc(x, f.y, 8 + (18 - f.t) * 3, 0, 7); g.stroke(); g.globalAlpha = 1; }
+    else if (f.kind === "ring") { g.strokeStyle = f.big ? P.T.accent : P.spark; g.lineWidth = 1.5; g.beginPath(); g.arc(x, f.y, (f.big ? 22 : 12) - f.t, 0, 7); g.stroke(); }
     if (f.kind === "water") { f.x += f.vx; f.y += f.vy; f.vy += 0.18; R(x, f.y, 2, 2, P.dark ? "#6fb7d8" : "#4a90b8"); }
     if (f.kind === "heart") { f.x += f.vx; f.y += f.vy; g.globalAlpha = Math.min(1, f.t / 20); g.fillStyle = P.T.accent; g.beginPath(); g.arc(x - 1.5, f.y, 1.8, 0, 7); g.arc(x + 1.5, f.y, 1.8, 0, 7); g.fill(); g.beginPath(); g.moveTo(x - 3.2, f.y + 0.6); g.lineTo(x, f.y + 4); g.lineTo(x + 3.2, f.y + 0.6); g.fill(); g.globalAlpha = 1; }
     if (f.kind === "star") { g.fillStyle = P.spark; g.beginPath(); for (let i = 0; i < 8; i++) { const r = i % 2 ? 2 : 6, a = i * Math.PI / 4; g.lineTo(x + Math.cos(a) * r, f.y + Math.sin(a) * r); } g.fill(); }
