@@ -100,9 +100,34 @@
     if (!active) return null;
     let best = active.querySelector(":scope > section");
     for (const s of active.querySelectorAll(":scope > section[id]")) {
-      if (s.getBoundingClientRect().top <= 90) best = s; else break;
+      if (s.getBoundingClientRect().top <= 118) best = s; else break;
     }
     return best;
+  }
+
+  /* ---------- Site navigation ----------
+     Courses live at abhishekrai.dev/learn/<course>/. A small bar links back to
+     the portfolio, the course list and the other course. */
+  const COURSE = document.documentElement.dataset.course === "vcf" ? "vcf" : "devops";
+  const SITE = {
+    devops: { name: "DevOps From Basics", other: "/learn/vcf-automation/", otherName: "VCF Automation From Basics" },
+    vcf: { name: "VCF Automation From Basics", other: "/learn/devops/", otherName: "DevOps From Basics" }
+  }[COURSE];
+  function siteLinks(cls) {
+    const nav = document.createElement("nav");
+    nav.className = cls; nav.setAttribute("aria-label", "Site");
+    nav.innerHTML = '<a href="/">AbhishekrAI.dev</a><span aria-hidden="true">/</span><a href="/learn/">Learn</a><span aria-hidden="true">/</span><span class="cur">' + SITE.name + '</span>' +
+      '<a class="other" href="' + SITE.other + '">' + SITE.otherName + '</a>';
+    return nav;
+  }
+  function crossLinks() {
+    // the contents page and the end of the last module point to the rest of the site
+    const host = document.getElementById("contents");
+    if (host && !host.querySelector(".site-more")) {
+      const p = document.createElement("p"); p.className = "small site-more";
+      p.innerHTML = 'Also free: <a href="' + SITE.other + '">' + SITE.otherName + '</a>. <a href="/learn/">All courses</a> · <a href="/">AbhishekrAI.dev</a>';
+      host.appendChild(p);
+    }
   }
 
   /* ---------- Toolbar ---------- */
@@ -210,14 +235,15 @@
       const prev = modules[i - 1], next = modules[i + 1];
       nav.innerHTML =
         (prev ? `<a class="prev" href="#/${firstId(prev)}"><small>Previous module</small>${label(prev)}</a>` : "<span></span>") +
-        (next ? `<a class="next" href="#/${firstId(next)}"><small>Next module</small>${label(next)}</a>` : "");
+        (next ? `<a class="next" href="#/${firstId(next)}"><small>Next module</small>${label(next)}</a>` : `<a class="next" href="${SITE.other}"><small>Next course</small>${SITE.otherName}</a>`);
       m.appendChild(nav);
     });
 
     /* Header: which module, which section, how far through */
     const rb = document.createElement("div");
     rb.id = "readbar";
-    rb.innerHTML = '<div class="rb-text"><b></b><span class="rb-mod"></span><span class="rb-sec"></span></div><div class="rb-progress"><i></i></div>';
+    rb.appendChild(siteLinks("rb-site"));
+    rb.insertAdjacentHTML("beforeend", '<div class="rb-text"><b></b><span class="rb-mod"></span><span class="rb-sec"></span></div><div class="rb-progress"><i></i></div>');
     document.body.appendChild(rb);
     const rbNum = rb.querySelector("b"), rbMod = rb.querySelector(".rb-mod"), rbSec = rb.querySelector(".rb-sec"), rbBar = rb.querySelector("i");
     let lastSaved = 0;
@@ -283,7 +309,7 @@
     }, { threshold: 0.35 });
     document.querySelectorAll(".stage[data-anim]").forEach((st) => io.observe(st));
 
-    toolbar();
+    toolbar(); crossLinks();
     return;
   }
 
@@ -311,6 +337,6 @@
     plugins: [RevealHighlight, RevealNotes, RevealSearch, RevealZoom],
   });
 
-  Reveal.on("ready", (e) => { toolbar(); DevOpsAnim.onSlide(e.currentSlide); });
+  Reveal.on("ready", (e) => { toolbar(); crossLinks(); document.body.appendChild(siteLinks("sitebar")); DevOpsAnim.onSlide(e.currentSlide); });
   Reveal.on("slidechanged", (e) => { DevOpsAnim.onSlide(e.currentSlide); remember(e.currentSlide.id); });
 })();

@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site.css">
+  <link rel="stylesheet" href="/assets/site.css?v=3">
   <link rel="stylesheet" href="/game/style.css?v=9">
 </head>
 <body>
@@ -22,10 +22,16 @@
       <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6L92 48L50 90L8 48Z" fill="none" stroke="currentColor" stroke-width="9"/><path d="M50 30L68 48L50 66L32 48Z" fill="currentColor"/></svg>
       <span class="wordmark">Abhishekr<b>AI</b><i>.dev</i></span>
     </a>
-    <div class="game-actions">
+    <button class="icon-btn menu-btn" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+    <nav class="nav" id="nav" aria-label="Main">
+      <a href="/#work">Work</a>
+      <a href="/learn/">Learn</a>
+      <a href="/#projects">Projects</a>
+      <a href="/game/" aria-current="page">Games</a>
+      <a href="/#contact">Contact</a>
       <button class="icon-btn" type="button" id="mute-btn">Sound on</button>
       <button class="icon-btn" type="button" id="theme-btn" aria-label="Switch colour theme">Dark</button>
-    </div>
+    </nav>
   </div>
 </header>
 
@@ -33,6 +39,7 @@
   <div class="wrap">
     <div class="arcade-head">
       <div>
+        <nav aria-label="Breadcrumb"><ol class="crumbs"><li><a href="/">Home</a></li><li><span aria-current="page">Games</span></li></ol></nav>
         <h1>Ghost Deploy</h1>
         <p>Get your build from your laptop to production in under a minute. A new map every day, and you race a replay of the fastest run.</p>
       </div>
@@ -86,10 +93,26 @@
       <span><i class="sw-red"></i>Scanner</span>
     </div>
     <details class="secrets" id="secrets"></details>
-    <p class="small muted" style="margin-top:18px"><a href="/">Back to abhishekrai.dev</a></p>
   </div>
 </main>
 
+<footer class="site-foot">
+  <div class="wrap">
+    <div>© 2026 Abhishek Rai · AbhishekrAI.dev</div>
+    <nav aria-label="Footer">
+      <a href="/">Home</a>
+      <a href="/learn/">Learn</a>
+      <a href="/learn/devops/">DevOps course</a>
+      <a href="/learn/vcf-automation/">VCF Automation course</a>
+      <a href="/game/">Ghost Deploy</a>
+      <a href="/game/street/">Rollback Street</a>
+      <a href="https://github.com/abhishekaryan23" target="_blank" rel="noopener">GitHub</a>
+      <a href="mailto:abhishek@abhishekrai.dev">Email</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="/assets/nav.js" defer></script>
 <script src="/game/arcade.js?v=8"></script>
 <script src="/game/game.js?v=5"></script>
 </body>

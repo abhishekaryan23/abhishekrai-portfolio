@@ -463,8 +463,8 @@ body.no-scroll { overflow: hidden; }
 /* reading mode: only the current module is on the page */
 .article-mode .reveal .slides > section[data-module]:not(.active-module) { display: none !important; }
 .article-mode .reveal .slides > section + section { border-top: 0; margin-top: 0; }
-.article-mode .reveal .slides { max-width: 780px; padding-top: 52px; }
-.article-mode .reveal .slides > section > section { scroll-margin-top: 56px; }
+.article-mode .reveal .slides { max-width: 780px; padding-top: 80px; }
+.article-mode .reveal .slides > section > section { scroll-margin-top: 84px; }
 
 /* header: module, section, progress */
 #readbar { display: none; }
@@ -633,3 +633,22 @@ ul.checklist input { accent-color: var(--accent); width: 16px; height: 16px; fle
 @media (max-width: 640px) {
   .mod-strip { grid-template-columns: repeat(8, 1fr); }
 }
+
+/* ---------- site navigation (back to abhishekrai.dev, the course list, the other course) ---------- */
+.rb-site, .sitebar { display: flex; align-items: center; gap: 6px; font: 500 12px "IBM Plex Sans", sans-serif; color: var(--muted); white-space: nowrap; overflow: hidden; }
+.rb-site a, .sitebar a { color: var(--muted); text-decoration: none; }
+.rb-site a:hover, .sitebar a:hover { color: var(--accent); text-decoration: underline; }
+.rb-site .cur, .sitebar .cur { color: var(--ink); overflow: hidden; text-overflow: ellipsis; }
+.rb-site span[aria-hidden], .sitebar span[aria-hidden] { color: var(--line2); }
+.rb-site .other, .sitebar .other { margin-left: auto; color: var(--accent); padding-left: 12px; }
+.rb-site { max-width: 780px; margin: 0 auto; padding: 7px 18px 0; }
+.article-mode .sitebar { display: none; }
+.sitebar { position: fixed; top: 10px; left: 14px; right: 14px; z-index: 30; pointer-events: none; }
+.sitebar > * { pointer-events: auto; }
+.sitebar a, .sitebar .cur { background: var(--paper); padding: 2px 6px; border-radius: 4px; }
+@media (max-width: 520px) { .rb-site .other { display: none; } }
+.site-more { margin-top: 18px; color: var(--muted); }
+.rb-site .cur, .sitebar .cur { flex: 0 1 auto; min-width: 4em; }
+.rb-site a, .sitebar a { flex: 0 0 auto; }
+.rb-site .other, .sitebar .other { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+@media (max-width: 760px) { .sitebar .other { display: none; } }
