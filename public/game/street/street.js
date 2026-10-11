@@ -1599,6 +1599,18 @@ function spriteFrame(f, sheet) {
   }
   return { i: 0 };
 }
+// a red silhouette of one atlas frame, built once and reused: the rage glow
+const RAGE_SIL = new Map();
+function rageSilhouette(im, key, sx, sy, w, h) {
+  let c = RAGE_SIL.get(key);
+  if (!c) {
+    c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d"); x.drawImage(im, sx, sy, w, h, 0, 0, w, h);
+    x.globalCompositeOperation = "source-in"; x.fillStyle = "#ff2a1a"; x.fillRect(0, 0, w, h);
+    RAGE_SIL.set(key, c);
+  }
+  return c;
+}
 function drawSpriteFighter(f, x, y) {
   const k = KINDS[f.kind], sheet = spriteSheet(f), fr = spriteFrame(f, sheet);
   const im = SPRITES[(fr.walk ? "w_" : "f_") + sheet], d = FIGHTER_FRAMES[fr.walk ? sheet + "_walk" : sheet][fr.i], [sx, sy, w, h, ax, ay] = d, sc = k.scale;
@@ -1607,9 +1619,17 @@ function drawSpriteFighter(f, x, y) {
   g.translate(x, y - Math.round(f.z));
   g.scale(face * sc, sc);
   if (fr.rot) { g.translate(0, -h / 4); g.rotate(fr.rot); g.translate(0, h / 4); }
+  // enraged: a pulsing red outline around the body and a red cast over it
+  const sil = f.rage && f.st !== "dead" ? rageSilhouette(im, (fr.walk ? "w_" : "f_") + sheet + ":" + fr.i, sx, sy, w, h) : null, pulse = 0.5 + Math.sin(frameNo / 5) * 0.5;
+  if (sil) {
+    g.globalAlpha = 0.55 + pulse * 0.35;
+    for (const [ox, oy] of [[-1, 0], [1, 0], [0, -1], [0, 1], [-1.5, -1], [1.5, -1]]) g.drawImage(sil, -ax / 2 + ox, -ay / 2 + oy, w / 2, h / 2);
+    g.globalAlpha = 1;
+  }
   if (f.flash > 0) { f.flash--; g.filter = "brightness(2.6)"; }
   g.drawImage(im, sx, sy, w, h, -ax / 2, -ay / 2, w / 2, h / 2);
   g.filter = "none";
+  if (sil) { g.globalAlpha = 0.14 + pulse * 0.14; g.drawImage(sil, -ax / 2, -ay / 2, w / 2, h / 2); g.globalAlpha = 1; }
   if (f.weapon && sheet !== "pipeGrunt" && !sheet.endsWith("Lathi")) spriteWeapon(f, fr.walk ? 1 : fr.i);
   g.restore();
 }
@@ -1845,7 +1865,6 @@ function drawFighter(f) {
 }
 // aura, special-move warning and motion trail, shared by sprite and drawn fighters
 function fighterExtras(f, x, y, sc, P) {
-  if (f.rage && f.st !== "dead") { g.globalAlpha = 0.16 + Math.sin(frameNo / 5) * 0.08; g.fillStyle = P.T.red; g.beginPath(); g.ellipse(x, y - f.z - 30 * sc, 18 * sc, 34 * sc, 0, 0, 7); g.fill(); g.globalAlpha = 1; }
   if (f.avatarT > 0) { g.globalAlpha = 0.35 + Math.sin(frameNo / 6) * 0.15; g.strokeStyle = "#f2c230"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y - f.z - 26 * sc, 14 * sc, 30 * sc, 0, 0, 7); g.stroke(); g.globalAlpha = 1; }
   // special move warning: a red "!" over bosses and specialists
   if (f.warn > 0 && f.st === "windup") { const wy = y - f.z - 58 * sc; text("!", x, wy, 14, P.T.red, "center", "IBM Plex Sans"); }
