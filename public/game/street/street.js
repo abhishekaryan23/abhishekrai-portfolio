@@ -925,7 +925,7 @@ function fightersPending() {
 const art = (names) => names.forEach((n) => sprite(n, ART + n + ".png"));
 const fighterArt = (sheet) => { if (!sheet) return; sprite("f_" + sheet, ART + "fighters/" + sheet + ".png"); sprite("w_" + sheet, ART + "fighters/" + sheet + "_walk.png"); };
 const STAGE_ART = [
-  ["birds", "cow", "auto", "cat", "st_lamp", "st_garbage", "st_cycle", "st_milk", "poster_film", "poster_circus", "poster_tuition", "dhaba_table", "dhaba_kettle", "dhaba_chairs",
+  ["birds", "cow", "auto", "cat", "cat_run1", "cat_run2", "st_lamp", "st_garbage", "st_cycle", "st_milk", "poster_film", "poster_circus", "poster_tuition", "dhaba_table", "dhaba_kettle", "dhaba_chairs",
     "sign_0", "sign_1", "sign_2", "sign_3", "sign_4", "sign_5", "sign_6", "sign_7", "sign_8", "sign_9", "sign_10", "sign_11"],
   ["routemap", "ad_chai", "ad_film", "clock", "sb_bench", "sb_cooler", "sb_scale", "sb_cagelamp", "train_coach"],
   ["birds", "poster", "kite_m", "kite_y", "kite_b", "kite_o", "cloth_sari", "cloth_dupatta", "cloth_kurta", "cloth_gamcha", "roof_exit", "roof_dish", "roof_ac", "roof_tanks"],
@@ -941,7 +941,7 @@ function stageArt(si) {
 }
 function prepareStage(si) { artWaitUntil = performance.now() + 6000; stageArt(si); setTimeout(() => stageArt(si + 1), 3000); }
 // shared by every stage: pickups, barrels, story portraits
-art(["samosa", "kulhad", "lathi", "knife", "letter", "barrel", "barrel_broken", "pump", "chai_machine"]);
+art(["oneup", "samosa", "kulhad", "lathi", "knife", "letter", "barrel", "barrel_broken", "pump", "chai_machine"]);
 for (const n of ["rai", "kai", "nani", "ox", "rook", "crane", "rollback"]) sprite("p_" + n, ART + "portraits/" + n + ".png");
 // draw a sprite at half its pixel size (the canvas is scaled 2x), bottom-centred on (x, y), snapped to device pixels
 function spr(name, x, y, flip) {
@@ -1625,6 +1625,31 @@ function headTop(im, key, sx, sy, w, h) {
   }
   return r;
 }
+// Costumes recolour Rai's magenta jacket / Kai's teal vest in the 8-bit sheets
+// (hue range, minimum saturation, typical brightness), built once per sheet and costume.
+const COSTUME_TINT = { avatar: "#d9741c", neon: "#2a2433", gold: "#c9a227" };
+const COSTUME_HUE = { rai: [300, 350, 0.3, 0.72], kai: [150, 200, 0.25, 0.62] };
+const TINTED = new Map();
+function costumeAtlas(im, base, key) {
+  const tint = COSTUME_TINT[costume]; if (!tint) return im;
+  const k = key + "@" + costume; let c = TINTED.get(k); if (c) return c;
+  c = document.createElement("canvas"); c.width = im.width; c.height = im.height;
+  const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(im, 0, 0);
+  const d = x.getImageData(0, 0, c.width, c.height), a = d.data, [h0, h1, smin, ref] = COSTUME_HUE[base];
+  const t = parseInt(tint.slice(1), 16), tr = t >> 16, tg = (t >> 8) & 255, tb = t & 255;
+  for (let i = 0; i < a.length; i += 4) {
+    if (!a[i + 3]) continue;
+    const r = a[i], gg = a[i + 1], b = a[i + 2], mx = Math.max(r, gg, b), mn = Math.min(r, gg, b);
+    if (mx === mn || (mx - mn) / mx < smin) continue;
+    let h = mx === r ? ((gg - b) / (mx - mn)) % 6 : mx === gg ? (b - r) / (mx - mn) + 2 : (r - gg) / (mx - mn) + 4;
+    h = (h * 60 + 360) % 360;
+    if (h < h0 || h > h1) continue;
+    const f = Math.min(1.6, mx / 255 / ref);
+    a[i] = Math.min(255, tr * f); a[i + 1] = Math.min(255, tg * f); a[i + 2] = Math.min(255, tb * f);
+  }
+  x.putImageData(d, 0, 0); TINTED.set(k, c);
+  return c;
+}
 // a red silhouette of one atlas frame, built once and reused: the rage glow
 const RAGE_SIL = new Map();
 function rageSilhouette(im, key, sx, sy, w, h) {
@@ -1639,7 +1664,10 @@ function rageSilhouette(im, key, sx, sy, w, h) {
 }
 function drawSpriteFighter(f, x, y) {
   const k = KINDS[f.kind], sheet = spriteSheet(f), fr = spriteFrame(f, sheet);
-  const im = SPRITES[(fr.walk ? "w_" : "f_") + sheet], d = FIGHTER_FRAMES[fr.walk ? sheet + "_walk" : sheet][fr.i], [sx, sy, w, h, ax, ay] = d, sc = k.scale;
+  const ikey = (fr.walk ? "w_" : "f_") + sheet, base = f.team === "p" && /^(rai|kai)/.test(sheet) ? sheet.slice(0, 3) : null;
+  let im = SPRITES[ikey];
+  if (base && costume !== "classic") im = costumeAtlas(im, base, ikey);
+  const d = FIGHTER_FRAMES[fr.walk ? sheet + "_walk" : sheet][fr.i], [sx, sy, w, h, ax, ay] = d, sc = k.scale;
   const face = fr.back ? -f.face : f.face;
   g.save();
   g.translate(x, y - Math.round(f.z));
@@ -1656,8 +1684,19 @@ function drawSpriteFighter(f, x, y) {
   g.drawImage(im, sx, sy, w, h, -ax / 2, -ay / 2, w / 2, h / 2);
   g.filter = "none";
   if (sil) { g.globalAlpha = 0.14 + pulse * 0.14; g.drawImage(sil, -ax / 2, -ay / 2, w / 2, h / 2); g.globalAlpha = 1; }
+  if (bigHead || (base && costume === "avatar")) {
+    const [hx, hy] = headTop(im, ikey + ":" + fr.i, sx, sy, w, h), hh = Math.round(h * 0.24), hw = Math.round(hh * 1.2);
+    const cx = (hx - ax) / 2, top = (hy - ay) / 2;
+    if (bigHead && fr.i !== 10) {   // not on the knocked-down frame, where the top is a shoulder
+      const s0 = Math.max(sx, Math.round(sx + hx - hw / 2)), s1 = Math.min(sx + w, s0 + hw);
+      const dw = (s1 - s0) / 2 * 1.7, dh = hh / 2 * 1.7;
+      g.drawImage(im, s0, sy + hy, s1 - s0, hh, cx - dw / 2, top + hh / 2 - dh, dw, dh);
+    }
+    // a peacock feather tucked into the hair for the Avatar costume
+    if (base && costume === "avatar") { const fy = bigHead ? top + hh / 2 - hh / 2 * 1.7 : top; R(cx - 3, fy - 6, 1.5, 7, "#1f7a6a"); R(cx - 3.5, fy - 7.5, 2.5, 2.5, "#2b54a8"); R(cx - 3, fy - 7, 1.2, 1.2, "#f2c230"); }
+  }
   // the pigeon friend rides on the head
-  if (f.pigeon && SPRITES.birds) { const [hx, hy] = headTop(im, (fr.walk ? "w_" : "f_") + sheet + ":" + fr.i, sx, sy, w, h); bird(0, (hx - ax) / 2 - 1, (hy - ay) / 2 + 2); }
+  if (f.pigeon && SPRITES.birds) { const [hx, hy] = headTop(im, ikey + ":" + fr.i, sx, sy, w, h); bird(0, (hx - ax) / 2 - 1, (hy - ay) / 2 + 2 - (bigHead && fr.i !== 10 ? Math.round(h * 0.24) / 2 * 0.7 : 0)); }
   if (f.weapon && sheet !== "pipeGrunt" && !sheet.endsWith("Lathi")) spriteWeapon(f, fr.walk ? 1 : fr.i);
   g.restore();
 }
@@ -1672,6 +1711,7 @@ function spriteWeapon(f, i) {
   const seg = (a, b, w, col) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(hx + c * a, hy + sn * a); g.lineTo(hx + c * b, hy + sn * b); g.stroke(); };
   g.lineCap = "butt";
   if (f.weapon.kind === "pipe") { seg(-7, 21, 3.4, "#2a1a0e"); seg(-6.5, 20.5, 2, "#c79a52"); seg(1, 3, 2.2, "#6b4a22"); seg(11, 12.5, 2.2, "#6b4a22"); }
+  else if (SPRITES.knife) { g.save(); g.translate(hx, hy); g.rotate(ang); g.drawImage(SPRITES.knife, -3, -1.5, 14, 3); g.restore(); }
   else { seg(-2, 8, 2.6, "#1e2226"); seg(-1.5, 1.5, 1.6, "#6b4a22"); seg(1.5, 7.5, 1.4, "#d8dde2"); }
 }
 const spriteSheet = (f) => {
@@ -1679,8 +1719,7 @@ const spriteSheet = (f) => {
   const base = SHEET_OF[f.kind], armed = base + "Lathi";
   return f.team === "p" && f.weapon && f.weapon.kind === "pipe" && SPRITES["f_" + armed] && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES[armed] ? armed : base;
 };
-const usesSprite = (f) => SHEET_OF[f.kind] && SPRITES["f_" + spriteSheet(f)] && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES[spriteSheet(f)] &&
-  !bigHead && !((f.kind === "rai" || f.kind === "kai") && costume !== "classic");
+const usesSprite = (f) => SHEET_OF[f.kind] && SPRITES["f_" + spriteSheet(f)] && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES[spriteSheet(f)];
 
 const STANCE_STATES = new Set(["idle", "walk", "run", "windup", "grabbed", "hurt", "taunt"]);
 const DOWN_DRAW = new Set(["lying", "dead", "getup", "out"]);
@@ -1960,6 +1999,7 @@ function drawItem(it, P) {
       g.fillStyle = P.ol; g.beginPath(); g.moveTo(x - 7, y); g.lineTo(x, y - 11); g.lineTo(x + 7, y); g.closePath(); g.fill();
       g.fillStyle = "#d9a441"; g.beginPath(); g.moveTo(x - 5.5, y - 1); g.lineTo(x, y - 9); g.lineTo(x + 5.5, y - 1); g.closePath(); g.fill(); R(x - 1, y - 6, 2, 1, "#a8742a"); R(x - 3, y - 3, 2, 1, "#a8742a"); }
     else if (it.kind === "letter") { R(x - 8, y - 9, 16, 10, P.ol); R(x - 7, y - 8, 14, 8, "#f7f1e3"); g.strokeStyle = "#b9ad98"; g.lineWidth = 1; g.beginPath(); g.moveTo(x - 7, y - 8); g.lineTo(x, y - 3); g.lineTo(x + 7, y - 8); g.stroke(); R(x - 1.5, y - 5, 3, 3, P.T.accent); }
+    else if (it.kind === "oneup" && spr("oneup", x, y + Math.sin(frameNo / 10))) { /* extra-life coin */ }
     else if (it.kind === "oneup") { R(x - 9, y - 10, 18, 9, P.ol); R(x - 8, y - 9, 16, 7, P.T.good); text("1UP", x, y - 3.5, 6, "#fff"); }
     else if (SPRITES.kulhad) { g.drawImage(SPRITES.kulhad, 0, 0, 22, 39, x - 5.5, y - 19.5, 11, 19.5); }
     else { // chai in a clay kulhad
@@ -1972,12 +2012,19 @@ function drawShot(s, P) {
   {
     const x = Math.round(s.x - cam), y = Math.round(s.y - s.z);
     if (s.kind === "chakra") { g.save(); g.translate(x, y); g.rotate(frameNo / 2); g.strokeStyle = "#f2c230"; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 6, 0, 7); g.stroke(); g.strokeStyle = "#d9741c"; g.lineWidth = 1; g.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.moveTo(0, 0); g.lineTo(Math.cos(a) * 6, Math.sin(a) * 6); } g.stroke(); g.restore(); return; }
-    if (s.kind === "knife") { g.fillStyle = P.shadow; g.fillRect(x - 4, s.y - 1, 8, 2); g.save(); g.translate(x, y); g.scale(s.face, 1); R(-6, -1.5, 4, 3, "#3b2a1d"); R(-2, -1, 9, 2, "#e4e8ec"); g.restore(); }
+    if (s.kind === "knife") {
+      g.fillStyle = P.shadow; g.fillRect(x - 4, s.y - 1, 8, 2);
+      g.save(); g.translate(x, y); g.scale(s.face, 1);
+      if (SPRITES.knife) g.drawImage(SPRITES.knife, -7, -1.5, 14, 3); else { R(-6, -1.5, 4, 3, "#3b2a1d"); R(-2, -1, 9, 2, "#e4e8ec"); }
+      g.restore();
+    }
     else { g.strokeStyle = P.amber; g.lineWidth = 2; for (let r = 0; r < 3; r++) { g.globalAlpha = 0.8 - r * 0.25; g.beginPath(); g.ellipse(x - s.face * r * 6, s.y, 6 + r * 3, 3 + r, 0, Math.PI, 0); g.stroke(); } g.globalAlpha = 1; }
   }
 }
 
 function drawCat(P) {
+  // the cat bolts left when a fight gets too close: two running frames, flipped to face left
+  if (cat.st === "run" && spr(frameNo % 8 < 4 ? "cat_run1" : "cat_run2", Math.round(cat.x - cam), cat.y + 1, true)) return;
   if (cat.st !== "run" && SPRITES.cat) {
     const x = Math.round(cat.x - cam);
     spr("cat", x, cat.y + 1);
