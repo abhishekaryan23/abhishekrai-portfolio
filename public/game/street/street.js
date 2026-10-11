@@ -64,15 +64,15 @@ const STAGES = [
 const KINDS = {
   rai:       { hp: 70, speed: 1.35, scale: 1, name: "Rai" },
   nani:      { hp: 1, speed: 0, scale: 0.94, name: "Nani" },
-  kai:       { hp: 70, speed: 1.35, scale: 1, name: "Kavya" },
+  kai:       { hp: 70, speed: 1.35, scale: 1, name: "Kai" },
   grunt:     { hp: 22, speed: 0.85, scale: 1, name: "Goonda", score: 100, windup: 14, cool: [50, 90], moves: ["ePunch", "ePunch", "eKick"] },
   pipeGrunt: { hp: 24, speed: 0.85, scale: 1, name: "Lathi", score: 150, windup: 16, cool: [60, 100], moves: ["ePunch", "eKick"], weapon: "pipe" },
   kicker:    { hp: 26, speed: 1.05, scale: 1, name: "Kicker", score: 200, windup: 12, cool: [45, 80], moves: ["eKick", "eKick", "ePunch"], fly: true },
   thrower:   { hp: 20, speed: 0.9, scale: 1, name: "Knife", score: 250, windup: 16, cool: [80, 120], moves: ["ePunch"], ranged: true },
   bruiser:   { hp: 46, speed: 0.65, scale: 1.18, name: "Bruiser", score: 300, windup: 20, cool: [70, 110], moves: ["heavy"] },
   ox:        { hp: 160, speed: 0.75, scale: 1.4, name: "Bhola the Ox", score: 2000, windup: 18, cool: [45, 80], moves: ["heavy", "heavy", "ePunch"], specials: ["charge"], poise: 26, boss: true },
-  rook:      { hp: 150, speed: 1.25, scale: 1.1, name: "Raghav", score: 2500, windup: 12, cool: [35, 65], moves: ["eKick", "eKick", "ePunch"], specials: ["eRoll"], poise: 22, boss: true },
-  crane:     { hp: 160, speed: 1.1, scale: 1.1, name: "Cheel", score: 3000, windup: 14, cool: [40, 70], moves: ["eKick", "ePunch"], specials: ["dive", "fan"], poise: 24, boss: true },
+  rook:      { hp: 150, speed: 1.25, scale: 1.22, name: "Raghav", score: 2500, windup: 12, cool: [35, 65], moves: ["eKick", "eKick", "ePunch"], specials: ["eRoll"], poise: 22, boss: true },
+  crane:     { hp: 160, speed: 1.1, scale: 1.15, name: "Cheel", score: 3000, windup: 14, cool: [40, 70], moves: ["eKick", "ePunch"], specials: ["dive", "fan"], poise: 24, boss: true },
   // unlocked by beating each boss: same look, player-sized, with the boss's power on Special
   pOx:       { hp: 90, speed: 1.1, scale: 1.16, name: "Bhola", look: "ox", heavy: 2, sturdy: 5 },
   pRook:     { hp: 62, speed: 1.5, scale: 1.04, name: "Raghav", look: "rook" },
@@ -118,7 +118,7 @@ const ATK = {
 };
 // what Special does for each fighter on the ground: [attack, SP cost, label]
 const SPECIALS = { rai: ["roll", 30, "Rolling kick"], kai: ["flurry", 25, "Lightning kicks"], pOx: ["rush", 30, "Bull rush"], pRook: ["kroll", 25, "Kalari roll"], pCrane: ["dive", 25, "Kite dive"], pRollback: ["quake", 40, "Mill quake"] };
-const ROSTER = [["rai", "Rai"], ["kai", "Kavya"], ["pOx", "Bhola"], ["pRook", "Raghav"], ["pCrane", "Cheel"], ["pRollback", "Ranjit"]];
+const ROSTER = [["rai", "Rai"], ["kai", "Kai"], ["pOx", "Bhola"], ["pRook", "Raghav"], ["pCrane", "Cheel"], ["pRollback", "Ranjit"]];
 const UNLOCK_BY = { ox: "pOx", rook: "pRook", crane: "pCrane", rollback: "pRollback" };
 const AIR = new Set(["jkick", "flykick", "cyclone", "dragon", "eFly", "dive"]);
 
@@ -188,6 +188,7 @@ function togglePause() {
 function start(stage, n, viaContinue) {
   if (viaContinue) continued = true; else { continued = false; fromStart = stage === 0; }
   startPlayers = n; players = [];
+  if (typeof scene !== "undefined" && scene) { scene = null; const w = document.getElementById("stage-wrap"); if (w) w.classList.remove("story"); }
   join(0); if (n === 2) { join(1); joinedOnce = true; }
   state = "play"; paused = false; runStart = performance.now();
   $("overlay").hidden = true;
@@ -882,28 +883,31 @@ function updateStageFx() {
 
 /* ---------- palette ---------- */
 let PAL = null;
+const SHADES = new Map();
 function shade(hex, f) {
+  const key = hex + f; let v = SHADES.get(key); if (v) return v;
   const n = parseInt(hex.slice(1), 16), r = n >> 16, gg = (n >> 8) & 255, b = n & 255;
   const m = (c) => Math.round(f < 0 ? c * (1 + f) : c + (255 - c) * f);
-  return "#" + ((1 << 24) | (m(r) << 16) | (m(gg) << 8) | m(b)).toString(16).slice(1);
+  v = "#" + ((1 << 24) | (m(r) << 16) | (m(gg) << 8) | m(b)).toString(16).slice(1);
+  SHADES.set(key, v); return v;
 }
 function palette() {
   const T = Arcade.tokens(), d = T.dark;
   PAL = {
     T, dark: d, ol: "#15121a", spark: d ? "#fff6e0" : "#ffffff", wood: d ? "#7a5233" : "#8a5d3b",
     sky: d ? "#14121a" : "#e9dfe6", sky2: d ? "#1c1824" : "#ddd0dc", far: d ? "#221f27" : "#cfc3cc", farWin: d ? "#5a4a63" : "#f4ecf0",
-    walls: d ? ["#2b2724", "#2f2a2d", "#27242a"] : ["#ddd2c4", "#d3c6b8", "#e3d9cc"],
+    walls: d ? ["#3a3531", "#3e383b", "#363339"] : ["#ddd2c4", "#d3c6b8", "#e3d9cc"],
     trim: d ? "#3b3631" : "#bfb2a2", brick: d ? "#3a2a2a" : "#c9ada0", brickLine: d ? "#2a1e1e" : "#b5978a",
     glass: d ? "#1b2a33" : "#b8c9cf", glassLit: d ? "#4a3d24" : "#f3e3bf",
     side: d ? "#3a3632" : "#cbc2b5", sideLine: d ? "#2e2a27" : "#b6ab9c", curb: d ? "#4a4540" : "#a99d8d",
-    road: d ? "#232120" : "#9d968c", lane: d ? "#5d5852" : "#e9e4dc",
+    road: d ? "#33302f" : "#9d968c", lane: d ? "#5d5852" : "#e9e4dc",
     tile: d ? "#2c2d31" : "#e6e2da", tileLine: d ? "#232427" : "#cfc9be", ceil: d ? "#151417" : "#3b3832", lamp: d ? "#e9e2c8" : "#fffbe9",
     plat: d ? "#3a3836" : "#b9b2a7", platLine: d ? "#2f2d2b" : "#a39b8f", rail: d ? "#6b6560" : "#77706a", pit: d ? "#0f0e10" : "#4a4640",
     trainBody: d ? "#8d939b" : "#c9ced4", trainWin: d ? "#2a3440" : "#5d6b78",
-    tar: d ? "#262427" : "#77727a", tarDot: d ? "#343136" : "#8a858e", parapet: d ? "#36323a" : "#a49aa6",
-    steel: d ? "#2f3236" : "#5d6168", steelHi: d ? "#43474d" : "#7a7f86", plate: d ? "#2b2a2c" : "#6e6a66", plateDot: d ? "#3a393b" : "#807b77",
-    corr: d ? "#1d1c1f" : "#4e4b52", corrLine: d ? "#252428" : "#59565d",
-    skin: ["#c98e62", "#9a6440", "#e0b088", "#7b4a2c"], hair: "#1d1b18",
+    tar: d ? "#343138" : "#6b6570", tarDot: d ? "#45414a" : "#7c7681", parapet: d ? "#45404a" : "#b9aab6",
+    steel: d ? "#2f3236" : "#5d6168", steelHi: d ? "#43474d" : "#7a7f86", plate: d ? "#38373c" : "#6e6a66", plateDot: d ? "#4a494e" : "#807b77",
+    corr: d ? "#2a292d" : "#4e4b52", corrLine: d ? "#343338" : "#59565d",
+    skin: ["#c98e62", "#9a6440", "#e0b088", "#7b4a2c"], hair: d ? "#2a221e" : "#1d1b18", looks: {},
     shadow: "rgba(0,0,0,0.28)", neon: T.accent, neon2: T.teal, amber: T.amber
   };
 }
@@ -928,6 +932,14 @@ function drawStreet(P) {
   R(0, 0, LW, LH, P.sky); stars(P, 40, 60);
   g.fillStyle = P.dark ? "#3a3440" : "#f6eff3"; g.beginPath(); g.arc(300 - cam * 0.05, 26, 11, 0, 7); g.fill();
   skyline(P, 0.3, 112, 50);
+  // a temple spire and a mobile tower on the far skyline
+  for (let tx = -(cam * 0.3 % 520) + 140; tx < LW + 60; tx += 520) {
+    const c = P.far, d = shade(P.far, -0.08);
+    R(tx - 14, 42, 28, 70, c); R(tx - 11, 30, 22, 12, c); R(tx - 8, 21, 16, 10, c); R(tx - 5, 14, 10, 8, c); R(tx - 2, 9, 4, 6, d);
+    R(tx - 1, 6, 2, 3, P.amber); g.fillStyle = "#d9741c"; g.beginPath(); g.moveTo(tx, 0); g.lineTo(tx + 7 + Math.sin(frameNo / 12) * 1.5, 2); g.lineTo(tx, 4); g.fill(); R(tx, 0, 0.8, 8, P.rail);
+    const mx = tx + 260; g.strokeStyle = P.far; g.lineWidth = 1; g.beginPath(); g.moveTo(mx - 6, 112); g.lineTo(mx, 10); g.lineTo(mx + 6, 112); for (let yy = 20; yy < 110; yy += 10) { g.moveTo(mx - 6 + (yy - 10) / 17, yy); g.lineTo(mx + 6 - (yy - 10) / 17, yy + 8); } g.stroke();
+    R(mx - 4, 16, 3, 6, P.far); R(mx + 2, 22, 3, 6, P.far); if (frameNo % 70 < 35) R(mx - 1, 7, 2, 2, P.T.red);
+  }
   const first = Math.floor(cam / 128) - 1;
   for (let i = first; i < first + 5; i++) {
     const x = i * 128 - cam, ware = i * 128 >= 1300, top = 26 + (i % 2) * 10;
@@ -937,6 +949,7 @@ function drawStreet(P) {
       R(x + 20, 82, 88, 68, P.trim); for (let sy = 84; sy < 150; sy += 4) R(x + 20, sy, 88, 1, P.brickLine);
       R(x + 58, 70, 12, 6, P.amber); text("GODOWN " + (i - 9), x + 64, 64, 7, P.neon);
       R(x + 10, 120, 6, 30, P.T.amber); for (let s = 0; s < 30; s += 6) R(x + 10, 120 + s, 6, 3, P.ol);
+      if (i * 128 === 1408) { R(x - 6, 60, 10, 90, P.trim); R(x + 124, 60, 10, 90, P.trim); R(x - 6, 50, 140, 12, P.trim); R(x - 6, 50, 140, 2, shade(P.trim, 0.15)); text("CHANDNI MANDI", x + 64, 59, 7, P.amber); }
     } else {
       const wall = P.walls[((i % 3) + 3) % 3];
       R(x, top, 128, 150 - top, wall); R(x, top, 128, 3, P.trim);
@@ -969,9 +982,21 @@ function drawStreet(P) {
       g.globalAlpha = (frameNo + i * 37) % 240 < 4 ? 0.35 : 1; text(sign, x + 64, 95, 9, neon); g.globalAlpha = 1;
       for (let s = 0; s < 8; s++) { g.globalAlpha = s % 2 ? 1 : 0.6; R(x + 8 + s * 10, 100, 10, 4, s % 2 ? P.trim : neon); }
       g.globalAlpha = 1;
+      // a marigold toran with mango leaves strung under the awning
+      for (let s = 0; s <= 20; s++) { const tx = x + 9 + s * 4, ty = 105 + Math.sin(s / 20 * Math.PI) * 4; R(tx, ty, 2, 2, s % 2 ? "#f2a91a" : "#e2701c"); if (s % 4 === 2) R(tx, ty + 2, 1, 3, "#2f6b3a"); }
+      // the reflection of the sign on the wet road
+      g.globalAlpha = P.dark ? 0.16 : 0.09; R(x + 28 + Math.sin(frameNo / 18 + i) * 1, 180, 70, 3, neon); R(x + 36 + Math.sin(frameNo / 15 + i) * 1.4, 188, 54, 2, neon); R(x + 46, 196, 34, 2, neon); g.globalAlpha = 1;
       // poster and a little graffiti
       if (i % 3 === 1) { R(x + 86, 60, 12, 16, P.T.amber); R(x + 88, 63, 8, 2, P.ol); R(x + 88, 67, 6, 1, P.ol); }
       if (i % 4 === 2) text("RAI", x + 40, 80, 8, shade(P.neon, 0.15), "center", "Newsreader");
+      if (i === 0) {
+        // Nani's dhaba: a steel kettle on the stove, a table and two tumblers, a bulb over the door
+        R(x + 14, 138, 22, 3, "#8a6a4a"); R(x + 15, 141, 2, 9, "#5d4630"); R(x + 33, 141, 2, 9, "#5d4630");
+        R(x + 18, 134, 3, 4, "#c9ced4"); R(x + 26, 134, 3, 4, "#c9ced4");
+        R(x + 54, 140, 18, 10, "#3b3832"); R(x + 58, 132, 10, 8, "#c9ced4"); R(x + 67, 134, 4, 1.5, "#c9ced4");
+        g.globalAlpha = 0.5; R(x + 61 + Math.sin(frameNo / 9), 126, 1, 5, "#ffffff"); g.globalAlpha = 1;
+        R(x + 104, 100, 4, 4, P.lamp); g.globalAlpha = P.dark ? 0.2 : 0.08; g.fillStyle = P.lamp; g.beginPath(); g.arc(x + 106, 102, 14, 0, 7); g.fill(); g.globalAlpha = 1;
+      }
     }
     R(x + 126, 30, 2, 120, P.trim);
   }
@@ -982,8 +1007,13 @@ function drawStreet(P) {
   for (let lx = -(cam % 48); lx < LW; lx += 48) R(lx, 197, 24, 2, P.lane);
   // an auto-rickshaw parked at the kerb, and a cow who owns the road
   for (let ax = -(cam % 512) + 300; ax < LW + 40; ax += 512) {
-    R(ax - 1, 160, 34, 15, P.ol); R(ax, 161, 32, 13, "#f2c230"); R(ax, 161, 32, 5, "#1d1b18"); R(ax + 2, 166, 12, 6, P.glass);
-    g.fillStyle = P.ol; g.beginPath(); g.arc(ax + 6, 176, 3.5, 0, 7); g.arc(ax + 27, 176, 3.5, 0, 7); g.fill();
+    // a black-and-yellow auto-rickshaw: canopy, open side, single headlight
+    g.fillStyle = P.ol; g.beginPath(); g.moveTo(ax - 1, 177); g.lineTo(ax - 1, 158); g.quadraticCurveTo(ax + 2, 150, ax + 14, 150); g.lineTo(ax + 30, 150); g.quadraticCurveTo(ax + 38, 152, ax + 39, 162); g.lineTo(ax + 40, 177); g.closePath(); g.fill();
+    g.fillStyle = "#1d1b18"; g.beginPath(); g.moveTo(ax, 160); g.quadraticCurveTo(ax + 3, 151, ax + 14, 151); g.lineTo(ax + 30, 151); g.quadraticCurveTo(ax + 37, 153, ax + 37, 160); g.closePath(); g.fill();
+    R(ax, 160, 38, 15, "#f2c230"); R(ax + 6, 160, 16, 9, P.dark ? "#2a2724" : "#4a453f"); R(ax + 24, 160, 2, 15, "#c9a227");
+    R(ax + 34, 163, 4, 4, "#fff4d6"); R(ax, 172, 38, 2, "#2f2b28"); R(ax + 8, 162, 6, 4, "#7a2230");
+    g.fillStyle = P.ol; g.beginPath(); g.arc(ax + 8, 177, 3.6, 0, 7); g.arc(ax + 33, 177, 3.6, 0, 7); g.fill();
+    R(ax + 7, 176, 2, 2, "#8a8278"); R(ax + 32, 176, 2, 2, "#8a8278");
   }
   for (let cx = -((cam + 200) % 768) + 600; cx < LW + 40; cx += 768) {
     // a white cow resting on the road, chewing, with a hump and curved horns
@@ -998,7 +1028,8 @@ function drawStreet(P) {
   for (let px = -(cam % 256); px < LW + 40; px += 256) {
     const wx = px + cam;
     R(px + 2, 92, 3, 60, P.dark ? "#4a4540" : "#5d5852"); R(px - 4, 90, 14, 4, P.dark ? "#4a4540" : "#5d5852"); R(px - 2, 94, 10, 2, P.lamp);
-    g.globalAlpha = P.dark ? 0.12 : 0.06; g.fillStyle = P.lamp; g.beginPath(); g.moveTo(px - 2, 96); g.lineTo(px + 8, 96); g.lineTo(px + 26, 168); g.lineTo(px - 20, 168); g.fill(); g.globalAlpha = 1;
+    g.globalAlpha = P.dark ? 0.12 : 0.06; g.fillStyle = P.lamp; g.beginPath(); g.moveTo(px - 2, 96); g.lineTo(px + 8, 96); g.lineTo(px + 26, 168); g.lineTo(px - 20, 168); g.fill();
+    g.globalAlpha = P.dark ? 0.16 : 0.07; g.beginPath(); g.ellipse(px + 3, 170, 28, 6, 0, 0, 7); g.fill(); g.globalAlpha = 1;
     if (Math.floor(wx / 256) % 2 === 0) { g.fillStyle = P.dark ? "#1d1c1f" : "#3b3832"; g.beginPath(); g.ellipse(px + 70, 149, 8, 6, 0, 0, 7); g.ellipse(px + 80, 150, 6, 5, 0, 0, 7); g.fill(); }
   }
 }
@@ -1010,17 +1041,35 @@ function drawSubway(P) {
   R(0, 64, LW, 8, P.neon); R(0, 74, LW, 2, P.neon2);
   // ceiling with strip lights
   R(0, 0, LW, 26, P.ceil);
-  for (let lx = -(cam % 64); lx < LW; lx += 64) { R(lx + 10, 18, 40, 4, P.lamp); g.globalAlpha = 0.08; g.fillStyle = P.lamp; g.fillRect(lx, 22, 60, 20); g.globalAlpha = 1; }
+  for (let lx = -(cam % 128); lx < LW + 64; lx += 128) {
+    R(lx + 10, 18, 40, 4, P.lamp); g.globalAlpha = 0.08; g.fillStyle = P.lamp; g.fillRect(lx, 22, 60, 20); g.globalAlpha = 1;
+    // a slow ceiling fan, as on every suburban platform
+    const fx0 = lx + 92, a = frameNo / 5; R(fx0 - 0.5, 8, 1, 10, P.rail); R(fx0 - 2, 17, 4, 3, P.rail);
+    g.strokeStyle = P.dark ? "#6b6560" : "#5d5852"; g.lineWidth = 2; g.beginPath();
+    for (let b = 0; b < 3; b++) { const ba = a + b * 2.094; g.moveTo(fx0, 19); g.lineTo(fx0 + Math.cos(ba) * 13, 19 + Math.sin(ba) * 2.2); }
+    g.stroke();
+  }
   // station boards, route maps, posters, clocks
   for (let px = -(cam % 256); px < LW + 60; px += 256) {
-    R(px + 20, 34, 70, 20, "#1d1b18"); R(px + 21, 35, 68, 1, P.neon); R(px + 20, 34, 70, 20, "#f2c230"); text("BUNDER ROAD", px + 55, 44, 6.5, "#1d1b18"); text("बंदर रोड", px + 55, 52, 6.5, "#1d1b18", "center", "sans-serif");
+    const slot = Math.floor((px + cam) / 256);
+    if (px + cam >= 880) {
+      // the service tunnel: bare brick, a caged lamp, pipes
+      R(px, 26, 256, 92, P.brick);
+      for (let by = 30; by < 118; by += 6) { R(px, by, 256, 1, P.brickLine); for (let bx = (by / 6) % 2 ? 0 : 8; bx < 256; bx += 16) R(px + bx, by - 5, 1, 5, P.brickLine); }
+      R(px, 40, 256, 3, P.rail); R(px, 46, 256, 2, P.rail); R(px + 120, 60, 8, 8, P.lamp); R(px + 119, 59, 10, 1, P.rail); R(px + 119, 68, 10, 1, P.rail);
+      continue;
+    }
+    if (slot % 2 === 0) { R(px + 20, 34, 70, 20, "#f2c230"); text("BUNDER ROAD", px + 55, 44, 6.5, "#1d1b18"); text("बंदर रोड", px + 55, 52, 6.5, "#1d1b18", "center", "sans-serif"); }
+    else { R(px + 20, 36, 60, 14, "#2f6b3a"); text("WAY OUT  >", px + 50, 46, 6.5, "#f7f4ee"); }
     R(px + 110, 80, 34, 30, "#f7f4ee"); R(px + 111, 81, 32, 28, P.dark ? "#d9d4cb" : "#fffdf9");
     g.strokeStyle = P.neon; g.lineWidth = 1.5; g.beginPath(); g.moveTo(px + 114, 100); g.lineTo(px + 126, 90); g.lineTo(px + 140, 96); g.stroke();
     g.strokeStyle = P.neon2; g.beginPath(); g.moveTo(px + 116, 86); g.lineTo(px + 128, 104); g.stroke();
     if (Math.floor((px + cam) / 256) % 2 === 0) drawAvatarPoster(px + 168, 80, 30, 38, true);
     g.fillStyle = "#f7f4ee"; g.beginPath(); g.arc(px + 225, 44, 7, 0, 7); g.fill(); g.strokeStyle = "#1d1b18"; g.lineWidth = 1; g.stroke();
-    R(px + 225, 39, 1, 5, "#1d1b18"); R(px + 225, 44, 4, 1, "#1d1b18");
+    g.strokeStyle = "#1d1b18"; g.lineWidth = 1; g.beginPath(); g.moveTo(px + 225.5, 44.5); g.lineTo(px + 224.5, 39); g.moveTo(px + 225.5, 44.5); g.lineTo(px + 223.6, 41.2); g.stroke();
   }
+  // platform pillars with painted bases
+  for (let px = -(cam % 192) + 150; px < LW + 20; px += 192) { R(px, 26, 8, 92, P.dark ? "#3a3836" : "#d7d2c9"); for (let sy = 104; sy < 118; sy += 4) R(px, sy, 8, 2, sy % 8 ? "#f2c230" : "#1d1b18"); }
   // track pit with rails; trains pass now and then
   R(0, 118, LW, 26, P.pit);
   R(0, 128, LW, 2, P.rail); R(0, 137, LW, 2, P.rail);
@@ -1029,8 +1078,15 @@ function drawSubway(P) {
     for (let c = 0; c < 4; c++) {
       const tx = train.x + c * 210;
       R(tx, 58, 204, 82, "#7a2230"); R(tx, 58, 204, 3, "#9a3a46"); R(tx, 104, 204, 5, "#f2c230"); R(tx, 112, 204, 2, "#f2c230");
-      for (let w = 10; w < 196; w += 32) R(tx + w, 70, 22, 22, P.trainWin);
-      R(tx + 96, 70, 14, 44, shade(P.trainBody, -0.2));
+      for (let w = 10; w < 196; w += 32) {
+        R(tx + w, 70, 22, 22, P.trainWin);
+        // commuters at the windows
+        const n = (c * 7 + w) % 3; for (let q = 0; q < n + 1; q++) { R(tx + w + 3 + q * 7, 80, 5, 12, "#1b1a1d"); R(tx + w + 4 + q * 7, 76, 4, 4, "#1b1a1d"); }
+      }
+      // open doors, and someone leaning out holding the pole
+      for (const dx of [64, 160]) { R(tx + dx, 70, 14, 44, "#1b1a1d"); R(tx + dx + 2, 70, 1, 44, "#c9ced4"); }
+      R(tx + 96, 70, 14, 44, "#1b1a1d"); R(tx + 98, 70, 1, 44, "#c9ced4");
+      R(tx + 92, 78, 6, 14, "#2b54a8"); R(tx + 92, 73, 5, 5, "#7b4a2c"); R(tx + 89, 92, 3, 12, "#2a2230"); R(tx + 96, 80, 3, 2, "#7b4a2c");
     }
   }
   // platform with tactile strip
@@ -1045,7 +1101,11 @@ function drawSubway(P) {
 function drawRoof(P) {
   R(0, 0, LW, 50, P.sky); R(0, 50, LW, 40, P.sky2); R(0, 90, LW, 60, P.dark ? "#241f2c" : "#d2c3d0");
   stars(P, 60, 80);
-  g.fillStyle = P.dark ? "#d9d0c0" : "#fff8f0"; g.beginPath(); g.arc(80 - cam * 0.03, 30, 13, 0, 7); g.fill();
+  g.fillStyle = P.dark ? "#d9d0c0" : "#fff8f0"; g.beginPath(); g.arc(214 - cam * 0.03, 44, 13, 0, 7); g.fill();
+  // slow clouds drifting past the moon
+  g.globalAlpha = P.dark ? 0.35 : 0.6; g.fillStyle = P.dark ? "#3a3444" : "#f6eff3";
+  for (let c = 0; c < 3; c++) { const cx = ((c * 170 + frameNo * 0.08 - cam * 0.05) % (LW + 120) + LW + 120) % (LW + 120) - 60, cy = 22 + c * 12; g.beginPath(); g.ellipse(cx, cy, 26, 5, 0, 0, 7); g.ellipse(cx + 14, cy - 3, 14, 5, 0, 0, 7); g.fill(); }
+  g.globalAlpha = 1;
   skyline(P, 0.15, 128, 60);
   // mid layer: water towers, a billboard, antennas
   const off = cam * 0.6;
@@ -1080,6 +1140,14 @@ function drawRoof(P) {
     g.moveTo(px + 34 + Math.cos(a + 1.57) * 8, 114 + Math.sin(a + 1.57) * 8); g.lineTo(px + 34 - Math.cos(a + 1.57) * 8, 114 - Math.sin(a + 1.57) * 8); g.stroke();
     R(px + 100, 84, 46, 46, P.walls[1]); R(px + 112, 98, 20, 32, shade(P.walls[1], -0.3)); R(px + 114, 90, 16, 6, P.T.good); text("EXIT", px + 122, 95, 5, "#fff");
     R(px + 206, 104, 8, 26, P.rail); R(px + 202, 100, 16, 5, P.rail);
+    // a satellite dish
+    g.fillStyle = P.dark ? "#8f8a96" : "#c9c4cc"; g.beginPath(); g.ellipse(px + 182, 110, 7, 9, -0.4, 0, 7); g.fill(); R(px + 182, 112, 1.5, 9, P.rail);
+  }
+  // festival string lights along the parapet
+  for (let lx = -(cam % 160); lx < LW + 160; lx += 160) {
+    g.strokeStyle = P.dark ? "#4a4550" : "#6f6a78"; g.lineWidth = 0.6; g.beginPath(); g.moveTo(lx, 112); g.quadraticCurveTo(lx + 80, 124, lx + 160, 112); g.stroke();
+    for (let b = 1; b < 16; b++) { const t2 = b / 16, bx2 = lx + t2 * 160, by2 = 112 + 24 * t2 * (1 - t2), on = (Math.floor(frameNo / 20) + b) % 3 !== 0;
+      const col = ["#f2c230", "#a8186a", "#5cc8c0", "#e2701c"][b % 4]; if (on) { g.globalAlpha = 0.35; R(bx2 - 1.5, by2 - 0.5, 4, 4, col); g.globalAlpha = 1; } R(bx2 - 0.3, by2 + 0.6, 1.8, 2.2, P.ol); R(bx2, by2 + 1, 1.2, 1.6, on ? col : shade(col, -0.5)); }
   }
   // the big poster for Unleash The Avatar, standing on the roof
   const bx = POSTER_X - cam;
@@ -1099,6 +1167,13 @@ function drawFactory(P) {
     R(wx + 20, 14, 90, 30, P.dark ? "#2a3440" : "#9fb3c0");
     for (let gx = 0; gx <= 90; gx += 15) R(wx + 20 + gx, 14, 2, 30, P.steel);
     R(wx + 20, 28, 90, 2, P.steel);
+  }
+  // looms on the back wall, shuttles still flying
+  for (let lx = -(cam * 0.95 % 140) + 20; lx < LW + 60; lx += 140) {
+    R(lx, 82, 56, 30, P.dark ? "#26252a" : "#5d5a62"); R(lx + 4, 86, 48, 18, ["#a8186a", "#2b54a8", "#d9741c", "#2f6b3a"][Math.abs(Math.floor((lx + cam * 0.95) / 140)) % 4]);
+    for (let w = 0; w < 48; w += 3) R(lx + 4 + w, 86, 1, 18, "rgba(255,255,255,0.18)");
+    const sh = (Math.sin(frameNo / 10 + lx) + 1) / 2; R(lx + 4 + sh * 42, 92, 6, 3, "#c9a227");
+    R(lx - 2, 112, 60, 3, P.steel);
   }
   // catwalk
   R(0, 58, LW, 4, P.steel);
@@ -1125,6 +1200,22 @@ function drawFactory(P) {
     g.globalAlpha = P.dark ? 0.12 : 0.07; g.fillStyle = P.lamp; g.beginPath(); g.moveTo(cx + 74, 39); g.lineTo(cx + 88, 39); g.lineTo(cx + 110, 150); g.lineTo(cx + 52, 150); g.fill(); g.globalAlpha = 1;
     const sw = Math.sin(frameNo / 40 + cx) * 3; g.strokeStyle = P.rail; g.lineWidth = 1; g.beginPath(); g.moveTo(cx + 120, 0); g.lineTo(cx + 120 + sw, 52); g.stroke(); R(cx + 117 + sw, 52, 6, 3, P.rail);
   }
+  // light falls through the high windows, cotton lint drifting in it
+  g.globalAlpha = P.dark ? 0.07 : 0.1; g.fillStyle = "#fff4d6";
+  for (let wx = -(cam * 0.9 % 180); wx < LW + 60; wx += 180) { g.beginPath(); g.moveTo(wx + 24, 44); g.lineTo(wx + 104, 44); g.lineTo(wx + 150, 150); g.lineTo(wx + 60, 150); g.fill(); }
+  g.globalAlpha = 1;
+  for (let i = 0; i < 40; i++) { const lx2 = ((i * 53 + frameNo * 0.2 * (1 + (i % 3) * 0.3) - cam * 0.9) % LW + LW) % LW, ly2 = 50 + ((i * 37 + Math.sin(frameNo / 50 + i) * 6) % 90); g.globalAlpha = 0.5; R(lx2, ly2, 1, 1, "#fbf8f2"); }
+  g.globalAlpha = 1;
+  if (stageIdx === 3) {
+    const wx = 1760 + 150 - cam;
+    if (wx > -60 && wx < LW + 60) {
+      R(wx, 136, 34, 4, P.wood); R(wx + 2, 140, 3, 8, shade(P.wood, -0.3)); R(wx + 29, 140, 3, 8, shade(P.wood, -0.3));
+      R(wx + 4, 130, 6, 6, "#a5532e"); R(wx + 14, 130, 6, 6, "#a5532e"); g.globalAlpha = 0.5; R(wx + 6 + Math.sin(frameNo / 9), 124, 1, 5, "#ffffff"); g.globalAlpha = 1;
+      g.fillStyle = "#d9a441"; g.beginPath(); g.arc(wx + 27, 133, 2.5, 0, 7); g.fill();
+      g.fillStyle = "#f7f4ee"; g.beginPath(); g.arc(wx + 17, 74, 8, 0, 7); g.fill(); g.strokeStyle = "#1d1b18"; g.lineWidth = 1; g.stroke();
+      g.beginPath(); g.moveTo(wx + 17.5, 74.5); g.lineTo(wx + 16.5, 68); g.moveTo(wx + 17.5, 74.5); g.lineTo(wx + 15.4, 71); g.stroke();
+    }
+  }
   // floor plates and hazard edge
   R(0, 146, LW, 4, P.amber); for (let hx = -(cam % 12); hx < LW; hx += 12) { g.fillStyle = P.ol; g.beginPath(); g.moveTo(hx, 150); g.lineTo(hx + 6, 146); g.lineTo(hx + 10, 146); g.lineTo(hx + 4, 150); g.fill(); }
   R(0, 150, LW, LH - 150, P.plate);
@@ -1136,7 +1227,7 @@ function drawFactory(P) {
 /* A fan nod to "Unleash The Avatar", the upcoming game by Aeos Games
    (Bengaluru). Original pixel art: a figure with a glowing chakra and a
    peacock feather, the title and the studio name. */
-const POSTER_X = 1072;
+const POSTER_X = 660;
 let posterUsed = false, naniRef = null;
 function drawAvatarPoster(x, y, w, h, small) {
   const glow = !small && stageIdx === 2 && !posterUsed && (frameNo % 120 < 60);
@@ -1150,8 +1241,8 @@ function drawAvatarPoster(x, y, w, h, small) {
   g.stroke();
   // the figure: a silhouette with a crown and a feather
   const fw = w * 0.16, fh = h * 0.5;
-  g.fillStyle = "#0b0912"; g.beginPath(); g.moveTo(cx - fw, y + h * 0.86); g.lineTo(cx - fw * 0.6, cy - fh * 0.15); g.lineTo(cx, cy - fh * 0.42); g.lineTo(cx + fw * 0.6, cy - fh * 0.15); g.lineTo(cx + fw, y + h * 0.86); g.fill();
-  R(cx - fw * 0.35, cy - fh * 0.62, fw * 0.7, fh * 0.22, "#0b0912");
+  g.fillStyle = "#33254f"; g.beginPath(); g.moveTo(cx - fw, y + h * 0.86); g.lineTo(cx - fw * 0.6, cy - fh * 0.15); g.lineTo(cx, cy - fh * 0.42); g.lineTo(cx + fw * 0.6, cy - fh * 0.15); g.lineTo(cx + fw, y + h * 0.86); g.fill();
+  R(cx - fw * 0.35, cy - fh * 0.62, fw * 0.7, fh * 0.22, "#1a1030");
   R(cx + fw * 0.2, cy - fh * 0.9, Math.max(1, w * 0.02), fh * 0.3, "#1f7a6a"); R(cx + fw * 0.1, cy - fh * 0.95, Math.max(1.5, w * 0.04), Math.max(1.5, w * 0.04), "#2b54a8");
   if (glow) { g.globalAlpha = 0.25; g.fillStyle = "#ffd75e"; g.beginPath(); g.arc(cx, cy, r * 1.4, 0, 7); g.fill(); g.globalAlpha = 1; }
   if (small) { text("UNLEASH", cx, y + h - 8, 4, "#f2c230", "center", "Newsreader"); text("THE AVATAR", cx, y + h - 3, 3.2, "#f2c230", "center", "Newsreader"); return; }
@@ -1162,6 +1253,16 @@ function drawAvatarPoster(x, y, w, h, small) {
 }
 function drawForeground(P) {
   const th = STAGES[stageIdx].theme;
+  if (th === "roof") { R(0, LH - 9, LW, 9, P.parapet); R(0, LH - 9, LW, 2, shade(P.parapet, 0.15)); for (let bx = -(cam % 24); bx < LW; bx += 24) R(bx, LH - 6, 1, 6, shade(P.parapet, -0.2)); }
+  if (th === "street") {
+    g.strokeStyle = P.dark ? "rgba(10,9,12,0.85)" : "rgba(29,27,24,0.4)"; g.lineWidth = 0.8;
+    for (let wx = -(cam * 1.05 % 220) - 20; wx < LW + 40; wx += 220) {
+      for (let w = 0; w < 4; w++) { g.beginPath(); g.moveTo(wx, 6 + w * 3); g.quadraticCurveTo(wx + 110, 22 + w * 4 + Math.sin(frameNo / 60 + w) * 0.8, wx + 220, 8 + w * 2); g.stroke(); }
+      R(wx - 1, 0, 3, 30, P.dark ? "#2a2724" : "#4a453f");
+    }
+    const kx = -(cam * 1.05 % 660) + 400; g.fillStyle = "#a8186a"; g.beginPath(); g.moveTo(kx, 12); g.lineTo(kx + 5, 18); g.lineTo(kx, 24); g.lineTo(kx - 5, 18); g.fill();
+    g.strokeStyle = "#f2c230"; g.lineWidth = 0.6; g.beginPath(); g.moveTo(kx, 24); g.quadraticCurveTo(kx + 4, 32 + Math.sin(frameNo / 15) * 2, kx - 2, 40); g.stroke();
+  }
   if (th === "subway") for (let px = -(cam * 1.2 % 300); px < LW + 20; px += 300) { R(px, 36, 10, LH, P.dark ? "#2a2b2f" : "#d7d2c9"); R(px + 2, 36, 2, LH, P.dark ? "#34353a" : "#e9e5de"); R(px - 2, 84, 14, 6, P.neon); }
   if (th === "factory") for (let px = -(cam * 1.25 % 360) + 180; px < LW + 20; px += 360) { R(px, 36, 8, LH, P.ol); R(px + 2, 36, 2, LH, P.steel); R(px - 6, 36, 20, 4, P.ol); }
 }
@@ -1177,23 +1278,40 @@ const COSTUME = {
   neon:    { rai: (P) => ({ jacket: "#141218", shirt: "#f07ab8" }), kai: (P) => ({ jacket: "#141218", shirt: "#5cc8c0" }) },
   gold:    { rai: (P) => ({ jacket: "#c9a227", shirt: "#1d1b18" }), kai: (P) => ({ jacket: "#c9a227", shirt: "#13756f" }) }
 };
+/* Body types: each character has their own build, so silhouettes read
+   at a glance. cw/ww: chest and waist half-widths, belly: forward bulge,
+   aw/fw: upper arm and forearm thickness, lw/sw: thigh and shin, hw: head
+   half-width, stance: how wide the feet sit. */
+const BODY = {
+  base:    { cw: 6.6, ww: 5, belly: 0, aw: 3.8, fw: 3.4, lw: 4.6, sw: 4, hw: 4.8, stance: 1 },
+  slim:    { cw: 6, ww: 4.5, belly: 0, aw: 3.4, fw: 3.1, lw: 4.3, sw: 3.8, hw: 4.6, stance: 1 },
+  lean:    { cw: 7, ww: 4.4, belly: 0, aw: 4, fw: 3.6, lw: 5.2, sw: 4.4, hw: 4.6, stance: 1.1 },
+  stocky:  { cw: 8, ww: 7, belly: 2.4, aw: 5, fw: 4.4, lw: 5.6, sw: 4.8, hw: 5.2, stance: 1.2 },
+  wrestler:{ cw: 8.8, ww: 7.6, belly: 3.2, aw: 5.6, fw: 4.8, lw: 6.4, sw: 5.2, hw: 5.2, stance: 1.3 },
+  kalari:  { cw: 7.6, ww: 4.6, belly: 0, aw: 4.4, fw: 3.7, lw: 5.4, sw: 4.5, hw: 4.6, stance: 1.3 },
+  boss:    { cw: 7.6, ww: 6.6, belly: 1.6, aw: 4.4, fw: 3.8, lw: 5, sw: 4.4, hw: 4.9, stance: 1.1 },
+  elder:   { cw: 6, ww: 5.6, belly: 0.8, aw: 3.4, fw: 3, lw: 4.4, sw: 3.8, hw: 4.6, stance: 0.9 }
+};
 const LOOKS = {
-  nani:      (P) => ({ skin: P.skin[2], jacket: "#7b5c86", shirt: "#efe6d6", pants: "#3b3542", shoe: "#2a2420", sole: "#111", hair: "#cfc8bf", hairStyle: "bun", specs: true }),
-  rai:       (P) => ({ skin: P.skin[0], ...COSTUME[costume].rai(P), shirt0: "#f4efe6", pants: "#2f3448", shoe: "#ece6dc", sole: "#8b8478", hair: P.hair, hairStyle: "spiky", band: "#f4efe6", glove: P.skin[0] }),
-  kai:       (P) => ({ skin: P.skin[2], ...COSTUME[costume].kai(P), shirt0: "#22252b", pants: "#4f4335", shoe: "#2b2622", sole: "#14110f", hair: "#5a3a22", hairStyle: "pony", band: P.T.teal, glove: P.T.teal, vest: true }),
-  grunt:     (P) => ({ skin: P.skin[1], shirt: P.T.amber, pants: "#4a5560", shoe: "#2a2420", sole: "#111", hair: P.hair, hairStyle: "cap", cap: "#2f3a4a", sleeves: "short" }),
-  pipeGrunt: (P) => ({ skin: P.skin[0], jacket: "#6d7a45", shirt: "#3a3a32", pants: "#4a4038", shoe: "#2a2420", sole: "#111", hair: "#6b3b24", hairStyle: "beanie", cap: "#8a2f2f" }),
-  kicker:    (P) => ({ skin: P.skin[3], shirt: null, vest: true, jacket: "#26242a", pants: "#1f1d22", stripe: P.T.red, shoe: "#d9d2c6", sole: "#555", hair: P.T.red, hairStyle: "mohawk", sleeves: "none" }),
-  thrower:   (P) => ({ skin: P.skin[2], jacket: "#4a3326", shirt: "#bfb7aa", pants: "#2c2a30", shoe: "#1a1816", sole: "#000", hair: P.hair, hairStyle: "bandana", cap: P.T.amber, shades: true }),
-  bruiser:   (P) => ({ skin: P.skin[1], shirt: P.T.red, pants: "#3f4636", shoe: "#1a1a1a", sole: "#000", hair: P.hair, hairStyle: "bald", beard: true, sleeves: "none" }),
-  // Bhola, a pehelwan (wrestler): vest, white dhoti-style pants, a big moustache
-  ox:        (P) => ({ skin: P.skin[1], shirt: "#ece6dc", pants: "#ece6dc", belt: P.T.red, shoe: "#5a3a22", sole: "#2a1a10", hair: P.hair, hairStyle: "bald", mustache: true, scar: true, sleeves: "none" }),
-  // Raghav, a kalaripayattu master: white with a red waist cloth, hair in a kudumi
-  rook:      (P) => ({ skin: P.skin[1], shirt: "#efe9dd", pants: "#efe9dd", belt: P.T.red, shoe: P.skin[1], sole: shade(P.skin[1], -0.3), hair: P.hair, hairStyle: "topknot", glove: "#ece6dc", gi: true }),
-  // Cheel, a kite runner: teal kurta, dupatta over her face
-  crane:     (P) => ({ skin: P.skin[2], jacket: "#1f5a5a", shirt: "#141a1a", pants: "#2a2230", shoe: "#0e0e0e", sole: "#000", hair: "#2a2a2a", hairStyle: "long", mask: true, scarf: P.T.amber }),
-  // Ranjit, "Mr. Rollback": Nehru jacket over a white kurta, dark glasses
-  rollback:  (P) => ({ skin: P.skin[0], jacket: "#2b2b33", shirt: "#f4efe6", pocket: P.T.red, pants: "#f4efe6", mustache: true, shoe: "#0e0e0e", sole: "#000", hair: P.hair, hairStyle: "slick", shades: true, glove: "#1d1b18" })
+  // Nani: plum cardigan over a maroon sari with a gold border, grey bun with a jasmine gajra
+  nani:      (P) => ({ body: "elder", pallu: true, skin: P.skin[2], jacket: "#6e4f7a", shirt: "#efe6d6", skirt: "#7a2230", border: "#d9a441", shoe: "#5a3a22", sole: "#2a1a10", hair: "#d6d0c8", hairStyle: "bun", gajra: true, specs: true, mood: "kind" }),
+  // Rai: magenta jacket with the collar up, white tee, jeans, headband
+  rai:       (P) => ({ body: "base", skin: P.skin[0], ...COSTUME[costume].rai(P), pants: "#2f3448", knee: "#3d4560", shoe: "#ece6dc", sole: "#8b8478", shoeStripe: P.T.accent, hair: P.hair, hairStyle: "spiky", band: "#f4efe6", collar: true, rolled: true, mood: "hero" }),
+  // Kai: his sister. Teal vest over a dark tee, cargo trousers, a long braid
+  kai:       (P) => ({ body: "slim", skin: P.skin[2], ...COSTUME[costume].kai(P), pants: "#4f4335", knee: "#5d503f", shoe: "#2b2622", sole: "#14110f", hair: "#3a2416", hairStyle: "braid", vest: true, wrist: P.T.teal, mood: "hero", lashes: true }),
+  grunt:     (P) => ({ body: "base", skin: P.skin[1], shirt: P.T.amber, pants: "#4a5560", shoe: "#2a2420", sole: "#111", hair: P.hair, hairStyle: "cap", cap: "#2f3a4a", sleeves: "short", stubble: true, mood: "mean" }),
+  pipeGrunt: (P) => ({ body: "base", skin: P.skin[0], jacket: "#6d7a45", shirt: "#3a3a32", pants: "#4a4038", shoe: "#2a2420", sole: "#111", hair: "#6b3b24", hairStyle: "beanie", cap: "#8a2f2f", stubble: true, mood: "mean" }),
+  kicker:    (P) => ({ body: "lean", skin: P.skin[3], vest: true, jacket: "#26242a", pants: "#24407a", stripe: "#f4efe6", shoe: "#d9d2c6", sole: "#555", hair: P.T.red, hairStyle: "mohawk", sleeves: "none", chain: true, mood: "mean" }),
+  thrower:   (P) => ({ body: "slim", skin: P.skin[2], jacket: "#4a3326", shirt: "#bfb7aa", pants: "#2c2a30", shoe: "#1a1816", sole: "#000", hair: P.hair, hairStyle: "bandana", cap: P.T.amber, shades: true, knives: true, mood: "mean" }),
+  bruiser:   (P) => ({ body: "stocky", skin: P.skin[1], shirt: P.T.red, pants: "#3f4636", shoe: "#1a1a1a", sole: "#000", hair: P.hair, hairStyle: "bald", beard: true, sleeves: "none", mood: "mean" }),
+  // Bhola, a pehelwan: white banian, red langot sash, loose dhoti, handlebar moustache, black thread on the arm
+  ox:        (P) => ({ body: "wrestler", skin: P.skin[1], shirt: "#f4efe6", banian: true, pants: "#ece6dc", dhoti: true, belt: "#b42318", sash: true, shoe: "#7a4a22", sole: "#3a2410", jutti: true, hair: P.hair, hairStyle: "bald", handlebar: true, scar: true, sleeves: "none", thread: true, mood: "mean" }),
+  // Raghav, a kalaripayattu master: bare chest, red kacha with a tail, white mundu, kudumi tuft, sandal tilak, barefoot
+  rook:      (P) => ({ body: "kalari", skin: P.skin[1], bare: true, pants: "#efe9dd", dhoti: true, belt: "#b42318", sash: true, shoe: P.skin[1], sole: shade(P.skin[1], -0.3), barefoot: true, hair: P.hair, hairStyle: "kudumi", tilak: true, armband: "#d9a441", wrist: "#efe9dd", sleeves: "none", mood: "calm" }),
+  // Cheel, a kite runner: teal kurta to the knee, churidar, an amber dupatta over her face, a kite reel at her hip
+  crane:     (P) => ({ body: "slim", skin: P.skin[2], jacket: "#3d2b78", kurta: true, shirt: "#3d2b78", pants: "#2a2230", shoe: "#0e0e0e", sole: "#000", hair: "#1d1b18", hairStyle: "braid", mask: true, dupatta: P.T.amber, reel: true, mood: "calm", lashes: true }),
+  // Ranjit, "Mr. Rollback": forty years older now. Grey hair, charcoal Nehru jacket with gold buttons, white kurta, dark glasses
+  rollback:  (P) => ({ body: "boss", skin: P.skin[0], jacket: P.dark ? "#4a4660" : "#2b2b33", nehru: true, kurta: true, shirt: "#f4efe6", pocket: "#b42318", pants: "#f4efe6", shoe: "#0e0e0e", sole: "#000", hair: "#a7a19a", hairStyle: "slick", grey: true, shades: true, mustache: true, watchChain: true, mood: "mean" })
 };
 
 function pose(f) {
@@ -1209,6 +1327,7 @@ function pose(f) {
     if (s === "run") { p.sh = [5, -30]; p.head = [7, -36]; }
     p.sh[1] += Math.abs(c) > 0.7 ? -1 : 0; p.head[1] = p.sh[1] - 7;
   }
+  if ((KINDS[f.kind].look || f.kind) === "ox" && (s === "idle" || s === "grabbed" || s === "taunt")) { p.hf = [13, -22]; p.ef = [12, -28]; p.hb = [-8, -22]; p.eb = [-8, -28]; }
   const A = (name) => s === "attack" && at === name, ext = (lo, hi) => f.atk && t >= f.atk.a0 - lo && t <= f.atk.a1 + hi;
   if (A("jab") || A("jab2") || A("ePunch")) {
     const e = ext(2, 2), front = at !== "jab2";
@@ -1281,113 +1400,218 @@ function pose(f) {
   return p;
 }
 
+const STANCE_STATES = new Set(["idle", "walk", "run", "windup", "grabbed", "hurt", "taunt"]);
+const DOWN_DRAW = new Set(["lying", "dead", "getup", "out"]);
 function drawFighter(f) {
-  const P = PAL, k = KINDS[f.kind], L = LOOKS[k.look || f.kind](P), sc = k.scale * BS;
+  const P = PAL, k = KINDS[f.kind], lk = (k.look || f.kind) + ":" + costume, L = P.looks[lk] || (P.looks[lk] = LOOKS[k.look || f.kind](P)), B = BODY[L.body || "base"], sc = k.scale * BS;
   if (f.st === "out") return;
   if (f.st === "dead" && Math.floor(f.t / 4) % 2) return;
   if (f.inv > 0 && f.team === "p" && Math.floor(f.inv / 4) % 2 && !["attack", "air"].includes(f.st)) return;
   const x = Math.round(f.x - cam), y = Math.round(f.y);
-  g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x, y, Math.max(5, 11 - f.z * 0.08) * sc, 3 * sc, 0, 0, 7); g.fill();
+  const flat = f.st === "lying" || f.st === "dead" || f.st === "getup";
+  g.fillStyle = P.shadow; g.beginPath(); g.ellipse(flat ? x - f.face * 14 * sc : x, y, flat ? 18 * sc : Math.max(5, 9 + B.cw * 0.35 - f.z * 0.08) * sc, 3 * sc, 0, 0, 7); g.fill();
   const p = pose(f), flash = f.flash > 0;
   if (flash) f.flash--;
+  // heavier builds stand wider
+  if (B.stance !== 1 && (STANCE_STATES.has(f.st) || (f.st === "attack" && f.atk && !f.atk.move))) for (const j of ["ff", "fb", "kf", "kb"]) p[j] = [p[j][0] * B.stance, p[j][1]];
   g.save();
   g.translate(x, y - Math.round(f.z));
   g.scale(f.face * sc, sc);
   if (p.rot) { g.translate(p.rc[0], p.rc[1]); g.rotate(p.rot); g.translate(-p.rc[0], -p.rc[1]); }
   const C = (c) => (flash ? "#ffffff" : c);
-  const back = (c) => shade(c, -0.22);
+  const dk = (c, a = 0.22) => shade(c, -a), lt = (c, a = 0.14) => shade(c, a);
+  const back = (c) => dk(c, 0.2), same = (c) => c;
+  const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+  const wave = Math.sin(frameNo / 7 + f.id * 5);
 
-  // build each layer as a list of shapes, then outline + fill it
+  // each layer is a list of shapes: a dark outline pass, then a colour pass
   const layer = (ops) => {
     for (const pass of [0, 1]) for (const o of ops) {
       if (pass === 0 && o.no) continue;
       const col = pass ? C(o.c) : P.ol, grow = pass ? 0 : 1;
       if (o.t === "l") { g.strokeStyle = col; g.lineWidth = o.w + grow * 2; g.lineCap = "round"; g.beginPath(); g.moveTo(o.a[0], o.a[1]); g.lineTo(o.b[0], o.b[1]); g.stroke(); }
       else if (o.t === "r") { g.fillStyle = col; g.fillRect(o.x - grow, o.y - grow, o.w + grow * 2, o.h + grow * 2); }
-      else if (o.t === "p") { g.fillStyle = col; g.beginPath(); o.pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.closePath(); if (pass === 0) { g.strokeStyle = col; g.lineWidth = 2; g.stroke(); } g.fill(); }
+      else if (o.t === "e") { g.fillStyle = col; g.beginPath(); g.ellipse(o.x, o.y, o.rx + grow, o.ry + grow, 0, 0, 7); g.fill(); }
+      else if (o.t === "p") { g.fillStyle = col; g.beginPath(); o.pts.forEach(([px, py], i) => (i ? g.lineTo(px, py) : g.moveTo(px, py))); g.closePath(); if (pass === 0) { g.strokeStyle = col; g.lineWidth = 2; g.lineJoin = "round"; g.stroke(); } g.fill(); }
     }
   };
-  const sleeve = L.sleeves === "none" ? L.skin : L.sleeves === "short" ? L.shirt : (L.jacket || L.shirt);
-  const fore = L.sleeves ? L.skin : (L.jacket || L.shirt);
-  const fist = L.glove || L.skin;
-  const leg = (h, kn, ft, cl) => [
-    { t: "l", a: h, b: kn, w: 4.6, c: cl(L.pants) }, { t: "l", a: kn, b: ft, w: 4, c: cl(L.pants) },
-    { t: "p", pts: [[ft[0] - 2.5, ft[1] - 2.5], [ft[0] + 4.5, ft[1] - 1.5], [ft[0] + 4.5, ft[1] + 1], [ft[0] - 2.5, ft[1] + 1]], c: cl(L.shoe) },
-    { t: "r", x: ft[0] - 2.5, y: ft[1] + 0.2, w: 7, h: 0.8, c: cl(L.sole), no: true }
-  ].concat(L.stripe ? [{ t: "l", a: [h[0] + 1, h[1]], b: [kn[0] + 1, kn[1]], w: 1, c: L.stripe, no: true }] : []);
-  const arm = (s, el, hd, cl) => [
-    { t: "l", a: s, b: el, w: 3.8, c: cl(sleeve) }, { t: "l", a: el, b: hd, w: 3.4, c: cl(fore) },
-    { t: "r", x: hd[0] - 2.2, y: hd[1] - 2.2, w: 4.4, h: 4.4, c: cl(fist) }
-  ];
-  const shB = [p.sh[0] - 1.5, p.sh[1] + 2], shF = [p.sh[0] + 1.5, p.sh[1] + 2];
+  // a limb with a thin highlight along its top edge, so it reads as round
+  const limb = (a, b, w, c) => [{ t: "l", a, b, w, c }, { t: "l", a: [a[0] + 0.4, a[1] - w * 0.22], b: [b[0] + 0.4, b[1] - w * 0.22], w: Math.max(0.7, w * 0.26), c: lt(c, 0.16), no: true }];
 
-  layer(leg(p.hip, p.kb, p.fb, back).concat(arm(shB, p.eb, p.hb, back)));
+  const leg = (h, kn, ft, cl, front) => {
+    const pc = cl(L.pants), loose = L.dhoti ? 1.25 : 1, ops = [];
+    ops.push(...limb(h, kn, B.lw * loose, pc), ...limb(kn, ft, B.sw * (L.dhoti ? 1.12 : 1), pc));
+    if (L.knee && front) ops.push({ t: "r", x: kn[0] - 1, y: kn[1] - 1.2, w: 2.2, h: 2, c: L.knee, no: true });
+    if (L.stripe) ops.push({ t: "l", a: [h[0] + 1, h[1]], b: [kn[0] + 1, kn[1]], w: 1, c: L.stripe, no: true }, { t: "l", a: [kn[0] + 1, kn[1]], b: [ft[0] + 1, ft[1] - 2], w: 1, c: L.stripe, no: true });
+    if (L.barefoot) ops.push({ t: "p", pts: [[ft[0] - 2, ft[1] - 2.6], [ft[0] + 3.5, ft[1] - 1.4], [ft[0] + 4.6, ft[1] + 0.8], [ft[0] - 2, ft[1] + 0.8]], c: cl(L.skin) });
+    else if (L.jutti) ops.push({ t: "p", pts: [[ft[0] - 2.6, ft[1] - 2.6], [ft[0] + 3.6, ft[1] - 1.8], [ft[0] + 6.2, ft[1] - 3.4], [ft[0] + 5.2, ft[1] + 1], [ft[0] - 2.6, ft[1] + 1]], c: cl(L.shoe) }, { t: "r", x: ft[0] - 1, y: ft[1] - 1.4, w: 4, h: 0.8, c: "#d9a441", no: true });
+    else {
+      ops.push({ t: "p", pts: [[ft[0] - 2.8, ft[1] - 2.9], [ft[0] + 2.8, ft[1] - 2.5], [ft[0] + 5, ft[1] - 0.8], [ft[0] + 5, ft[1] + 1], [ft[0] - 2.8, ft[1] + 1]], c: cl(L.shoe) },
+        { t: "r", x: ft[0] - 2.8, y: ft[1] + 0.1, w: 7.8, h: 0.9, c: cl(L.sole), no: true });
+      if (L.shoeStripe) ops.push({ t: "r", x: ft[0] - 0.5, y: ft[1] - 1.7, w: 3.2, h: 0.8, c: L.shoeStripe, no: true });
+    }
+    return ops;
+  };
+  const bareArm = L.bare || L.sleeves === "none";
+  const sleeveC = bareArm ? L.skin : L.sleeves === "short" ? L.shirt : (L.jacket || L.shirt);
+  const foreC = bareArm || L.sleeves || L.rolled ? L.skin : (L.jacket || L.shirt);
+  const arm = (s, el, hd, cl) => {
+    const ops = [...limb(s, el, B.aw, cl(sleeveC)), ...limb(el, hd, B.fw, cl(foreC))];
+    const mid = lerp(s, el, 0.5);
+    if (bareArm && B.aw >= 5) ops.push({ t: "e", x: mid[0] + 0.5, y: mid[1] - 0.5, rx: B.aw * 0.55, ry: B.aw * 0.42, c: cl(L.skin), no: true });
+    if (L.sleeves === "short") ops.push({ t: "l", a: lerp(s, el, 0.55), b: lerp(s, el, 0.7), w: B.aw + 0.6, c: cl(L.shirt) });
+    if (L.rolled) ops.push({ t: "l", a: lerp(el, hd, 0.02), b: lerp(el, hd, 0.28), w: B.fw + 0.9, c: cl(L.jacket) });
+    if (L.thread) ops.push({ t: "l", a: [mid[0] - 1.6, mid[1] + 0.4], b: [mid[0] + 1.6, mid[1] - 0.4], w: 0.9, c: "#111", no: true });
+    if (L.armband) ops.push({ t: "l", a: [mid[0] - 1.8, mid[1] + 0.4], b: [mid[0] + 1.8, mid[1] - 0.4], w: 1.2, c: L.armband, no: true });
+    if (L.wrist) ops.push({ t: "l", a: lerp(el, hd, 0.62), b: lerp(el, hd, 0.8), w: B.fw + 0.7, c: cl(L.wrist) });
+    const fc = cl(L.glove || L.skin);
+    ops.push({ t: "r", x: hd[0] - 2.4, y: hd[1] - 2.4, w: 4.8, h: 4.8, c: fc }, { t: "r", x: hd[0] + 0.6, y: hd[1] - 2.4, w: 0.8, h: 4.8, c: dk(fc, 0.25), no: true });
+    return ops;
+  };
+  const shB = [p.sh[0] - 1.6, p.sh[1] + 2], shF = [p.sh[0] + 1.6, p.sh[1] + 2];
+
+  // the dupatta streams out behind, drawn first
+  if (L.dupatta && !DOWN_DRAW.has(f.st)) {
+    // a ribbon of cloth that falls from her head and ripples behind her
+    const s0 = [p.head[0] - B.hw, p.head[1] - 1], topE = [], botE = [];
+    for (let i = 0; i <= 6; i++) {
+      const t2 = i / 6, xx = s0[0] - t2 * 14, yy = s0[1] + t2 * 18 + Math.sin(frameNo / 6 + f.id * 5 - i * 0.9) * (0.4 + t2 * 3.2), w2 = 4.4 - t2 * 2.6;
+      topE.push([xx, yy - w2 / 2]); botE.unshift([xx, yy + w2 / 2]);
+    }
+    layer([{ t: "p", pts: topE.concat(botE), c: L.dupatta }, { t: "l", a: topE[2], b: topE[5], w: 0.5, c: lt(L.dupatta, 0.25), no: true }]);
+  }
+  // legs (Nani wears a sari instead)
+  if (L.skirt) {
+    const lo = Math.min(p.ff[0], p.fb[0]) - 3.5, hi = Math.max(p.ff[0], p.fb[0]) + 3.5, top = p.hip[1] + 1;
+    layer([{ t: "p", pts: [[p.hip[0] - B.ww - 0.5, top], [p.hip[0] + B.ww + 0.5, top], [hi, -0.6], [lo, -0.6]], c: L.skirt },
+      { t: "p", pts: [[lo, -2.6], [hi, -2.6], [hi, -0.6], [lo, -0.6]], c: L.border, no: true },
+      { t: "l", a: [p.hip[0] + 1, top + 2], b: [(lo + hi) / 2 + 1, -3], w: 0.6, c: dk(L.skirt, 0.25), no: true },
+      { t: "l", a: [p.hip[0] - 2, top + 2], b: [lo + 2, -3], w: 0.6, c: dk(L.skirt, 0.25), no: true },
+      { t: "r", x: p.ff[0] + 1, y: -1.4, w: 3.5, h: 1.6, c: L.shoe }]);
+  } else {
+    layer(leg(p.hip, p.kb, p.fb, back, false));
+    // the loose cloth of a dhoti or mundu hangs between the legs
+    if (L.dhoti) layer([{ t: "p", pts: [[p.hip[0] - B.ww + 1, p.hip[1]], [p.hip[0] + B.ww - 1, p.hip[1]], [Math.min(p.kf[0], p.hip[0] + 6) + 1.5, Math.max(p.kf[1], p.hip[1] + 6) + 3], [p.kb[0] - 1.5, p.kb[1] + 3]], c: L.pants },
+      { t: "l", a: [p.hip[0] + 1, p.hip[1] + 2], b: [(p.kf[0] + p.kb[0]) / 2, (p.kf[1] + p.kb[1]) / 2 + 2], w: 0.6, c: dk(L.pants, 0.18), no: true }]);
+  }
+  layer(arm(shB, p.eb, p.hb, back));
 
   // torso, drawn in its own frame from hip to shoulder
   const ang = Math.atan2(p.sh[0] - p.hip[0], -(p.sh[1] - p.hip[1])), tl = Math.hypot(p.sh[0] - p.hip[0], p.sh[1] - p.hip[1]);
   g.save(); g.translate(p.hip[0], p.hip[1]); g.rotate(ang);
-  const top = -tl - 2, outer = L.jacket || L.shirt || L.skin;
-  const torso = [{ t: "p", pts: [[-5, 1], [5, 1], [6.5, top], [-6, top]], c: outer }];
-  if (L.jacket && L.shirt && !L.vest) torso.push({ t: "p", pts: [[0, 0], [3.5, 0], [3.5, top + 1], [-0.5, top + 1]], c: L.shirt, no: true });
-  if (L.vest && L.shirt) torso.push({ t: "p", pts: [[-1, 0], [4, 0], [5, top + 1], [-2, top + 1]], c: L.shirt, no: true });
-  if (L.vest && !L.shirt) torso.push({ t: "p", pts: [[-1, -1], [4, -1], [5, top + 1], [-2, top + 1]], c: L.skin, no: true }, { t: "r", x: 0.5, y: top + 6, w: 3, h: 1, c: shade(L.skin, -0.2), no: true });
-  if (L.pocket) torso.push({ t: "r", x: -4.5, y: top + 4, w: 3, h: 2, c: L.pocket, no: true });
-  if (L.tie) torso.push({ t: "p", pts: [[1, -3], [3, -3], [2.6, top + 2], [1.4, top + 2]], c: L.tie, no: true });
-  if (L.scarf) torso.push({ t: "r", x: -6, y: top - 1, w: 12, h: 3, c: L.scarf, no: true }, { t: "r", x: -9, y: top + 1, w: 4, h: 6, c: L.scarf, no: true });
-  if (L.gi) torso.push({ t: "p", pts: [[-1, top + 1], [4, top + 1], [1, top + 8]], c: L.skin, no: true });
-  torso.push({ t: "r", x: -5, y: -2, w: 10, h: 2.5, c: L.belt || "#1d1b18", no: true });
-  if (!L.belt) torso.push({ t: "r", x: 2, y: -2, w: 2, h: 2.5, c: "#c9b37a", no: true });
-  if (L.cuffs) torso.push({ t: "r", x: -6, y: top, w: 12.5, h: 2, c: shade(outer, 0.15), no: true });
-  layer(torso);
+  const top = -tl - 2, cw = B.cw, ww = B.ww, bl = B.belly, hb = L.nehru ? 4 : 1;
+  const outer = L.bare ? L.skin : (L.jacket || L.shirt);
+  const T = [{ t: "p", pts: [[-ww, hb], [ww, hb], [ww + bl, top * 0.45], [cw, top], [-cw * 0.85, top], [-ww - bl * 0.2, top * 0.45]], c: outer }];
+  T.push({ t: "p", pts: [[-ww, 1], [-ww + 2.4, 1], [-cw * 0.85 + 2.4, top], [-cw * 0.85, top]], c: dk(outer, 0.16), no: true });
+  T.push({ t: "p", pts: [[ww - 1.1, 0], [ww, 0], [ww + bl, top * 0.45], [cw, top + 1], [cw - 1.1, top + 1], [ww + bl - 1.1, top * 0.45]], c: lt(outer, 0.12), no: true });
+  if (L.bare) {
+    const sk = dk(L.skin, 0.18);
+    T.push({ t: "r", x: 0, y: top + 3.5, w: cw - 1.5, h: 0.8, c: sk, no: true }, { t: "r", x: 1.6, y: top + 6, w: 0.7, h: tl - 9, c: sk, no: true });
+    for (let r = 0; r < 3; r++) T.push({ t: "r", x: 0.4, y: top + 7.5 + r * 2.6, w: 3.2, h: 0.6, c: sk, no: true });
+  }
+  if (L.banian) T.push({ t: "p", pts: [[-cw * 0.85, top], [-1.5, top], [-cw * 0.55, top + 4.5]], c: L.skin, no: true }, { t: "p", pts: [[cw, top], [2.6, top], [cw - 1, top + 4.5]], c: L.skin, no: true }, { t: "r", x: -1.5, y: top, w: 4, h: 2.2, c: L.skin, no: true });
+  if (L.jacket && L.shirt && !L.vest && !L.nehru && !L.kurta) {
+    T.push({ t: "p", pts: [[0.5, 0], [3.5, 0], [cw - 1.8, top + 1], [0, top + 1]], c: L.shirt, no: true });
+    if (L.collar) T.push({ t: "p", pts: [[-1.2, top - 0.5], [2, top - 0.5], [0.4, top + 4]], c: lt(L.jacket, 0.1), no: true }, { t: "p", pts: [[cw - 2.6, top - 0.5], [cw + 0.8, top - 1.2], [cw - 1.2, top + 3.6]], c: lt(L.jacket, 0.1), no: true });
+  }
+  if (L.vest) { const inner = L.shirt || L.skin; T.push({ t: "p", pts: [[-1, 0], [4, 0], [cw - 1, top + 1], [-2, top + 1]], c: inner, no: true }); if (!L.shirt) T.push({ t: "r", x: 0.5, y: top + 6, w: 3, h: 0.7, c: dk(L.skin, 0.2), no: true }); }
+  if (L.kurta && !L.nehru) T.push({ t: "l", a: [cw - 2, top + 0.5], b: [cw - 2.4, top + 6], w: 0.6, c: dk(outer, 0.25), no: true });
+  if (L.nehru) {
+    T.push({ t: "r", x: -cw * 0.85 + 1, y: top - 1.2, w: cw * 1.85 - 1, h: 2.2, c: lt(L.jacket, 0.18), no: true });
+    for (let b = 0; b < 4; b++) T.push({ t: "r", x: cw * 0.42, y: top + 3 + b * 3.3, w: 1.2, h: 1.2, c: "#d9a441", no: true });
+  }
+  if (L.pocket) T.push({ t: "p", pts: [[-4, top + 4.6], [-1, top + 4.6], [-1.6, top + 3], [-3, top + 3.4]], c: L.pocket, no: true });
+  if (L.watchChain) T.push({ t: "l", a: [cw * 0.42, top + 10], b: [-2.5, top + 12.5], w: 0.6, c: "#d9a441", no: true });
+  if (L.chain) T.push({ t: "l", a: [-1.5, top + 0.5], b: [2, top + 4.5], w: 0.8, c: "#c9c4bc", no: true }, { t: "l", a: [2, top + 4.5], b: [cw - 1, top + 0.5], w: 0.8, c: "#c9c4bc", no: true });
+  if (L.dupatta) T.push({ t: "l", a: [-cw * 0.8, top + 1], b: [ww, -2], w: 2.2, c: L.dupatta, no: true });
+  if (L.pallu) T.push({ t: "l", a: [-cw * 0.8, top + 1], b: [ww, -2], w: 2.6, c: L.skirt, no: true }, { t: "l", a: [-cw * 0.8 + 0.6, top + 1.6], b: [ww + 0.4, -1.6], w: 0.6, c: L.border, no: true });
+  if (L.sash) {
+    T.push({ t: "r", x: -ww - 0.5, y: -3, w: ww * 2 + bl * 0.3 + 1, h: 3.4, c: L.belt }, { t: "r", x: -ww - 0.5, y: -3, w: ww * 2 + 1, h: 0.8, c: lt(L.belt, 0.2), no: true });
+    T.push({ t: "p", pts: [[-ww + 1, 0], [-ww - 1, 0], [-ww - 3 + wave, 6], [-ww - 0.5 + wave, 6.5]], c: L.belt });
+  } else if (!L.nehru) {
+    T.push({ t: "r", x: -ww, y: -2, w: ww * 2, h: 2.5, c: L.belt || "#1d1b18", no: true });
+    if (!L.belt) T.push({ t: "r", x: 2, y: -2, w: 2, h: 2.5, c: "#c9b37a", no: true });
+  }
+  if (L.knives) for (let n = 0; n < 3; n++) T.push({ t: "r", x: -ww + 1 + n * 2.2, y: -4.6, w: 0.8, h: 3, c: "#d8dde2", no: true });
+  layer(T);
   g.restore();
 
   // head (bigger in big-head mode, scaled around the neck)
-  const hx = p.head[0], hy = p.head[1];
+  const hx = p.head[0], hy = p.head[1], hw = B.hw, skin = L.skin, Hc = L.hair, hs = L.hairStyle;
   g.save(); if (bigHead) { g.translate(hx, hy + 6); g.scale(1.7, 1.7); g.translate(-hx, -(hy + 6)); }
-  const head = [{ t: "r", x: hx - 4.5, y: hy - 5, w: 9.5, h: 10.5, c: L.skin }, { t: "r", x: hx - 2, y: hy + 5, w: 5, h: 2, c: L.skin }];
-  const hs = L.hairStyle, H = L.hair;
-  if (hs === "spiky") head.push({ t: "p", pts: [[hx - 6, hy - 1], [hx - 7, hy - 7], [hx - 3, hy - 6], [hx - 2, hy - 10], [hx + 1, hy - 7], [hx + 4, hy - 10], [hx + 5, hy - 5], [hx + 5, hy - 3], [hx - 3, hy - 3], [hx - 3, hy + 2]], c: H });
-  if (hs === "pony") head.push({ t: "r", x: hx - 5.5, y: hy - 7, w: 11, h: 4, c: H }, { t: "r", x: hx - 5.5, y: hy - 4, w: 3, h: 5, c: H }, { t: "l", a: [hx - 6, hy - 4], b: [hx - 11, hy + 3 + Math.sin(frameNo / 8) * 1.5], w: 3, c: H });
-  if (hs === "cap") head.push({ t: "r", x: hx - 5, y: hy - 7, w: 10, h: 4, c: L.cap }, { t: "r", x: hx + 3, y: hy - 4, w: 5, h: 1.6, c: L.cap }, { t: "r", x: hx - 5.5, y: hy - 3, w: 2, h: 3, c: H });
-  if (hs === "beanie") head.push({ t: "r", x: hx - 5, y: hy - 8, w: 10, h: 5, c: L.cap }, { t: "r", x: hx - 5, y: hy - 4, w: 10, h: 1.5, c: shade(L.cap, -0.25) }, { t: "r", x: hx - 5.5, y: hy - 3, w: 2, h: 4, c: H });
-  if (hs === "mohawk") head.push({ t: "p", pts: [[hx - 4, hy - 4], [hx - 3, hy - 11], [hx, hy - 9], [hx + 2, hy - 12], [hx + 3, hy - 5]], c: H });
-  if (hs === "bandana") head.push({ t: "r", x: hx - 5, y: hy - 7, w: 10, h: 4, c: L.cap }, { t: "p", pts: [[hx - 5, hy - 5], [hx - 10, hy - 2], [hx - 9, hy - 6]], c: L.cap });
-  if (hs === "topknot") head.push({ t: "r", x: hx - 5, y: hy - 6, w: 10, h: 3, c: H }, { t: "r", x: hx - 2, y: hy - 10, w: 4, h: 4, c: H });
-  if (hs === "long") head.push({ t: "r", x: hx - 5.5, y: hy - 7, w: 11, h: 4, c: H }, { t: "p", pts: [[hx - 6, hy - 4], [hx - 2, hy - 4], [hx - 3, hy + 9], [hx - 8, hy + 8 + Math.sin(frameNo / 9)]], c: H });
-  if (hs === "bun") head.push({ t: "r", x: hx - 5, y: hy - 7, w: 10, h: 4, c: H }, { t: "r", x: hx - 5.5, y: hy - 4, w: 2.5, h: 5, c: H }, { t: "r", x: hx - 9, y: hy - 8, w: 5, h: 5, c: H });
-  if (hs === "slick") head.push({ t: "p", pts: [[hx - 6, hy - 1], [hx - 5, hy - 7], [hx + 5, hy - 7], [hx + 6, hy - 5], [hx - 3, hy - 4], [hx - 3, hy + 1]], c: H });
-  layer(head);
-  // face details (no outline)
+  const headPts = [[hx - hw, hy - 3.5], [hx - hw + 1.6, hy - 6], [hx + hw - 1.4, hy - 6], [hx + hw, hy - 3.8], [hx + hw + 0.4, hy + 1.5], [hx + hw - 1.6, hy + 5], [hx - hw + 1.5, hy + 5], [hx - hw, hy + 2]];
+  const H = [{ t: "r", x: hx - 2, y: hy + 4, w: 4.5, h: 3, c: skin }, { t: "p", pts: headPts, c: skin },
+    { t: "p", pts: [[hx - hw, hy - 3.5], [hx - hw + 2.2, hy - 3.5], [hx - hw + 2.6, hy + 4.5], [hx - hw + 1.5, hy + 5], [hx - hw, hy + 2]], c: dk(skin, 0.12), no: true }];
+  // Rai: hair swept back in spikes, like he has been running all night
+  if (hs === "spiky") H.push({ t: "p", pts: [[hx - hw - 0.8, hy + 1], [hx - hw - 4.5, hy - 2.4], [hx - hw - 1, hy - 4.6], [hx - hw - 4, hy - 8], [hx - 1.4, hy - 7], [hx - 1.6, hy - 10.4], [hx + 1.8, hy - 7.6], [hx + hw + 1.6, hy - 8.6], [hx + hw + 0.2, hy - 4.6], [hx + hw - 1.2, hy - 3.6], [hx - 2.4, hy - 3.4], [hx - 2.8, hy + 1.6]], c: Hc }, { t: "l", a: [hx - 3, hy - 7.4], b: [hx + 2.6, hy - 7.2], w: 1, c: lt(Hc, 0.5), no: true });
+  if (hs === "braid") {
+    H.push({ t: "p", pts: [[hx - hw - 0.6, hy + 2], [hx - hw - 0.6, hy - 4.2], [hx - hw + 1.6, hy - 6.8], [hx + hw - 1, hy - 6.8], [hx + hw + 0.2, hy - 4], [hx - 1, hy - 4.2], [hx - 2.4, hy + 2]], c: Hc });
+    for (let n = 0; n < 4; n++) { const sway = Math.sin(frameNo / 9 + n * 0.7) * (0.6 + n * 0.4); H.push({ t: "e", x: hx - hw - 1.2 - n * 0.7 + sway, y: hy + 3.2 + n * 3, rx: 1.7 - n * 0.1, ry: 1.9, c: Hc }); }
+    H.push({ t: "l", a: [hx - 1, hy - 6], b: [hx + 2.5, hy - 5.6], w: 0.7, c: lt(Hc, 0.3), no: true });
+  }
+  if (hs === "cap") H.push({ t: "p", pts: [[hx - hw - 0.4, hy - 3], [hx - hw + 1.2, hy - 7.4], [hx + hw - 1, hy - 7.4], [hx + hw + 0.2, hy - 3.6]], c: L.cap }, { t: "r", x: hx + 2, y: hy - 4.4, w: hw + 3.4, h: 1.6, c: dk(L.cap, 0.15) }, { t: "r", x: hx - hw - 0.4, y: hy - 3, w: 2.2, h: 3.4, c: Hc });
+  if (hs === "beanie") H.push({ t: "p", pts: [[hx - hw - 0.4, hy - 3.2], [hx - hw + 1, hy - 8.5], [hx + hw - 1, hy - 8.5], [hx + hw + 0.2, hy - 3.2]], c: L.cap }, { t: "r", x: hx - hw - 0.4, y: hy - 4.4, w: hw * 2 + 0.6, h: 1.6, c: dk(L.cap, 0.25), no: true }, { t: "r", x: hx - hw - 0.4, y: hy - 3, w: 2.2, h: 4, c: Hc });
+  if (hs === "mohawk") H.push({ t: "p", pts: [[hx - 4, hy - 5], [hx - 3.4, hy - 12], [hx - 0.6, hy - 9.6], [hx + 1.6, hy - 13], [hx + 3.6, hy - 6]], c: Hc }, { t: "r", x: hx - hw, y: hy - 4.6, w: 2, h: 3, c: dk(skin, 0.3), no: true });
+  if (hs === "bandana") H.push({ t: "p", pts: [[hx - hw - 0.4, hy - 2.8], [hx - hw + 1.2, hy - 7], [hx + hw - 1, hy - 7], [hx + hw + 0.2, hy - 3.4]], c: L.cap }, { t: "p", pts: [[hx - hw, hy - 4.4], [hx - hw - 5, hy - 1 + wave], [hx - hw - 4.4, hy - 5.4 + wave]], c: L.cap });
+  if (hs === "kudumi") H.push({ t: "p", pts: [[hx - hw - 0.4, hy - 1], [hx - hw + 1.2, hy - 6.4], [hx + hw - 1.2, hy - 6.4], [hx + hw, hy - 4.2], [hx - 2, hy - 4.6], [hx - 2.6, hy - 0.6]], c: Hc }, { t: "e", x: hx + 1.2, y: hy - 7.6, rx: 3.1, ry: 2.4, c: Hc }, { t: "l", a: [hx + 0.2, hy - 8.6], b: [hx - 1.6, hy - 10.4 + wave * 0.6], w: 1.6, c: Hc });
+  if (hs === "slick") H.push({ t: "p", pts: [[hx - hw - 0.6, hy + 1], [hx - hw + 0.4, hy - 6.4], [hx + hw - 1, hy - 7], [hx + hw + 0.6, hy - 5], [hx - 1.8, hy - 4.4], [hx - 2.6, hy + 1.4]], c: Hc }, { t: "l", a: [hx - 2, hy - 5.8], b: [hx + 3, hy - 6], w: 0.7, c: L.grey ? "#e9e4dc" : lt(Hc, 0.3), no: true });
+  if (hs === "bun") H.push({ t: "p", pts: [[hx - hw - 0.4, hy + 1], [hx - hw + 1, hy - 6.4], [hx + hw - 1.2, hy - 6.6], [hx + hw, hy - 4.4], [hx - 1.6, hy - 4.6], [hx - 2.4, hy + 1]], c: Hc }, { t: "e", x: hx - hw - 1.6, y: hy - 4.6, rx: 3, ry: 2.8, c: Hc });
+  if (hs === "bald") H.push({ t: "r", x: hx + 0.4, y: hy - 5.6, w: 2.4, h: 1, c: lt(skin, 0.28), no: true });
+  layer(H);
+  // face details, no outline
   const fd = (x0, y0, w, h, c) => R(x0, y0, w, h, C(c));
-  fd(hx - 2.5, hy - 1, 2, 2, shade(L.skin, -0.2));                         // ear
-  if (L.shades) fd(hx + 1, hy - 2, 5, 2.2, "#111");
-  else if (L.specs) { fd(hx + 1.5, hy - 2.6, 3.6, 3, "#1d1b18"); fd(hx + 2.1, hy - 2, 2.4, 1.8, "#e9eef2"); fd(hx + 3, hy - 1.6, 1, 1.2, "#111"); }
-  else if (L.mask) { fd(hx + 1, hy + 1, 4.5, 4, "#1b1b1b"); fd(hx + 2.5, hy - 2, 2, 1.6, "#fff"); fd(hx + 3.5, hy - 2, 1, 1.6, "#111"); }
-  else { fd(hx + 2, hy - 2, 2.2, 1.8, "#fff"); fd(hx + 3.2, hy - 2, 1, 1.8, "#111"); fd(hx + 1.5, hy - 3.6, 3, 0.9, shade(H, 0)); }
-  fd(hx + 4.5, hy, 1, 1.5, shade(L.skin, -0.18));                          // nose
-  if (!L.mask) fd(hx + 2, hy + 3, 2.5, 0.8, ["hurt", "fly", "lying"].includes(f.st) ? "#5a1f1f" : shade(L.skin, -0.35));
-  if (L.beard) fd(hx - 1, hy + 2, 6, 3.5, H);
-  if (L.mustache) { fd(hx + 1, hy + 1.6, 5.5, 1.4, H); fd(hx + 0.5, hy + 2.6, 1.2, 1.4, H); }
+  const ouch = ["hurt", "fly", "lying", "thrown", "dead"].includes(f.st);
+  fd(hx - 1.6, hy - 0.8, 2, 2.6, dk(skin, 0.22));                                      // ear
+  if (ouch && (L.shades || L.mask)) fd(hx + 1.2, hy - 4.4, 3.2, 0.9, dk(skin, 0.4));
+  if (L.shades) { fd(hx + 0.6, hy - 2.8, hw + 0.2, 2.4, "#111"); fd(hx + 2, hy - 2.4, 1, 0.8, "#6f6a78"); }
+  else if (L.specs) { fd(hx + 1.2, hy - 3, 3.8, 3.2, "#1d1b18"); fd(hx + 1.7, hy - 2.5, 2.8, 2.2, "#e9eef2"); fd(hx + 3, hy - 1.9, 1, 1.4, "#111"); }
+  else if (ouch) fd(hx + 1.6, hy - 1.4, 2.8, 0.7, dk(skin, 0.5));
+  else { fd(hx + 1.6, hy - 2.4, 2.6, 1.9, "#fbf8f2"); fd(hx + 3.1, hy - 2.4, 1.1, 1.9, "#111"); if (L.lashes) fd(hx + 1.6, hy - 2.9, 2.8, 0.6, "#111"); }
+  if (!L.shades && !L.specs) {
+    const mood = L.mood || "hero", bc = dk(Hc === "#d6d0c8" ? "#8a8278" : Hc, 0.1);
+    if (mood === "mean") { fd(hx + 1.2, hy - 4.4, 1.6, 0.9, bc); fd(hx + 2.6, hy - 3.8, 1.8, 0.9, bc); }
+    else if (mood === "kind") fd(hx + 1.4, hy - 4.6, 3, 0.7, bc);
+    else fd(hx + 1.3, hy - 4.1, 3.2, 0.85, bc);
+  }
+  fd(hx + hw - 0.2, hy - 0.6, 1, 2.2, dk(skin, 0.2));                                   // nose
+  if (L.mask) { fd(hx - 0.6, hy + 0.6, hw + 1.4, 4.4, L.dupatta || "#1b1b1b"); fd(hx - 0.6, hy + 2.4, hw + 1.4, 0.6, dk(L.dupatta || "#1b1b1b", 0.25)); }
+  else {
+    fd(hx + 2, hy + 2.6, ouch ? 1.8 : 2.6, ouch ? 1.6 : 0.8, ouch ? "#5a1f1f" : dk(skin, 0.38));
+    if (L.stubble) fd(hx - 0.4, hy + 3.2, hw + 0.6, 1.6, dk(skin, 0.14));
+    if (L.beard) { fd(hx - 1, hy + 2, hw + 1.2, 3.6, Hc); fd(hx + 1.6, hy + 2.6, 2.6, 0.8, dk(skin, 0.38)); }
+    if (L.mustache || L.handlebar) fd(hx + 1, hy + 1.5, hw - 0.2, 1.4, Hc);
+    if (L.handlebar) { fd(hx - 0.4, hy - 0.4, 1.4, 2.8, Hc); fd(hx + hw + 0.4, hy - 0.6, 1.4, 3, Hc); fd(hx + hw + 1.6, hy - 1.4, 1, 1, Hc); }
+  }
+  if (L.tilak) { fd(hx + 2.2, hy - 6.2, 0.9, 2.2, "#f2e6c8"); fd(hx + 2.3, hy - 4.6, 0.7, 0.7, "#b42318"); }
+  if (L.scar) fd(hx + 1, hy - 4.6, 1, 4, "#e9b9a0");
+  if (L.gajra) for (let n = 0; n < 5; n++) fd(hx - hw - 4 + n * 1.2, hy - 7.2 + Math.abs(n - 2) * 0.6, 1, 1, "#fbf8f2");
+  if (L.band) { fd(hx - hw, hy - 3.9, hw * 2, 1.1, L.band); fd(hx - hw - 4, hy - 4 + wave * 1.4, 4, 1.2, L.band); fd(hx - hw - 6.5, hy - 2.6 + wave * 1.8, 3, 1.2, L.band); }
   if (costume === "avatar" && f.team === "p") { fd(hx - 6, hy - 13, 2, 9, "#1f7a6a"); fd(hx - 6.5, hy - 14, 3, 3, "#2b54a8"); fd(hx - 6, hy - 13.5, 2, 2, "#f2c230"); }
-  if (L.scar) fd(hx + 1, hy - 4, 1, 4, "#e9b9a0");
-  if (L.band) { fd(hx - 5, hy - 4, 10, 1.6, L.band); const fl = Math.sin(frameNo / 6) * 1.5; fd(hx - 9, hy - 3 + fl, 4, 1.2, L.band); fd(hx - 11, hy - 1 + fl, 3, 1.2, L.band); }
   if (f.pigeon) { const pc = P.dark ? "#8c8794" : "#6f6a78"; R(hx - 3, hy - 12, 7, 4, pc); R(hx + 3, hy - 14, 3, 3, pc); R(hx + 6, hy - 13, 1, 1, P.amber); }
   g.restore();
 
-  layer(leg(p.hip, p.kf, p.ff, (c) => c));
+  if (!L.skirt) layer(leg(p.hip, p.kf, p.ff, same, true));
+  // a kurta hangs over the thighs; Cheel carries a kite reel at her hip
+  if (L.kurta) {
+    g.save(); g.translate(p.hip[0], p.hip[1]); g.rotate(ang);
+    const hc = L.nehru ? L.shirt : (L.jacket || L.shirt);
+    layer([{ t: "p", pts: L.nehru ? [[-ww - 0.2, 2], [ww + 0.2, 2], [ww + 0.8, 8], [-ww - 0.8, 8]] : [[-ww - 0.4, -1], [ww + 0.4, -1], [ww + 2, 7], [-ww - 2, 7]], c: hc }, { t: "l", a: [ww - 1, 0], b: [ww + 0.6, 6.5], w: 0.6, c: dk(hc, 0.22), no: true }]);
+    g.restore();
+  }
+  if (L.reel) layer([{ t: "r", x: p.hip[0] - B.ww - 3.2, y: p.hip[1] + 0.5, w: 3.4, h: 4, c: "#8a5d3b" }, { t: "r", x: p.hip[0] - B.ww - 2.6, y: p.hip[1] + 1.4, w: 2.2, h: 2.2, c: "#fbf8f2", no: true }]);
   if (f.weapon && !["lying", "fly", "dead", "thrown"].includes(f.st)) {
     const a = p.pipeAng !== undefined ? p.pipeAng : -1.2;
-    if (f.weapon.kind === "pipe") layer([{ t: "l", a: p.hf, b: [p.hf[0] + Math.cos(a) * 18, p.hf[1] + Math.sin(a) * 18], w: 2.4, c: "#b08a4a" }]);
+    if (f.weapon.kind === "pipe") layer([{ t: "l", a: p.hf, b: [p.hf[0] + Math.cos(a) * 18, p.hf[1] + Math.sin(a) * 18], w: 2.4, c: "#b08a4a" }, { t: "l", a: [p.hf[0] + Math.cos(a) * 6, p.hf[1] + Math.sin(a) * 6], b: [p.hf[0] + Math.cos(a) * 7.5, p.hf[1] + Math.sin(a) * 7.5], w: 2.6, c: "#6b4a22", no: true }]);
     else layer([{ t: "p", pts: [[p.hf[0], p.hf[1] - 1], [p.hf[0] + 9, p.hf[1] - 2.5], [p.hf[0] + 9, p.hf[1] - 0.5], [p.hf[0], p.hf[1] + 1]], c: "#d8dde2" }]);
   }
-  layer(arm(shF, p.ef, p.hf, (c) => c));
+  layer(arm(shF, p.ef, p.hf, same));
   g.restore();
 
   if (f.avatarT > 0) { g.globalAlpha = 0.35 + Math.sin(frameNo / 6) * 0.15; g.strokeStyle = "#f2c230"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y - f.z - 26 * sc, 14 * sc, 30 * sc, 0, 0, 7); g.stroke(); g.globalAlpha = 1; }
   // special move warning: a red "!" over bosses and specialists
   if (f.warn > 0 && f.st === "windup") { const wy = y - f.z - 58 * sc; text("!", x, wy, 14, P.T.red, "center", "IBM Plex Sans"); }
   // rolling / cyclone motion trail
-  if ((f.st === "attack" && (f.atkName === "roll" || f.atkName === "eRoll")) || (f.st === "air" && f.airAtk === "cyclone")) {
+  if ((f.st === "attack" && ["roll", "eRoll", "kroll"].includes(f.atkName)) || (f.st === "air" && f.airAtk === "cyclone")) {
     g.globalAlpha = 0.25; g.strokeStyle = f.team === "p" ? (f.pi ? P.T.teal : P.T.accent) : P.T.red; g.lineWidth = 2;
     g.beginPath(); g.arc(x, y - f.z - 16 * sc, 16 * sc, 0, 7); g.stroke(); g.globalAlpha = 1;
   }
@@ -1403,26 +1627,33 @@ function drawItems() {
     if (bossRef && bossRef.st === "dead") text("Nani!", cam + LW - 30 - cam, Y0 - 62, 7, P.T.ink, "center", "IBM Plex Sans");
   }
   if (pigeons) drawPigeons(P);
-  for (const b of barrels) {
+  for (const it of items) drawItem(it, P);
+  for (const sh of shots) drawShot(sh, P);
+}
+function drawBarrel(b) {
+  const P = PAL;
+  {
     const x = Math.round(b.x - cam + (b.shake ? (b.shake % 2 ? 1 : -1) : 0)), y = b.y;
     if (b.kind === "hydrant") { // a street hand pump
       const c = b.hp > 0 ? "#2f6b3a" : shade("#2f6b3a", -0.3), hy = b.hp > 0 ? Math.sin(frameNo / 25) * 1.5 : 4;
       R(x - 3, y - 18, 6, 18, P.ol); R(x - 2, y - 17, 4, 17, c); R(x + 2, y - 12, 6, 2, c); R(x - 4, y - 2, 8, 2, "#5d5852");
-      g.strokeStyle = P.ol; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 1, y - 17); g.lineTo(x - 11, y - 20 + hy); g.stroke(); continue; }
+      g.strokeStyle = P.ol; g.lineWidth = 2; g.beginPath(); g.moveTo(x - 1, y - 17); g.lineTo(x - 11, y - 20 + hy); g.stroke(); return; }
     if (b.kind === "vending") {
       const lit = b.hp > 0 && frameNo % 90 > 3;
       R(x - 10, y - 36, 20, 36, P.ol); R(x - 9, y - 35, 18, 34, P.T.teal); R(x - 7, y - 32, 10, 20, lit ? "#f7f4ee" : "#555");
       for (let r = 0; r < 4; r++) R(x - 6, y - 31 + r * 5, 8, 2, [P.T.red, P.T.amber, P.T.accent, P.T.good][r]);
       R(x + 4, y - 30, 3, 8, "#1d1b18"); R(x - 7, y - 9, 14, 4, "#1d1b18");
       if (b.hp <= 0) { R(x - 7, y - 32, 10, 20, "#2a2a2a"); R(x - 4, y - 28, 6, 1, "#888"); }
-      continue;
+      return;
     }
-    if (b.hp <= 0) continue;
+    if (b.hp <= 0) return;
     g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x, y, 10, 3, 0, 0, 7); g.fill();
     R(x - 9, y - 21, 18, 21, P.ol); R(x - 8, y - 20, 16, 20, P.wood);
     R(x - 8, y - 15, 16, 2, shade(P.wood, -0.35)); R(x - 8, y - 6, 16, 2, shade(P.wood, -0.35)); R(x - 5, y - 20, 2, 20, shade(P.wood, 0.15));
   }
-  for (const it of items) {
+}
+function drawItem(it, P) {
+  {
     const x = Math.round(it.x - cam), y = Math.round(it.y - it.z);
     g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x, it.y, 7, 2, 0, 0, 7); g.fill();
     if (it.kind === "pipe") { g.strokeStyle = P.ol; g.lineWidth = 4; g.beginPath(); g.moveTo(x - 9, y - 2); g.lineTo(x + 9, y - 4); g.stroke(); g.strokeStyle = "#b08a4a"; g.lineWidth = 2.4; g.stroke(); }
@@ -1437,9 +1668,11 @@ function drawItems() {
       g.globalAlpha = 0.6; R(x - 2 + Math.sin(frameNo / 8), y - 14, 1, 4, "#ffffff"); R(x + 1 + Math.sin(frameNo / 9), y - 15, 1, 4, "#ffffff"); g.globalAlpha = 1; }
     if (frameNo % 40 < 20) R(x - 1, y - 16, 2, 2, P.spark);
   }
-  for (const s of shots) {
+}
+function drawShot(s, P) {
+  {
     const x = Math.round(s.x - cam), y = Math.round(s.y - s.z);
-    if (s.kind === "chakra") { g.save(); g.translate(x, y); g.rotate(frameNo / 2); g.strokeStyle = "#f2c230"; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 6, 0, 7); g.stroke(); g.strokeStyle = "#d9741c"; g.lineWidth = 1; g.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.moveTo(0, 0); g.lineTo(Math.cos(a) * 6, Math.sin(a) * 6); } g.stroke(); g.restore(); continue; }
+    if (s.kind === "chakra") { g.save(); g.translate(x, y); g.rotate(frameNo / 2); g.strokeStyle = "#f2c230"; g.lineWidth = 2; g.beginPath(); g.arc(0, 0, 6, 0, 7); g.stroke(); g.strokeStyle = "#d9741c"; g.lineWidth = 1; g.beginPath(); for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.moveTo(0, 0); g.lineTo(Math.cos(a) * 6, Math.sin(a) * 6); } g.stroke(); g.restore(); return; }
     if (s.kind === "knife") { g.fillStyle = P.shadow; g.fillRect(x - 4, s.y - 1, 8, 2); g.save(); g.translate(x, y); g.scale(s.face, 1); R(-6, -1.5, 4, 3, "#3b2a1d"); R(-2, -1, 9, 2, "#e4e8ec"); g.restore(); }
     else { g.strokeStyle = P.amber; g.lineWidth = 2; for (let r = 0; r < 3; r++) { g.globalAlpha = 0.8 - r * 0.25; g.beginPath(); g.ellipse(x - s.face * r * 6, s.y, 6 + r * 3, 3 + r, 0, Math.PI, 0); g.stroke(); } g.globalAlpha = 1; }
   }
@@ -1504,6 +1737,7 @@ function drawHud() {
   if (players[0]) panel(players[0], 4);
   if (players[1]) panel(players[1], LW - 128);
   else if (!TOUCH && frameNo % 90 < 60) text("P2: press 1 to join", LW - 6, 14, 7, P.T.muted, "right");
+  R(LW / 2 - 36, 5, 72, 10, P.dark ? "rgba(0,0,0,0.6)" : "rgba(255,253,249,0.86)");
   text("STAGE " + (stageIdx + 1) + "  " + (blockIdx + 1) + "/" + blocks().length, LW / 2, 12, 6, P.T.muted);
   if (lastHit && !KINDS[lastHit.f.kind].boss) { const e = lastHit.f; text(KINDS[e.kind].name, 8, players[0] && players[0].combo >= 2 ? 56 : 44, 7, P.T.ink, "left"); bar(48, players[0] && players[0].combo >= 2 ? 51 : 39, 50, 4, e.hp / e.max, P.amber); }
   if (bossRef && bossRef.st !== "dead" && locked && blocks()[blockIdx].boss) { text(KINDS[bossRef.kind].name.toUpperCase(), LW / 2, LH - 13, 7, P.T.ink); bar(LW / 2 - 90, LH - 10, 180, 5, bossRef.hp / bossRef.max, P.T.red); }
@@ -1539,9 +1773,9 @@ function draw() {
   g.save(); g.translate(Math.round(sx), Math.round(sy));
   ({ street: drawStreet, subway: drawSubway, roof: drawRoof, factory: drawFactory })[STAGES[stageIdx].theme](PAL);
   drawItems();
-  const cast = enemies.concat(players.filter((p) => p && p.lives > 0));
+  const cast = enemies.concat(players.filter((p) => p && p.lives > 0), barrels);
   cast.sort((a, b) => a.y - b.y);
-  for (const f of cast) drawFighter(f);
+  for (const f of cast) if (f.kind && KINDS[f.kind]) drawFighter(f); else drawBarrel(f);
   drawFx();
   drawForeground(PAL);
   g.restore();

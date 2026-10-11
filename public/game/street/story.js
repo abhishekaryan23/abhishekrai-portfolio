@@ -20,7 +20,7 @@ const SCENES = {
     { who: "card", text: "Everything goes back.\nR." },
     { who: "rai", text: "Somebody took her, and they want us to know it." },
     { who: "kai", duo: true, text: "Then we go together. Block by block, all night if we have to." },
-    { who: "rai", solo: true, text: "Kavya, stay by the phone in case she calls. I'll follow them, block by block." },
+    { who: "rai", solo: true, text: "Kai, stay by the phone in case she calls. I'll follow them, block by block." },
     { who: "kai", solo: true, text: "Go, bhaiya. I'm keeping her watch right here where I can see it." }
   ],
   bossox: [{ who: "ox", text: "Dhaba's closed, kids. The whole lane is closing." }],
@@ -32,7 +32,7 @@ const SCENES = {
     { who: "kai", text: "The Harbour Line? That station closed before we were born." },
     { who: "N", dark: 0.6, text: "Somewhere under the city, a train that should not exist blows its horn." }
   ],
-  intro1: [{ who: "N", dark: 0.5, text: "Bandar Road station. Shut since 1987. Tonight every lamp is lit. The clock says 11:58." }],
+  intro1: [{ who: "N", dark: 0.5, text: "Bunder Road station. Shut since 1987. Tonight every lamp is lit. The clock says 11:58." }],
   bossrook: [{ who: "rook", text: "Nani taught me this stance. Let's see if she taught you better." }],
   end1: [
     { who: "rook", text: "She trained me, you know. Long before she trained you." },
@@ -64,7 +64,7 @@ const SCENES = {
     { who: "N", dark: 0.82, text: "At midnight, every light on Chandni Lane comes back on." },
     { who: "kai", duo: true, text: "Nani, your watch. It's ticking again." },
     { who: "kai", solo: true, text: "Bhaiya? Her watch, here on the counter. It just started ticking again." },
-    { who: "nani", text: "Of course it is. Now come home, Raivat. Kavya. Who's hungry?" }
+    { who: "nani", text: "Of course it is. Now come home, you two. Rai, Kai. Who's hungry?" }
   ],
   trueEnd: [
     { who: "N", text: "The next morning, a card lies on the dhaba counter. Same handwriting as before." },
@@ -96,7 +96,7 @@ function playScene(name, then, extra) {
   // in single player the sibling not being played stays by the phone;
   // when a boss is picked, the siblings' phone lines are left out
   const solo = !players[1], p1 = players[0] ? players[0].kind : "rai", sibling = p1 === "rai" || p1 === "kai";
-  const swap = (p) => (p1 === "kai" && p.solo ? { ...p, who: p.who === "rai" ? "kai" : p.who === "kai" ? "rai" : p.who, text: p.text.replace("Kavya,", "Bhaiya,").replace("Go, bhaiya.", "Go, Kavya.").replace("Bhaiya? Her", "Kavya? Her") } : p);
+  const swap = (p) => (p1 === "kai" && p.solo ? { ...p, who: p.who === "rai" ? "kai" : p.who === "kai" ? "rai" : p.who, text: p.text.replace("Kai,", "Bhaiya,").replace("Go, bhaiya.", "Go, Kai.").replace("Bhaiya? Her", "Kai? Her") } : p);
   const panels = (extra || []).concat(SCENES[name] || []).filter((p) => (!p.solo || (solo && sibling)) && (!p.duo || !solo || !sibling)).map(swap);
   if (!storyOn || !panels.length) { then(); return; }
   if (scene) { const prev = scene.then; scene.panels.push(...panels); scene.then = () => { prev(); then(); }; return; }
@@ -175,7 +175,7 @@ function drawPortrait(kind, x, y, w, h) {
   g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
   const f = fighter(kind, 0, 0, "e"); f.face = 1; f.st = "idle";
   const camWas = cam; cam = 0;
-  const k = 1.25 / KINDS[kind].scale; g.translate(x + w / 2 - 2, y + h + 8); g.scale(k, k);
+  const k = 2.3 / KINDS[kind].scale, z = 2.3 * BS; g.translate(x + w / 2 - 3 * z, y + h * 0.42 + 38 * z); g.scale(k, k);
   drawFighter(f);
   cam = camWas; g.restore();
   g.strokeStyle = PAL.T.accent; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
