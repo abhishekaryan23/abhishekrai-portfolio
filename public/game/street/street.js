@@ -1519,6 +1519,8 @@ function pose(f) {
 const SHEET_OF = { rai: "rai", kai: "kai", grunt: "grunt", pipeGrunt: "pipeGrunt", pipeBare: "pipeBare", kicker: "kicker", thrower: "thrower", bruiser: "bruiser",
   ox: "ox", rook: "rook", crane: "crane", rollback: "rollback", pOx: "ox", pRook: "rook", pCrane: "crane", pRollback: "rollback" };
 // which frame to show, and an optional spin, for each state and move
+// sheets whose frame 4 is not a punch wind-up (an uppercut or a raised knee): they punch from guard
+const NO_PUNCH_COCK = new Set(["rook", "crane", "kicker"]);
 // frames for a fighter holding a lathi (the lathi thug, or a player's "<name>Lathi" sheet)
 function lathiFrame(f) {
   const s = f.st, at = f.atkName;
@@ -1538,7 +1540,7 @@ function spriteFrame(f, sheet) {
   if ((s === "walk" || s === "run") && SPRITES["w_" + sheet] && FIGHTER_FRAMES[sheet + "_walk"]) return { i: Math.floor(f.walkPh / 0.8) % 8, walk: true };
   if (s === "walk") return { i: [1, 0, 2, 0][Math.floor(f.walkPh / 1.4) % 4] };
   if (s === "run") return { i: [1, 2][Math.floor(f.walkPh / 1.2) % 2] };
-  if (s === "windup") return { i: 4 };
+  if (s === "windup") return { i: (at === "eKick" && sheet !== "kicker") || (at === "ePunch" && NO_PUNCH_COCK.has(sheet)) ? 0 : 4 };
   if (s === "hurt" || s === "grabbed") return { i: 9 };
   if (s === "fly" || s === "thrown") return f.vz > 0 ? { i: 9, rot: -0.35 } : { i: 10 };
   if (s === "lying" || s === "dead" || s === "out") return { i: 10 };
@@ -1565,8 +1567,9 @@ function spriteFrame(f, sheet) {
     if (at === "pipe") return { i: f.t < f.atk.a0 ? 4 : 3 };
     if (at === "toss") return { i: f.t < ATK.toss.spawn ? 4 : 3 };
     if (at === "upper") return { i: 4 };
-    if (at === "heavy") return { i: sheet === "bruiser" ? 6 : 4 };
-    if (at === "kick" || at === "eKick") return { i: 5 };
+    if (at === "heavy" || at === "ePunch") return { i: f.t < f.atk.a0 ? (at === "ePunch" && NO_PUNCH_COCK.has(sheet) ? 0 : 4) : f.t <= f.atk.a1 + 6 ? 3 : 0 };
+    if (at === "eKick") return { i: f.t < f.atk.a0 && sheet === "kicker" ? 4 : f.t <= f.atk.a1 + 6 ? 5 : 0 };
+    if (at === "kick") return { i: 5 };
     if (at === "round" || at === "spinheel") return { i: 6 };
     if (at === "elbow") return { i: 3, back: true };
     return { i: 3 };   // jab, jab2, ePunch, tackle, toss, chakra
