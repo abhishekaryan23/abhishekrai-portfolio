@@ -883,7 +883,7 @@ function updateStageFx() {
     const calm = alivePlayers().find((p) => Math.abs(p.x - pigeons.x) < 60 && p.stillT > 300 && !p.pigeon);
     if (pigeons.st === "sit" && calm) { calm.pigeon = true; calm.sp = Math.min(100, calm.sp + 30); texts.push({ x: calm.x, y: calm.y - 70, s: "A friend. +30 SP", t: 80 }); Arcade.secret("pigeon"); }
   }
-  for (const p of players) if (p && p.pigeon && (activeAtk(p) || DOWN_STATES.includes(p.st) || p.st === "hurt")) p.pigeon = false;
+  for (const p of players) if (p && p.pigeon && (activeAtk(p) || p.st === "attack" || DOWN_STATES.includes(p.st) || p.st === "hurt")) p.pigeon = false;
   if (th === "subway") {
     if (!train && frameNo % 600 === 300) train = { x: LW + 40, dir: -1 };
     if (train) {
@@ -925,10 +925,10 @@ function fightersPending() {
 const art = (names) => names.forEach((n) => sprite(n, ART + n + ".png"));
 const fighterArt = (sheet) => { if (!sheet) return; sprite("f_" + sheet, ART + "fighters/" + sheet + ".png"); sprite("w_" + sheet, ART + "fighters/" + sheet + "_walk.png"); };
 const STAGE_ART = [
-  ["cow", "auto", "cat", "st_lamp", "st_garbage", "st_cycle", "st_milk", "poster_film", "poster_circus", "poster_tuition", "dhaba_table", "dhaba_kettle", "dhaba_chairs",
+  ["birds", "cow", "auto", "cat", "st_lamp", "st_garbage", "st_cycle", "st_milk", "poster_film", "poster_circus", "poster_tuition", "dhaba_table", "dhaba_kettle", "dhaba_chairs",
     "sign_0", "sign_1", "sign_2", "sign_3", "sign_4", "sign_5", "sign_6", "sign_7", "sign_8", "sign_9", "sign_10", "sign_11"],
   ["routemap", "ad_chai", "ad_film", "clock", "sb_bench", "sb_cooler", "sb_scale", "sb_cagelamp", "train_coach"],
-  ["poster", "kite_m", "kite_y", "kite_b", "kite_o", "cloth_sari", "cloth_dupatta", "cloth_kurta", "cloth_gamcha", "roof_exit", "roof_dish", "roof_ac", "roof_tanks"],
+  ["birds", "poster", "kite_m", "kite_y", "kite_b", "kite_o", "cloth_sari", "cloth_dupatta", "cloth_kurta", "cloth_gamcha", "roof_exit", "roof_dish", "roof_ac", "roof_tanks"],
   ["mill_loom", "mill_firebox", "mill_lamp", "mill_bales", "bolt_m", "bolt_b", "bolt_o", "bolt_t"]
 ];
 function stageArt(si) {
@@ -1016,6 +1016,7 @@ function drawStreet(P) {
     const mx = tx + 260; g.strokeStyle = P.far; g.lineWidth = 1; g.beginPath(); g.moveTo(mx - 6, 112); g.lineTo(mx, 10); g.lineTo(mx + 6, 112); for (let yy = 20; yy < 110; yy += 10) { g.moveTo(mx - 6 + (yy - 10) / 17, yy); g.lineTo(mx + 6 - (yy - 10) / 17, yy + 8); } g.stroke();
     R(mx - 4, 16, 3, 6, P.far); R(mx + 2, 22, 3, 6, P.far); if (frameNo % 70 < 35) R(mx - 1, 7, 2, 2, P.T.red);
   }
+  drawCrows(13);
   const first = Math.floor(cam / 128) - 1;
   for (let i = first; i < first + 5; i++) {
     const x = i * 128 - cam, ware = i * 128 >= 1300, top = 26 + (i % 2) * 10;
@@ -1238,6 +1239,7 @@ function drawRoof(P) {
     g.fillStyle = c; g.beginPath(); g.moveTo(kx, ky - 6); g.lineTo(kx + 5, ky); g.lineTo(kx, ky + 6); g.lineTo(kx - 5, ky); g.fill();
     g.strokeStyle = P.dark ? "#8f8a96" : "#6f6a78"; g.lineWidth = 0.6; g.beginPath(); g.moveTo(kx, ky + 6); g.quadraticCurveTo(kx + 6, ky + 14, kx + 2, ky + 22); g.stroke();
   }
+  drawCrows(34);
   // near parapet with vents, AC units and a stair door
   R(0, 120, LW, 30, P.parapet); R(0, 120, LW, 3, shade(P.parapet, 0.12));
   for (let px = -(cam % 300); px < LW + 60; px += 300) {
@@ -1599,6 +1601,30 @@ function spriteFrame(f, sheet) {
   }
   return { i: 0 };
 }
+// one frame of sprites/birds.png at half size, bottom-centred on (x, y)
+function bird(i, x, y, flip) {
+  const im = SPRITES.birds, d = typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES.birds && FIGHTER_FRAMES.birds[i];
+  if (!im || !d) return false;
+  const [sx, sy, w, h, ax, ay] = d;
+  g.save(); g.translate(Math.round(x * 2) / 2, Math.round(y * 2) / 2); if (flip) g.scale(-1, 1);
+  g.drawImage(im, sx, sy, w, h, -ax / 2, -ay / 2, w / 2, h / 2); g.restore();
+  return true;
+}
+// the top of a fighter's head in one atlas frame (atlas pixels), measured once from the art
+const HEAD_TOP = new Map();
+function headTop(im, key, sx, sy, w, h) {
+  let r = HEAD_TOP.get(key);
+  if (!r) {
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const x = c.getContext("2d", { willReadFrequently: true }); x.drawImage(im, sx, sy, w, h, 0, 0, w, h);
+    const a = x.getImageData(0, 0, w, h).data;
+    let top = -1, sum = 0, n = 0;
+    for (let yy = 0; yy < h && (top < 0 || yy < top + 6); yy++) for (let xx = 0; xx < w; xx++) if (a[(yy * w + xx) * 4 + 3] > 0) { if (top < 0) top = yy; sum += xx; n++; }
+    r = [n ? sum / n : w / 2, Math.max(0, top)];
+    HEAD_TOP.set(key, r);
+  }
+  return r;
+}
 // a red silhouette of one atlas frame, built once and reused: the rage glow
 const RAGE_SIL = new Map();
 function rageSilhouette(im, key, sx, sy, w, h) {
@@ -1630,6 +1656,8 @@ function drawSpriteFighter(f, x, y) {
   g.drawImage(im, sx, sy, w, h, -ax / 2, -ay / 2, w / 2, h / 2);
   g.filter = "none";
   if (sil) { g.globalAlpha = 0.14 + pulse * 0.14; g.drawImage(sil, -ax / 2, -ay / 2, w / 2, h / 2); g.globalAlpha = 1; }
+  // the pigeon friend rides on the head
+  if (f.pigeon && SPRITES.birds) { const [hx, hy] = headTop(im, (fr.walk ? "w_" : "f_") + sheet + ":" + fr.i, sx, sy, w, h); bird(0, (hx - ax) / 2 - 1, (hy - ay) / 2 + 2); }
   if (f.weapon && sheet !== "pipeGrunt" && !sheet.endsWith("Lathi")) spriteWeapon(f, fr.walk ? 1 : fr.i);
   g.restore();
 }
@@ -1652,7 +1680,7 @@ const spriteSheet = (f) => {
   return f.team === "p" && f.weapon && f.weapon.kind === "pipe" && SPRITES["f_" + armed] && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES[armed] ? armed : base;
 };
 const usesSprite = (f) => SHEET_OF[f.kind] && SPRITES["f_" + spriteSheet(f)] && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES[spriteSheet(f)] &&
-  !bigHead && !f.pigeon && !((f.kind === "rai" || f.kind === "kai") && costume !== "classic");
+  !bigHead && !((f.kind === "rai" || f.kind === "kai") && costume !== "classic");
 
 const STANCE_STATES = new Set(["idle", "walk", "run", "windup", "grabbed", "hurt", "taunt"]);
 const DOWN_DRAW = new Set(["lying", "dead", "getup", "out"]);
@@ -1964,12 +1992,25 @@ function drawCat(P) {
   g.strokeStyle = c; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 5, y - 2); g.quadraticCurveTo(x + 12, y - 4, x + 10 + sw, y - 12); g.stroke();
   if (cat.st === "purr" && frameNo % 60 < 30) text("z", x + 8, y - 18, 6, P.T.muted);
 }
+// now and then a crow or two crosses the night sky, flapping and gliding
+function drawCrows(top) {   // top: flight height, above that stage's rooftops
+  if (!SPRITES.birds) return;
+  for (let k = 0; k < 2; k++) {
+    const t = (frameNo + k * 900) % (1500 + k * 700);
+    if (t > 520) continue;   // off screen most of the time
+    const x = -20 + t * 0.8, y = top + k * 8 + Math.sin(t / 30) * 3;
+    bird(t % 90 < 30 ? 7 : Math.floor(t / 6) % 2 ? 5 : 6, x, y);
+  }
+}
 function drawPigeons(P) {
   const base = Math.round(pigeons.x - cam), c = P.dark ? "#8c8794" : "#6f6a78";
   for (let i = 0; i < 3; i++) {
     let x = base + i * 12, y = 119;
     if (pigeons.st === "fly") { x += pigeons.t * (1 + i * 0.4); y -= pigeons.t * (0.7 + i * 0.2); if (y < -10) continue; }
-    const flap = pigeons.st === "fly" && frameNo % 8 < 4;
+    const flap = pigeons.st === "fly" && (frameNo + i * 3) % 8 < 4;
+    // sitting pigeons peck now and then; flying ones beat their wings
+    const fi = pigeons.st === "fly" ? (flap ? 2 : 3) : (frameNo + i * 53) % 170 < 22 ? 1 : 0;
+    if (bird(fi, x + 1, y + 2, i === 1 && pigeons.st !== "fly")) continue;
     R(x - 3, y - 4, 7, 4, c); R(x + 3, y - 6, 3, 3, c); R(x + 6, y - 5, 1, 1, P.amber);
     R(x - 2, y - (flap ? 8 : 5), 5, flap ? 3 : 1, shade(c, -0.2));
   }
