@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site.css">
-  <link rel="stylesheet" href="/game/style.css?v=6">
+  <link rel="stylesheet" href="/game/style.css?v=8">
 </head>
 <body>
 <header class="site-head">
@@ -34,7 +34,7 @@
     <div class="arcade-head">
       <div>
         <h1>Rollback Street</h1>
-        <p>A side-scrolling brawler in the style of the late-80s arcade classics. Fight through the street, the subway, the rooftops and the foundry, alone or with a friend on the same keyboard.</p>
+        <p>A side-scrolling brawler in the style of the late-80s arcade classics. One night in an Indian city, four stages, and a missing grandmother. Play alone or with a friend on the same keyboard.</p>
       </div>
       <nav class="game-tabs" aria-label="Games">
         <a href="/game/">Ghost Deploy</a>
@@ -49,24 +49,28 @@
       <div class="overlay" id="overlay">
         <div class="card" id="card-menu">
           <h2>Rollback Street</h2>
-          <p>Four stages, four bosses. Clear a stage to unlock it here next time.</p>
+          <p>Nani has vanished from her dhaba on Chandni Lane, and the only clue is a card signed R. Four stages, four bosses, one long night. Beat a boss to play as them.</p>
           <div class="chips" id="stages" role="group" aria-label="Starting stage"></div>
+          <div class="chips" id="fighters" role="group" aria-label="Fighter"></div>
           <div class="chips" id="costumes" role="group" aria-label="Costume" hidden></div>
+          <div class="chips" id="settings" role="group" aria-label="Settings"></div>
           <details class="moves">
             <summary>Move list</summary>
             <ul>
               <li><b>Combos:</b> punch, punch, punch (uppercut). Punch, punch, kick (spin heel kick). Kick, kick (roundhouse).</li>
               <li><b>Back elbow:</b> tap away from the way you face, then punch, to hit someone behind you.</li>
-              <li><b>Dash:</b> double-tap a direction. Then punch for a shoulder tackle, kick for a flying kick, jump for a long jump.</li>
+              <li><b>Dash:</b> double-tap a direction (or hold Shift; on a phone, push the stick all the way to the edge). Then punch for a shoulder tackle, kick for a flying kick, jump for a long jump.</li>
               <li><b>Grab:</b> walk into a dazed enemy. Punch to knee, kick to throw them into the others.</li>
               <li><b>Specials</b> use the SP bar, which fills as you land hits:
                 rolling kick (special, or punch and kick together, 30 SP), cyclone kick (special in the air, 25 SP),
                 rising dragon (down, forward, punch, or down and special, 40 SP).</li>
-              <li><b>Pickups:</b> pipes swing (every hit knocks down), knives throw, apples heal, cans refill SP. Jump over thrown knives and shockwaves.</li>
+              <li><b>Story:</b> four of Nani's letters are hidden in barrels, one per stage. Find them all for the true ending.</li>
+              <li><b>Fighters:</b> each has their own Special. Rai rolls, Kavya kicks like lightning, and every boss you beat joins with their own power.</li>
+              <li><b>Pickups:</b> lathis swing (every hit knocks down), knives throw, samosas heal, kulhad chai refills SP. Jump over thrown knives and shockwaves.</li>
             </ul>
           </details>
           <ul class="keys">
-            <li>Player 1: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>J</kbd> punch, <kbd>K</kbd> kick, <kbd>L</kbd> jump, <kbd>I</kbd> special</li>
+            <li>Player 1: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>J</kbd> punch, <kbd>K</kbd> kick, <kbd>L</kbd> jump, <kbd>I</kbd> special, <kbd>Shift</kbd> dash</li>
             <li>Player 2: arrows, <kbd>1</kbd> punch, <kbd>2</kbd> kick, <kbd>3</kbd> jump, <kbd>4</kbd> special (or <kbd>,</kbd> <kbd>.</kbd> <kbd>/</kbd> <kbd>'</kbd>)</li>
             <li><kbd>P</kbd> pause</li>
           </ul>
@@ -75,6 +79,7 @@
             <button class="btn ghost" id="start2" type="button" data-keyboard>2 players</button>
           </div>
           <p class="small muted" id="best-line" style="margin:12px 0 0"></p>
+          <details class="moves" id="letters" hidden></details>
         </div>
         <div class="card" id="card-end" hidden>
           <h2 id="end-title">Street cleared</h2>
@@ -86,11 +91,12 @@
     </div>
 
     <div class="pad">
-      <div class="stick" data-codes="KeyW,KeyS,KeyA,KeyD" role="presentation"><span></span></div>
+      <div class="stick" data-codes="KeyW,KeyS,KeyA,KeyD" data-dash="StickDash" role="presentation"><span></span></div>
       <div class="grp act">
-        <button tabindex="-1" data-code="KeyL">Jump</button><button tabindex="-1" data-code="KeyI">Special</button><button tabindex="-1" data-code="KeyP">Pause</button>
+        <button tabindex="-1" data-code="KeyI">Special</button><button tabindex="-1" data-code="ShiftLeft">Dash</button><button tabindex="-1" data-code="KeyL">Jump</button>
         <button tabindex="-1" data-code="KeyJ">Punch</button><button tabindex="-1" data-code="KeyK">Kick</button>
       </div>
+      <button class="pause-btn" tabindex="-1" data-code="KeyP">Pause</button>
     </div>
     <button class="fs-exit" id="fs-exit" type="button">Exit full screen</button>
     </div>
@@ -99,7 +105,8 @@
   </div>
 </main>
 
-<script src="/game/arcade.js?v=4"></script>
-<script src="/game/street/street.js?v=5"></script>
+<script src="/game/arcade.js?v=7"></script>
+<script src="/game/street/street.js?v=8"></script>
+<script src="/game/street/story.js?v=3"></script>
 </body>
 </html>

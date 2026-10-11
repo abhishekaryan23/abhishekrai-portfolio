@@ -115,7 +115,7 @@
      handlers as the keyboard. A .stick is an 8-way thumb pad whose
      data-codes list up, down, left and right. */
   function bindStick(el, onDown, onUp) {
-    const [U, D, Lf, Rt] = el.dataset.codes.split(","), knob = el.querySelector("span");
+    const [U, D, Lf, Rt] = el.dataset.codes.split(","), knob = el.querySelector("span"), DASH = el.dataset.dash;
     let held = new Set(), id = null;
     const set = (next) => {
       for (const c of held) if (!next.has(c)) onUp(c);
@@ -126,13 +126,14 @@
       const r = el.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
       let dx = e.clientX - cx, dy = e.clientY - cy;
       if (fs.on && fs.rot) [dx, dy] = [dy, -dx];         // the stage is turned 90 degrees
-      const dist = Math.hypot(dx, dy), max = el.offsetWidth * 0.32, next = new Set();
+      const dist = Math.hypot(dx, dy), max = el.offsetWidth * 0.38, next = new Set();
       if (dist > el.offsetWidth * 0.12) {
         const a = Math.atan2(dy, dx), oct = Math.round(a / (Math.PI / 4));
         if ([-1, 0, 1].includes(oct)) next.add(Rt);
         if ([3, 4, -4, -3].includes(oct)) next.add(Lf);
         if ([1, 2, 3].includes(oct)) next.add(D);
         if ([-1, -2, -3].includes(oct)) next.add(U);
+        if (DASH && dist > el.offsetWidth * 0.34 && Math.abs(dx) > Math.abs(dy) * 1.6) next.add(DASH);
       }
       const k = Math.min(1, max / (dist || 1));
       if (knob) knob.style.transform = "translate(" + dx * k + "px," + dy * k + "px)";
@@ -143,9 +144,26 @@
     el.addEventListener("pointermove", (e) => { if (e.pointerId === id) move(e); });
     el.addEventListener("pointerup", end); el.addEventListener("pointercancel", end);
   }
+  function bindGroup(grp, onDown, onUp) {
+    const fingers = new Map();     // pointerId -> button under that finger
+    const under = (e) => { const el = document.elementFromPoint(e.clientX, e.clientY); return el && el.closest && el.closest("button[data-code]"); };
+    const press = (id, b) => {
+      const was = fingers.get(id); if (was === b) return;
+      if (was) { was.classList.remove("on"); if (![...fingers.values()].some((o, k) => o === was && k !== id)) onUp(was.dataset.code); }
+      fingers.set(id, b);
+      if (b) { b.classList.add("on"); onDown(b.dataset.code); if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { /* ignore */ } }
+    };
+    grp.addEventListener("pointerdown", (e) => { e.preventDefault(); try { grp.releasePointerCapture(e.pointerId); } catch (x) { /* ignore */ } press(e.pointerId, under(e)); });
+    grp.addEventListener("pointermove", (e) => { if (fingers.has(e.pointerId)) { const b = under(e); if (b && grp.contains(b)) press(e.pointerId, b); } });
+    const lift = (e) => { if (!fingers.has(e.pointerId)) return; press(e.pointerId, null); fingers.delete(e.pointerId); };
+    grp.addEventListener("pointerup", lift); grp.addEventListener("pointercancel", lift);
+    document.addEventListener("pointerup", lift);
+  }
   function bindPad(onDown, onUp) {
     document.querySelectorAll(".pad .stick[data-codes]").forEach((el) => bindStick(el, onDown, onUp));
+    document.querySelectorAll(".pad .grp.act").forEach((el) => bindGroup(el, onDown, onUp));
     document.querySelectorAll(".pad button[data-code]").forEach((b) => {
+      if (b.closest(".grp.act")) return;
       const code = b.dataset.code;
       const down = (e) => { e.preventDefault(); b.classList.add("on"); onDown(code); };
       const up = (e) => { e.preventDefault(); if (!b.classList.contains("on")) return; b.classList.remove("on"); onUp(code); };
@@ -160,14 +178,17 @@
      saved in this browser. Unfound ones show a hint, not the answer. */
   const CATALOG = [
     ["bighead", "Big heads", "Rollback Street: an old arcade code works on the title. On a phone, the title itself listens."],
-    ["cat", "Alley cat", "Rollback Street: someone small on Market Street wants attention. Get close and press up."],
-    ["hydrant", "Hydrant", "Rollback Street: some street furniture is not as solid as it looks."],
-    ["vending", "Vending machine", "Rollback Street: the subway sells more than tickets. Ask firmly."],
+    ["cat", "Gali cat", "Rollback Street: someone small on Chandni Lane wants attention. Get close and press up."],
+    ["hydrant", "Hand pump", "Rollback Street: some street furniture on Chandni Lane is not as solid as it looks."],
+    ["vending", "Chai machine", "Rollback Street: the station sells more than tickets. Ask firmly."],
     ["pigeon", "Patience", "Rollback Street: on the rooftops, stand very still near the birds."],
     ["train", "Mind the gap", "Rollback Street: knock someone toward the tracks while a train passes."],
     ["walls", "Wall to wall", "Rollback Street: bounce three enemies off the screen edge in one stage."],
     ["taunt", "Showboat", "Rollback Street: hold up and press special with a thug close by."],
     ["onecredit", "One credit", "Rollback Street: beat Mr. Rollback without using a continue. Unlocks a costume."],
+    ["letters", "Nani's letters", "Rollback Street: four letters are hidden in barrels, one per stage. They unlock the true ending."],
+    ["unleash", "Fan of the Avatar", "Rollback Street: a fan-made poster on the rooftops salutes Unleash The Avatar, an upcoming game by Aeos Games (no affiliation). Stand under it and press up."],
+    ["chakra", "Chakra", "Rollback Street: while the Avatar glow lasts, knock out five enemies with the chakra. Unlocks a costume."],
     ["neon", "Neon costume", "Home page: the logo likes attention. Seven quick clicks."],
     ["duck", "Rubber duck", "Ghost Deploy: every engineer needs one. Type it."],
     ["speed", "Speedrunner", "Ghost Deploy: reach PROD in under 6 seconds."],
@@ -216,6 +237,6 @@
   const onWord = (w, cb) => onSequence(w.toUpperCase().split("").map((c) => "Key" + c), cb);
   console.log("%cAbhishekrAI.dev arcade", "font: 600 14px serif; color: #a8186a", "\nThere are " + CATALOG.length + " secrets across the two games. The list under each game gives hints. No peeking in localStorage.");
 
-  window.Arcade = { tokens, onTheme: (f) => listeners.push(f), tone, noise, bindPad, setupFullscreen, isFullscreen: () => fs.on, secret, hasSecret, toast, renderSecrets, onSequence, onWord };
+  window.Arcade = { tokens, onTheme: (f) => listeners.push(f), tone, noise, bindPad, setupFullscreen, isFullscreen: () => fs.on, enterFullscreen: () => enterFs(), secret, hasSecret, toast, renderSecrets, onSequence, onWord };
   renderSecrets();
 })();
