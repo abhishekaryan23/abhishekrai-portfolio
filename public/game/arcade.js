@@ -191,8 +191,9 @@
     });
   }
 
-  /* secrets: a shared list across both games (and the home page logo),
-     saved in this browser. Unfound ones show a hint, not the answer. */
+  /* hidden extras across both games (and the home page logo), remembered in
+     this browser. They are never listed or called out anywhere: a player just
+     stumbles on them, and a short chime and a toast with the name say "nice". */
   const CATALOG = [
     ["bighead", "Big heads", "Rollback Street: an old arcade habit, entered at the right moment."],
     ["cat", "Gali cat", "Rollback Street: someone on Chandni Lane only wants a little attention."],
@@ -222,29 +223,13 @@
     host.appendChild(t); requestAnimationFrame(() => t.classList.add("in"));
     setTimeout(() => { t.classList.remove("in"); setTimeout(() => t.remove(), 400); }, 3200);
   }
-  function secret(id) {
+  function secret(id, quiet) {   // quiet: the caller shows its own message
     const list = found(); if (list.includes(id)) return false;
     list.push(id); try { localStorage.setItem(SKEY, JSON.stringify(list)); } catch (e) { /* private mode */ }
     const item = CATALOG.find((c) => c[0] === id);
-    toast("Secret found: " + (item ? item[1] : id) + " (" + list.length + " of " + CATALOG.length + ")");
+    if (item && !quiet) toast(item[1]);
     [784, 988, 1175, 1568].forEach((f, i) => setTimeout(() => tone(f, 0.1, "triangle", 0.05), i * 80));
-    renderSecrets();
     return true;
-  }
-  function renderSecrets() {
-    const box = document.getElementById("secrets"); if (!box) return;
-    const got = found();
-    box.innerHTML = "";
-    const sum = document.createElement("summary"); sum.textContent = "Secrets found: " + got.filter((id) => CATALOG.some((c) => c[0] === id)).length + " of " + CATALOG.length;
-    const ul = document.createElement("ul");
-    for (const [id, title, hint] of CATALOG) {
-      const li = document.createElement("li"), have = got.includes(id);
-      li.className = have ? "got" : "";
-      const b = document.createElement("b"); b.textContent = have ? title : "???";
-      li.append(b, document.createTextNode(" " + hint));
-      ul.appendChild(li);
-    }
-    box.append(sum, ul);
   }
   // typed words (letters only) and key sequences such as the arcade code
   function onSequence(codes, cb) {
@@ -252,8 +237,6 @@
     addEventListener("keydown", (e) => { if (e.repeat) return; i = e.code === codes[i] ? i + 1 : e.code === codes[0] ? 1 : 0; if (i === codes.length) { i = 0; cb(); } });
   }
   const onWord = (w, cb) => onSequence(w.toUpperCase().split("").map((c) => "Key" + c), cb);
-  console.log("%cAbhishekrAI.dev arcade", "font: 600 14px serif; color: #a8186a", "\nThere are " + CATALOG.length + " secrets across the two games. The list under each game gives hints. No peeking in localStorage.");
 
-  window.Arcade = { tokens, onTheme: (f) => listeners.push(f), tone, noise, bindPad, setupFullscreen, isFullscreen: () => fs.on, enterFullscreen: () => enterFs(), secret, hasSecret, toast, renderSecrets, onSequence, onWord };
-  renderSecrets();
+  window.Arcade = { tokens, onTheme: (f) => listeners.push(f), tone, noise, bindPad, setupFullscreen, isFullscreen: () => fs.on, enterFullscreen: () => enterFs(), secret, hasSecret, toast, onSequence, onWord };
 })();

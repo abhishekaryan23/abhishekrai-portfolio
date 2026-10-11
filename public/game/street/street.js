@@ -70,16 +70,16 @@ const KINDS = {
   kicker:    { hp: 26, speed: 1.05, scale: 1, name: "Kicker", score: 200, windup: 12, cool: [45, 80], moves: ["eKick", "eKick", "ePunch"], fly: true },
   thrower:   { hp: 20, speed: 0.9, scale: 1, name: "Knife", score: 250, windup: 16, cool: [80, 120], moves: ["ePunch"], ranged: true },
   bruiser:   { hp: 46, speed: 0.65, scale: 1.18, name: "Bruiser", score: 300, windup: 20, cool: [70, 110], moves: ["heavy"] },
-  ox:        { hp: 220, speed: 0.8, scale: 1.4, name: "Bhola the Ox", score: 2000, windup: 16, cool: [36, 64], moves: ["heavy", "heavy", "ePunch"], specials: ["charge"], poise: 32, boss: true },
-  rook:      { hp: 205, speed: 1.3, scale: 1.22, name: "Raghav", score: 2500, windup: 11, cool: [28, 52], moves: ["eKick", "eKick", "ePunch"], specials: ["eRoll"], poise: 28, boss: true },
-  crane:     { hp: 215, speed: 1.15, scale: 1.15, name: "Cheel", score: 3000, windup: 13, cool: [32, 56], moves: ["eKick", "ePunch"], specials: ["dive", "fan"], poise: 30, boss: true },
+  ox:        { hp: 300, speed: 0.8, scale: 1.4, name: "Bhola the Ox", score: 2000, windup: 16, cool: [36, 64], moves: ["heavy", "heavy", "ePunch"], specials: ["charge"], poise: 40, boss: true },
+  rook:      { hp: 280, speed: 1.3, scale: 1.22, name: "Raghav", score: 2500, windup: 11, cool: [28, 52], moves: ["eKick", "eKick", "ePunch"], specials: ["eRoll"], poise: 34, boss: true },
+  crane:     { hp: 290, speed: 1.15, scale: 1.15, name: "Cheel", score: 3000, windup: 13, cool: [32, 56], moves: ["eKick", "ePunch"], specials: ["dive", "fan"], poise: 36, boss: true },
   // Raghav and Cheel join once beaten, like Chin and Ranzou in Double Dragon: same look,
   // player-sized, the boss's power on Special, but less health than Rai and Kai and one life (guest)
   pOx:       { hp: 90, speed: 1.1, scale: 1.16, name: "Bhola", look: "ox", heavy: 2, sturdy: 5, guest: true },   // retired: not in ROSTER
   pRook:     { hp: 52, speed: 1.5, scale: 1.04, name: "Raghav", look: "rook", guest: true },
   pCrane:    { hp: 50, speed: 1.45, scale: 1.02, name: "Cheel", look: "crane", jump: 6.3, guest: true },
   pRollback: { hp: 96, speed: 1.0, scale: 1.2, name: "Ranjit", look: "rollback", heavy: 2, sturdy: 4, guest: true },   // retired: not in ROSTER
-  rollback:  { hp: 360, speed: 0.85, scale: 1.45, name: "Mr. Rollback", score: 5000, windup: 15, cool: [32, 56], moves: ["heavy", "ePunch"], specials: ["charge", "pound", "fan"], poise: 36, boss: true }
+  rollback:  { hp: 480, speed: 0.85, scale: 1.45, name: "Mr. Rollback", score: 5000, windup: 15, cool: [32, 56], moves: ["heavy", "ePunch"], specials: ["charge", "pound", "fan"], poise: 44, boss: true }
 };
 // frames total, active window, reach, damage, knockdown; rearm = hit again every n frames
 const ATK = {
@@ -543,7 +543,11 @@ function loseLife(p) {
 function updateEnemy(e) {
   const k = KINDS[e.kind];
   if (e.inv > 0) e.inv--;
-  if (e.cool > 0) e.cool--;
+  if (k.boss && !e.rage && e.hp > 0 && e.hp <= k.hp * 0.5) {
+    e.rage = true; shake = 6; Arcade.noise(0.25, 0.1);
+    texts.push({ x: e.x, y: e.y - 80 * k.scale, s: k.name + " is enraged!", t: 100 });
+  }
+  if (e.cool > 0) e.cool -= e.rage ? 2 : 1;
   if (e.warn > 0) e.warn--;
   switch (e.st) {
     case "idle": case "walk": {
@@ -561,7 +565,7 @@ function updateEnemy(e) {
       const adx = Math.abs(p.x - e.x), ady = Math.abs(p.y - e.y), pDown = DOWN_STATES.includes(p.st) || p.st === "out";
       e.face = Math.sign(p.x - e.x) || -side;
       // bosses back off every few seconds to set up a special move
-      if (k.boss) { e.spT = (e.spT || 0) + 1; if (e.spT > 300 && !e.retreat) { e.retreat = true; e.retreatT = 150; } }
+      if (k.boss) { e.spT = (e.spT || 0) + 1; if (e.spT > (e.rage ? 180 : 300) && !e.retreat) { e.retreat = true; e.retreatT = 150; } }
       if (e.retreat && e.retreatT > 0) e.retreatT--;
       if (e.retreat && (adx > 80 || e.retreatT <= 0) && !pDown) {
         e.retreat = false; e.spT = 0;
@@ -572,21 +576,21 @@ function updateEnemy(e) {
       }
       // specials and ranged moves
       if (e.cool <= 0 && !pDown && !e.retreat) {
-        const sp = k.specials || [];
+        const sp = k.specials || [], rr = e.rage ? 2 : 1;
         if (k.ranged && adx > 60 && ady < 8 && frameNo - lastKnife > 70 && Math.random() < 0.05) { lastKnife = frameNo; windup(e, "eToss", 16); break; }
         if (k.fly && adx > 46 && adx < 100 && ady < 8 && Math.random() < 0.04) { windup(e, "eFly", 12); break; }
-        if (sp.includes("charge") && adx > 80 && ady < 18 && Math.random() < 0.05) { windup(e, "charge", 30, true); break; }
-        if (sp.includes("eRoll") && adx > 40 && adx < 140 && ady < 10 && Math.random() < 0.03) { windup(e, "eRoll", 24, true); break; }
-        if (sp.includes("dive") && adx > 60 && Math.random() < 0.02) { windup(e, "dive", 18, true); break; }
-        if (sp.includes("fan") && adx > 70 && ady < 30 && Math.random() < 0.015) { windup(e, "fan", 20, true); break; }
-        if (sp.includes("pound") && adx < 90 && Math.random() < 0.012) { windup(e, "pound", 26, true); break; }
+        if (sp.includes("charge") && adx > 80 && ady < 18 && Math.random() < 0.05 * rr) { windup(e, "charge", 30, true); break; }
+        if (sp.includes("eRoll") && adx > 40 && adx < 140 && ady < 10 && Math.random() < 0.03 * rr) { windup(e, "eRoll", 24, true); break; }
+        if (sp.includes("dive") && adx > 60 && Math.random() < 0.02 * rr) { windup(e, "dive", 18, true); break; }
+        if (sp.includes("fan") && adx > 70 && ady < 30 && Math.random() < 0.015 * rr) { windup(e, "fan", 20, true); break; }
+        if (sp.includes("pound") && adx < 90 && Math.random() < 0.012 * rr) { windup(e, "pound", 26, true); break; }
       }
       const keepOff = e.retreat ? 110 : k.ranged ? 110 : 70 + e.id * 40;
       const close = e.engaged && !k.ranged && !e.retreat;
       if (e.retreat && (p.x - cam < 110 || cam + LW - p.x < 110) && Math.abs((p.x + side * 110) - clamp(p.x + side * 110, cam + 16, cam + LW - 16)) > 1) side = -side;
       const tx = clamp(p.x + side * (close ? 22 * k.scale * BS : keepOff), cam + 16, cam + LW - 16);
       const ty = e.engaged || k.ranged || e.retreat ? p.y : clamp(p.y + Math.sin(frameNo / 60 + e.id * 9) * 22, Y0, Y1);
-      const dx = tx - e.x, dy = ty - e.y, spd = k.speed * (e.engaged ? 1 : 0.8);
+      const dx = tx - e.x, dy = ty - e.y, spd = k.speed * (e.engaged ? 1 : 0.8) * (e.rage ? 1.25 : 1);
       if (Math.abs(dx) > 2) e.x += Math.sign(dx) * Math.min(spd, Math.abs(dx));
       if (Math.abs(dy) > 1.5) e.y += Math.sign(dy) * Math.min(spd * 0.7, Math.abs(dy));
       for (const o of enemies) if (o !== e && !busy(o) && Math.abs(o.x - e.x) < 12 && Math.abs(o.y - e.y) < 6) e.y += e.y < o.y ? -0.6 : 0.6;
@@ -629,7 +633,10 @@ function updateEnemy(e) {
     case "dead": if (--e.t <= 0) e.gone = true; break;
   }
 }
-function windup(e, name, t, special) { e.atkName = name; e.atk = ATK[name]; e.hits.clear(); setState(e, "windup", t); if (special) e.warn = t; }
+function windup(e, name, t, special) {
+  if (e.rage) t = Math.max(6, Math.round(t * 0.7));   // an enraged boss telegraphs less
+  e.atkName = name; e.atk = ATK[name]; e.hits.clear(); setState(e, "windup", t); if (special) e.warn = t;
+}
 
 function onKO(e) {
   const k = KINDS[e.kind];
@@ -677,7 +684,7 @@ function shoot(kind, owner, dy, dir) {
 }
 function chakraKO() {
   chakraKOs++; try { localStorage.setItem("street:chakra", String(chakraKOs)); } catch (e) { /* ignore */ }
-  if (chakraKOs === 5) { Arcade.secret("chakra"); Arcade.toast("Avatar costume unlocked. Pick it from the menu."); }
+  if (chakraKOs === 5) { Arcade.secret("chakra", true); Arcade.toast("Avatar costume unlocked. Pick it from the menu."); }
 }
 function updateShots() {
   const all = players.filter((p) => p && p.lives > 0).concat(enemies);
@@ -689,7 +696,7 @@ function updateShots() {
       const near = Math.abs(d.x - s.x) < 10 && Math.abs(d.y - s.y) < (s.kind === "wave" ? 12 : 7);
       const height = s.kind === "wave" ? d.z < 3 : d.z < 14;   // jump over knives and shockwaves
       if (near && height) {
-        hurt(d, { x: s.x - s.face * 10, face: s.face, team: s.team, kind: s.owner.kind, owner: s.owner }, { dmg: s.dmg, knock: s.kind !== "knife", sfx: 500 });
+        hurt(d, { x: s.x - s.face * 10, face: s.face, team: s.team, kind: s.owner.kind, rage: s.owner.rage, owner: s.owner }, { dmg: s.dmg, knock: s.kind !== "knife", sfx: 500 });
         if (s.team === "p" && s.owner) s.owner.score += 80;
         if (s.kind === "knife") s.life = 0;
         if (s.kind === "chakra") { s.hitIds = s.hitIds || new Set(); s.hitIds.add(d.id); if (--s.pierce <= 0) s.life = 0; if (d.hp <= 0 && s.owner) chakraKO(); }
@@ -764,7 +771,7 @@ function breakProp(b) {
 
 function hurt(d, a, atk) {
   if (d.heldBy && d.heldBy !== a) { d.heldBy.hold = null; d.heldBy = null; }
-  const dmg = Math.max(1, Math.round((a.team === "e" ? atk.dmg * diff() * (KINDS[a.kind] && KINDS[a.kind].boss ? 1.2 : 1) * (EASY ? 0.6 : 1) : atk.dmg) * (d.st === "taunt" ? 2 : 1)));
+  const dmg = Math.max(1, Math.round((a.team === "e" ? atk.dmg * diff() * (KINDS[a.kind] && KINDS[a.kind].boss ? (a.rage ? 1.5 : 1.2) * (EASY ? 0.8 : 1) : EASY ? 0.6 : 1) : atk.dmg) * (d.st === "taunt" ? 2 : 1)));
   damage(d, dmg, a.owner || a);
   const dir = Math.sign(d.x - a.x) || a.face;
   let knock = atk.knock || d.hp <= 0;
@@ -904,8 +911,18 @@ const SPRITES = {};
 // Art is fetched a stage at a time (plus the next stage, in the background), so a
 // phone only downloads what it is about to show. Anything not loaded yet is drawn
 // the old way, in code, so a slow connection never blocks play.
-const ART_V = 6, ART = "/game/street/sprites/", asked = new Set();
-function sprite(name, src) { if (asked.has(name)) return; asked.add(name); const im = new Image(); im.onload = () => (SPRITES[name] = im); im.src = src + "?v=" + ART_V; }
+const ART_V = 7, ART = "/game/street/sprites/", asked = new Set(), failed = new Set();
+function sprite(name, src) { if (asked.has(name)) return; asked.add(name); const im = new Image(); im.onload = () => (SPRITES[name] = im); im.onerror = () => failed.add(name); im.src = src + "?v=" + ART_V; }
+// When a stage opens, hold play for a moment (6 s at most) until the fighters on screen
+// have their 8-bit sheets, so nobody flashes up in the old drawn style first.
+let artWaitUntil = 0;
+function fightersPending() {
+  if (performance.now() > artWaitUntil || typeof FIGHTER_FRAMES === "undefined") return false;
+  const sheets = new Set();
+  for (const f of players.concat(enemies)) if (f && SHEET_OF[f.kind]) sheets.add(f.team === "e" ? spriteSheet(f) : SHEET_OF[f.kind]);
+  for (const sh of sheets) if (!SPRITES["f_" + sh] && !failed.has("f_" + sh)) return true;
+  return false;
+}
 const art = (names) => names.forEach((n) => sprite(n, ART + n + ".png"));
 const fighterArt = (sheet) => { if (!sheet) return; sprite("f_" + sheet, ART + "fighters/" + sheet + ".png"); sprite("w_" + sheet, ART + "fighters/" + sheet + "_walk.png"); };
 const STAGE_ART = [
@@ -921,8 +938,9 @@ function stageArt(si) {
   const kinds = new Set(JSON.stringify(STAGES[si].blocks).match(/[A-Za-z]+/g));
   for (const k of Object.keys(SHEET_OF)) if (kinds.has(k)) fighterArt(SHEET_OF[k]);
   if (kinds.has("pipeGrunt")) fighterArt("pipeBare");
+  if (si === 3) sprite("f_nani", ART + "fighters/nani.png");   // she waits at the back of the mill
 }
-function prepareStage(si) { stageArt(si); setTimeout(() => stageArt(si + 1), 3000); }
+function prepareStage(si) { artWaitUntil = performance.now() + 6000; stageArt(si); setTimeout(() => stageArt(si + 1), 3000); }
 // shared by every stage: pickups, barrels, story portraits
 art(["samosa", "kulhad", "lathi", "knife", "letter", "barrel", "barrel_broken", "pump", "chai_machine"]);
 for (const n of ["rai", "kai", "nani", "ox", "rook", "crane", "rollback"]) sprite("p_" + n, ART + "portraits/" + n + ".png");
@@ -1516,11 +1534,11 @@ function pose(f) {
 }
 
 /* ---------- 8-bit sprite fighters ---------- */
-const SHEET_OF = { rai: "rai", kai: "kai", grunt: "grunt", pipeGrunt: "pipeGrunt", pipeBare: "pipeBare", kicker: "kicker", thrower: "thrower", bruiser: "bruiser",
+const SHEET_OF = { nani: "nani", rai: "rai", kai: "kai", grunt: "grunt", pipeGrunt: "pipeGrunt", pipeBare: "pipeBare", kicker: "kicker", thrower: "thrower", bruiser: "bruiser",
   ox: "ox", rook: "rook", crane: "crane", rollback: "rollback", pOx: "ox", pRook: "rook", pCrane: "crane", pRollback: "rollback" };
 // which frame to show, and an optional spin, for each state and move
 // sheets whose frame 4 is not a punch wind-up (an uppercut or a raised knee): they punch from guard
-const NO_PUNCH_COCK = new Set(["rook", "crane", "kicker"]);
+const NO_PUNCH_COCK = new Set(["rook", "crane", "kicker", "ox"]);
 // frames for a fighter holding a lathi (the lathi thug, or a player's "<name>Lathi" sheet)
 function lathiFrame(f) {
   const s = f.st, at = f.atkName;
@@ -1536,11 +1554,15 @@ function lathiFrame(f) {
 }
 function spriteFrame(f, sheet) {
   const s = f.st, at = f.atkName;
+  if (sheet === "nani") return { i: f.pose || 0 };   // 0 hands clasped, 1 arms open, 2 waving, 3 chai
   if (sheet === "pipeGrunt" || sheet.endsWith("Lathi")) { const lf = lathiFrame(f); if (lf) return lf; }
   if ((s === "walk" || s === "run") && SPRITES["w_" + sheet] && FIGHTER_FRAMES[sheet + "_walk"]) return { i: Math.floor(f.walkPh / 0.8) % 8, walk: true };
   if (s === "walk") return { i: [1, 0, 2, 0][Math.floor(f.walkPh / 1.4) % 4] };
   if (s === "run") return { i: [1, 2][Math.floor(f.walkPh / 1.2) % 2] };
-  if (s === "windup") return { i: (at === "eKick" && sheet !== "kicker") || (at === "ePunch" && NO_PUNCH_COCK.has(sheet)) ? 0 : 4 };
+  if (s === "windup") {
+    if (at === "charge") return { i: 6 };   // brace low before the rush
+    return { i: (at === "eKick" && sheet !== "kicker") || (at === "ePunch" && NO_PUNCH_COCK.has(sheet)) ? 0 : 4 };
+  }
   if (s === "hurt" || s === "grabbed") return { i: 9 };
   if (s === "fly" || s === "thrown") return f.vz > 0 ? { i: 9, rot: -0.35 } : { i: 10 };
   if (s === "lying" || s === "dead" || s === "out") return { i: 10 };
@@ -1567,6 +1589,8 @@ function spriteFrame(f, sheet) {
     if (at === "pipe") return { i: f.t < f.atk.a0 ? 4 : 3 };
     if (at === "toss") return { i: f.t < ATK.toss.spawn ? 4 : 3 };
     if (at === "upper") return { i: 4 };
+    // Bhola's heavy is a two-fisted hammer: fists overhead, then the slam (his 13th frame)
+    if (at === "heavy" && FIGHTER_FRAMES[sheet][12]) return { i: f.t < f.atk.a0 ? 4 : f.t <= f.atk.a1 + 8 ? 12 : 0 };
     if (at === "heavy" || at === "ePunch") return { i: f.t < f.atk.a0 ? (at === "ePunch" && NO_PUNCH_COCK.has(sheet) ? 0 : 4) : f.t <= f.atk.a1 + 6 ? 3 : 0 };
     if (at === "eKick") return { i: f.t < f.atk.a0 && sheet === "kicker" ? 4 : f.t <= f.atk.a1 + 6 ? 5 : 0 };
     if (at === "kick") return { i: 5 };
@@ -1822,6 +1846,7 @@ function drawFighter(f) {
 }
 // aura, special-move warning and motion trail, shared by sprite and drawn fighters
 function fighterExtras(f, x, y, sc, P) {
+  if (f.rage && f.st !== "dead") { g.globalAlpha = 0.16 + Math.sin(frameNo / 5) * 0.08; g.fillStyle = P.T.red; g.beginPath(); g.ellipse(x, y - f.z - 30 * sc, 18 * sc, 34 * sc, 0, 0, 7); g.fill(); g.globalAlpha = 1; }
   if (f.avatarT > 0) { g.globalAlpha = 0.35 + Math.sin(frameNo / 6) * 0.15; g.strokeStyle = "#f2c230"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y - f.z - 26 * sc, 14 * sc, 30 * sc, 0, 0, 7); g.stroke(); g.globalAlpha = 1; }
   // special move warning: a red "!" over bosses and specialists
   if (f.warn > 0 && f.st === "windup") { const wy = y - f.z - 58 * sc; text("!", x, wy, 14, P.T.red, "center", "IBM Plex Sans"); }
@@ -1838,7 +1863,7 @@ function drawItems() {
   // Nani waits at the back of the final arena
   if (stageIdx === 3 && blocks()[blockIdx].boss && locked) {
     if (!naniRef) { naniRef = fighter("nani", 0, Y0 + 2, "e"); naniRef.face = -1; }
-    naniRef.x = cam + LW - 30; drawFighter(naniRef);
+    naniRef.x = cam + LW - 30; naniRef.pose = bossRef && bossRef.st === "dead" ? 1 : 0; drawFighter(naniRef);
     if (bossRef && bossRef.st === "dead") text("Nani!", cam + LW - 30 - cam, Y0 - 62, 7, P.T.ink, "center", "IBM Plex Sans");
   }
   if (pigeons) drawPigeons(P);
@@ -2011,10 +2036,12 @@ function draw() {
   g.save(); g.translate(Math.round(sx), Math.round(sy));
   ({ street: drawStreet, subway: drawSubway, roof: drawRoof, factory: drawFactory })[STAGES[stageIdx].theme](PAL);
   drawItems();
-  const cast = enemies.concat(players.filter((p) => p && p.lives > 0), barrels);
+  const waiting = fightersPending();
+  const cast = (waiting ? [] : enemies.concat(players.filter((p) => p && p.lives > 0))).concat(barrels);
   cast.sort((a, b) => a.y - b.y);
   for (const f of cast) if (f.kind && KINDS[f.kind]) drawFighter(f); else drawBarrel(f);
   drawFx();
+  if (waiting && state === "play") text("Loading", LW / 2, LH / 2, 8, "#f7f4ee", "center", "IBM Plex Sans");
   drawForeground(PAL);
   g.restore();
   drawGrade(PAL);
@@ -2055,6 +2082,7 @@ function demo(si) {
   barrels = STAGES[si].barrels.map(([x, y, drop, kind = "barrel"]) => ({ x, y, drop, kind, hp: kind === "barrel" ? 2 : 3, shake: 0 }));
   cat = si === 0 ? { x: 560, y: 151, st: "sit", t: 0 } : null; pigeons = si === 2 ? { x: 640, st: "sit", t: 0 } : null;
   const cast = [["ox", "kicker", "thrower"], ["rook", "kicker", "grunt"], ["crane", "thrower", "bruiser"], ["rollback", "bruiser", "pipeGrunt"]][si];
+  cast.forEach((k) => fighterArt(SHEET_OF[k]));
   enemies = cast.map((k, i) => { const e = fighter(k, 300 - i * 34, 168 + i * 12, "e"); e.face = -1; return e; });
   const r = fighter(pick1 || "rai", 90, 180, "p"); r.pi = 0; players = [r];
   if (startPlayers === 2) { const k = fighter(pick1 === "kai" ? "rai" : "kai", 60, 195, "p"); k.pi = 1; players.push(k); }
@@ -2064,7 +2092,7 @@ function demo(si) {
 function toggleBigHead() {
   bigHead = !bigHead; try { localStorage.setItem("street:bighead", bigHead ? "1" : "0"); } catch (e) { /* ignore */ }
   Arcade.toast(bigHead ? "Big head mode on" : "Big head mode off");
-  Arcade.secret("bighead");
+  Arcade.secret("bighead", true);
 }
 Arcade.onSequence(["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "KeyB", "KeyA"], toggleBigHead);
 (() => { let n = 0, t0 = 0; const h = document.querySelector("#card-menu h2"); if (h) h.addEventListener("click", () => { const now = performance.now(); n = now - t0 < 3000 ? n + 1 : 1; t0 = now; if (n >= 5) { n = 0; toggleBigHead(); } }); })();
@@ -2129,7 +2157,7 @@ function buildStageChips() {
 let last = performance.now(), acc = 0;
 function loop(now) {
   acc += Math.min(100, now - last); last = now;
-  while (acc >= TICK) { update(); acc -= TICK; }
+  while (acc >= TICK) { if (!(state === "play" && fightersPending())) update(); else pressed.clear(); acc -= TICK; }
   draw();
   requestAnimationFrame(loop);
 }

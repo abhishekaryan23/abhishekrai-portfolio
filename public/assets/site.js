@@ -118,7 +118,7 @@
       if (isNew) { list.push("neon"); try { localStorage.setItem("arcade:secrets", JSON.stringify(list)); } catch (e) { /* ignore */ } }
       const t = document.createElement("a");
       t.className = "toast"; t.href = "/game/street/"; t.setAttribute("role", "status");
-      t.textContent = isNew ? "Secret found: a neon costume is waiting in Rollback Street" : "You already found this one. The neon costume is in Rollback Street";
+      t.textContent = "A neon costume is waiting in Rollback Street";
       document.body.appendChild(t); requestAnimationFrame(() => t.classList.add("in"));
       setTimeout(() => { t.classList.remove("in"); setTimeout(() => t.remove(), 400); }, 4500);
     });

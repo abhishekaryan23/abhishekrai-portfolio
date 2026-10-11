@@ -136,13 +136,6 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
 .toast.in { opacity: 1; transform: translate(-50%, 0); }
 .stage-wrap.fs .toast { position: absolute; bottom: auto; top: 12px; }
 @media (prefers-reduced-motion: reduce) { .toast { transition: none; } }
-.secrets { margin-top: 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 10px 14px; font-size: 0.92rem; color: var(--ink2); }
-.secrets summary { cursor: pointer; font-weight: 600; color: var(--ink); }
-.secrets ul { list-style: none; margin: 10px 0 2px; padding: 0; display: grid; gap: 6px; }
-.secrets li { color: var(--muted); }
-.secrets li b { font-family: var(--mono); font-weight: 500; color: var(--muted); margin-right: 4px; }
-.secrets li.got b { color: var(--accent); }
-.secrets li.got { color: var(--ink2); }
 .pad button[data-code="KeyI"] { border-color: var(--accent); color: var(--accent); }
 .pad button[data-code="KeyI"].low { opacity: 0.45; }
 .stage-wrap.fs .pad button[data-code="KeyI"] { border-color: #f07ab8; color: #f07ab8; }

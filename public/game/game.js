@@ -397,6 +397,6 @@ fetchGhost().then(() => { if (state !== "play") reset(); });
 Arcade.setupFullscreen();
 Arcade.onWord("duck", () => {
   duck = !duck; try { localStorage.setItem("ghost-deploy:duck", duck ? "1" : "0"); } catch (e) { /* ignore */ }
-  Arcade.toast(duck ? "Quack. Rubber duck mode on" : "Rubber duck mode off"); Arcade.secret("duck");
+  Arcade.toast(duck ? "Quack. Rubber duck mode on" : "Rubber duck mode off"); Arcade.secret("duck", true);
 });
 requestAnimationFrame(frame);

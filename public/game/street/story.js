@@ -176,7 +176,7 @@ function advanceScene(skipAll) {
   if (!skipAll && scene.shown < p.text.length) { scene.shown = p.text.length; return; }
   scene.i++; scene.shown = 0;
   if (skipAll || scene.i >= scene.panels.length) {
-    const then = scene.then; scene = null; state = "play";
+    const then = scene.then; scene = null; state = "play"; artWaitUntil = performance.now() + 6000;   // fresh art wait once the story hands back to play
     const wrapEl = document.getElementById("stage-wrap"); if (wrapEl) wrapEl.classList.remove("story");
     then();
   }
