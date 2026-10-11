@@ -44,7 +44,7 @@ const STAGES = [
     { name: "Platform 2", waves: [["bruiser", "kicker", "grunt"], ["thrower", "thrower", "grunt"]] },
     { name: "Service Tunnel", waves: [["kicker", "kicker", "pipeGrunt"], ["bruiser", "thrower", "grunt"]] },
     { boss: "rook", waves: [["rook"]], adds: [[0.5, ["kicker", "kicker"]]] }],
-    barrels: [[300, 192, "knife"], [760, 165, "food"], [1180, 196, "drink"], [1030, 151, "drink", "vending"]] },
+    barrels: [[300, 192, "knife"], [760, 165, "food"], [1180, 196, "drink"], [820, 151, "drink", "vending"]] },
   { name: "Rooftops", theme: "roof", blocks: [
     { name: "Water Tanks", waves: [["kicker", "thrower", "grunt"], ["grunt", "grunt", "kicker"]] },
     { name: "Billboard", waves: [["bruiser", "bruiser", "thrower"], ["kicker", "pipeGrunt", "thrower"]] },
@@ -70,15 +70,16 @@ const KINDS = {
   kicker:    { hp: 26, speed: 1.05, scale: 1, name: "Kicker", score: 200, windup: 12, cool: [45, 80], moves: ["eKick", "eKick", "ePunch"], fly: true },
   thrower:   { hp: 20, speed: 0.9, scale: 1, name: "Knife", score: 250, windup: 16, cool: [80, 120], moves: ["ePunch"], ranged: true },
   bruiser:   { hp: 46, speed: 0.65, scale: 1.18, name: "Bruiser", score: 300, windup: 20, cool: [70, 110], moves: ["heavy"] },
-  ox:        { hp: 160, speed: 0.75, scale: 1.4, name: "Bhola the Ox", score: 2000, windup: 18, cool: [45, 80], moves: ["heavy", "heavy", "ePunch"], specials: ["charge"], poise: 26, boss: true },
-  rook:      { hp: 150, speed: 1.25, scale: 1.22, name: "Raghav", score: 2500, windup: 12, cool: [35, 65], moves: ["eKick", "eKick", "ePunch"], specials: ["eRoll"], poise: 22, boss: true },
-  crane:     { hp: 160, speed: 1.1, scale: 1.15, name: "Cheel", score: 3000, windup: 14, cool: [40, 70], moves: ["eKick", "ePunch"], specials: ["dive", "fan"], poise: 24, boss: true },
-  // unlocked by beating each boss: same look, player-sized, with the boss's power on Special
-  pOx:       { hp: 90, speed: 1.1, scale: 1.16, name: "Bhola", look: "ox", heavy: 2, sturdy: 5 },
-  pRook:     { hp: 62, speed: 1.5, scale: 1.04, name: "Raghav", look: "rook" },
-  pCrane:    { hp: 62, speed: 1.45, scale: 1.02, name: "Cheel", look: "crane", jump: 6.3 },
-  pRollback: { hp: 96, speed: 1.0, scale: 1.2, name: "Ranjit", look: "rollback", heavy: 2, sturdy: 4 },
-  rollback:  { hp: 260, speed: 0.8, scale: 1.45, name: "Mr. Rollback", score: 5000, windup: 16, cool: [40, 70], moves: ["heavy", "ePunch"], specials: ["charge", "pound", "fan"], poise: 30, boss: true }
+  ox:        { hp: 220, speed: 0.8, scale: 1.4, name: "Bhola the Ox", score: 2000, windup: 16, cool: [36, 64], moves: ["heavy", "heavy", "ePunch"], specials: ["charge"], poise: 32, boss: true },
+  rook:      { hp: 205, speed: 1.3, scale: 1.22, name: "Raghav", score: 2500, windup: 11, cool: [28, 52], moves: ["eKick", "eKick", "ePunch"], specials: ["eRoll"], poise: 28, boss: true },
+  crane:     { hp: 215, speed: 1.15, scale: 1.15, name: "Cheel", score: 3000, windup: 13, cool: [32, 56], moves: ["eKick", "ePunch"], specials: ["dive", "fan"], poise: 30, boss: true },
+  // Raghav and Cheel join once beaten, like Chin and Ranzou in Double Dragon: same look,
+  // player-sized, the boss's power on Special, but less health than Rai and Kai and one life (guest)
+  pOx:       { hp: 90, speed: 1.1, scale: 1.16, name: "Bhola", look: "ox", heavy: 2, sturdy: 5, guest: true },   // retired: not in ROSTER
+  pRook:     { hp: 52, speed: 1.5, scale: 1.04, name: "Raghav", look: "rook", guest: true },
+  pCrane:    { hp: 50, speed: 1.45, scale: 1.02, name: "Cheel", look: "crane", jump: 6.3, guest: true },
+  pRollback: { hp: 96, speed: 1.0, scale: 1.2, name: "Ranjit", look: "rollback", heavy: 2, sturdy: 4, guest: true },   // retired: not in ROSTER
+  rollback:  { hp: 360, speed: 0.85, scale: 1.45, name: "Mr. Rollback", score: 5000, windup: 15, cool: [32, 56], moves: ["heavy", "ePunch"], specials: ["charge", "pound", "fan"], poise: 36, boss: true }
 };
 // frames total, active window, reach, damage, knockdown; rearm = hit again every n frames
 const ATK = {
@@ -118,8 +119,9 @@ const ATK = {
 };
 // what Special does for each fighter on the ground: [attack, SP cost, label]
 const SPECIALS = { rai: ["roll", 30, "Rolling kick"], kai: ["flurry", 25, "Lightning kicks"], pOx: ["rush", 30, "Bull rush"], pRook: ["kroll", 25, "Kalari roll"], pCrane: ["dive", 25, "Kite dive"], pRollback: ["quake", 40, "Mill quake"] };
-const ROSTER = [["rai", "Rai"], ["kai", "Kai"], ["pOx", "Bhola"], ["pRook", "Raghav"], ["pCrane", "Cheel"], ["pRollback", "Ranjit"]];
-const UNLOCK_BY = { ox: "pOx", rook: "pRook", crane: "pCrane", rollback: "pRollback" };
+const ROSTER = [["rai", "Rai"], ["kai", "Kai"], ["pRook", "Raghav"], ["pCrane", "Cheel"]];
+const UNLOCK_BY = { rook: "pRook", crane: "pCrane" };
+const GUEST_FROM = { pRook: 2, pCrane: 3 };   // a guest is on Nani's side, so playable, from this stage on
 const AIR = new Set(["jkick", "flykick", "cyclone", "dragon", "eFly", "dive"]);
 
 /* ---------- state ---------- */
@@ -162,7 +164,7 @@ function onDown(code) {
   const k = keyOf(code); if (!k) return;
   pressed.add(code);            // keyboard auto-repeat is already filtered by e.repeat
   down.add(code);
-  if (state === "play" && k[0] === 1 && (!players[1] || players[1].lives <= 0) && (k[1] === "punch" || k[1] === "kick")) join(1, true);
+  if (state === "play" && k[0] === 1 && (!players[1] || players[1].lives <= 0) && (k[1] === "punch" || k[1] === "kick")) { if (players[1]) continued = true; join(1, true); }
 }
 function onUp(code) { down.delete(code); }
 const held = (i, a) => BIND[i][a].some((c) => down.has(c));
@@ -191,6 +193,7 @@ function togglePause() {
 
 /* ---------- flow ---------- */
 function start(stage, n, viaContinue) {
+  stage = Math.max(stage, GUEST_FROM[pick1 || "rai"] || 0);
   if (viaContinue) continued = true; else { continued = false; fromStart = stage === 0; }
   startPlayers = n; players = [];
   if (typeof scene !== "undefined" && scene) { scene = null; const w = document.getElementById("stage-wrap"); if (w) w.classList.remove("story"); }
@@ -218,7 +221,7 @@ function loadStage(si) {
 function join(i, mid) {
   const k1 = pick1 || "rai", kind = i ? (k1 === "kai" ? "rai" : "kai") : k1;
   const p = fighter(kind, cam + 50 + i * 24, i ? 192 : 172, "p");
-  p.pi = i; p.inv = 90; if (EASY) p.lives = 5; players[i] = p;
+  p.pi = i; p.inv = 90; if (EASY) p.lives = 5; if (KINDS[kind].guest) p.lives = 1; players[i] = p;
   if (mid) { startPlayers = 2; texts.push({ x: p.x, y: p.y - 64, s: KINDS[kind].name + " joins", t: 70 }); if (!joinedOnce) { joinedOnce = true; playScene("join", () => {}); } }
 }
 function enterBlock() { waveIdx = 0; queue = blocks()[blockIdx].waves[0].slice(); locked = false; cleanHp = null; }
@@ -759,7 +762,7 @@ function breakProp(b) {
 
 function hurt(d, a, atk) {
   if (d.heldBy && d.heldBy !== a) { d.heldBy.hold = null; d.heldBy = null; }
-  const dmg = Math.max(1, Math.round((a.team === "e" ? atk.dmg * diff() * (EASY ? 0.6 : 1) : atk.dmg) * (d.st === "taunt" ? 2 : 1)));
+  const dmg = Math.max(1, Math.round((a.team === "e" ? atk.dmg * diff() * (KINDS[a.kind] && KINDS[a.kind].boss ? 1.2 : 1) * (EASY ? 0.6 : 1) : atk.dmg) * (d.st === "taunt" ? 2 : 1)));
   damage(d, dmg, a.owner || a);
   const dir = Math.sign(d.x - a.x) || a.face;
   let knock = atk.knock || d.hp <= 0;
@@ -810,6 +813,7 @@ function updateItems() {
     if (it.kind === "food" && p.hp < p.max) { p.hp = Math.min(p.max, p.hp + 30); texts.push({ x: p.x, y: p.y - 66, s: "+30 health", t: 60 }); }
     else if (it.kind === "drink" && p.sp < 100) { p.sp = Math.min(100, p.sp + 50); texts.push({ x: p.x, y: p.y - 66, s: "+50 SP", t: 60 }); }
     else if (it.kind === "letter") { items.splice(items.indexOf(it), 1); takeLetter(p, it); return; }
+    else if (it.kind === "oneup" && KINDS[p.kind].guest) { p.score += 1000; texts.push({ x: p.x, y: p.y - 66, s: "+1000", t: 80 }); }
     else if (it.kind === "oneup") { p.lives = Math.min(5, p.lives + 1); texts.push({ x: p.x, y: p.y - 66, s: "1UP", t: 80 }); }
     else continue;
     items.splice(items.indexOf(it), 1); p.score += 50;
@@ -898,6 +902,22 @@ const SPRITES = {};
 function sprite(name, src) { const im = new Image(); im.onload = () => (SPRITES[name] = im); im.src = src; }
 sprite("cow", "/game/street/sprites/cow.png?v=3");
 sprite("kulhad", "/game/street/sprites/kulhad.png?v=1");
+sprite("poster", "/game/street/sprites/poster.png?v=2");
+for (const n of ["samosa", "lathi", "knife", "letter", "barrel", "barrel_broken", "pump", "chai_machine", "auto", "cat", "routemap", "ad_chai", "ad_film", "clock",
+  "kite_m", "kite_y", "kite_b", "kite_o", "cloth_sari", "cloth_dupatta", "cloth_kurta", "cloth_gamcha", "roof_exit", "roof_dish", "roof_ac", "roof_tanks"]) sprite(n, "/game/street/sprites/" + n + ".png?v=1");
+for (const n of ["rai", "kai", "nani", "ox", "rook", "crane", "rollback"]) sprite("p_" + n, "/game/street/sprites/portraits/" + n + ".png?v=1");
+for (const n of ["rai", "kai", "ox", "rook", "crane", "rollback", "grunt", "pipeGrunt", "kicker", "thrower", "bruiser", "pipeBare"]) {
+  sprite("f_" + n, "/game/street/sprites/fighters/" + n + ".png?v=3");
+  sprite("w_" + n, "/game/street/sprites/fighters/" + n + "_walk.png?v=1");   // 8-frame walk cycle
+}
+// draw a sprite at half its pixel size (the canvas is scaled 2x), bottom-centred on (x, y), snapped to device pixels
+function spr(name, x, y, flip) {
+  const im = SPRITES[name]; if (!im) return false;
+  const w = im.width / 2, h = im.height / 2, x0 = Math.round((x - w / 2) * 2) / 2, y0 = Math.round((y - h) * 2) / 2;
+  if (flip) { g.save(); g.translate(x0 + w, y0); g.scale(-1, 1); g.drawImage(im, 0, 0, w, h); g.restore(); }
+  else g.drawImage(im, x0, y0, w, h);
+  return true;
+}   // fan nod to Unleash The Avatar by Aeos Games
 const COW_LOOP = [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1];
 
 const SHADES = new Map();
@@ -1025,6 +1045,7 @@ function drawStreet(P) {
   for (let mx = -(cam % 300) + 140; mx < LW; mx += 300) { g.fillStyle = P.sideLine; g.beginPath(); g.ellipse(mx, 188, 9, 3, 0, 0, 7); g.fill(); }
   // an auto-rickshaw parked at the kerb, and a cow who owns the road
   for (let ax = -(cam % 512) + 300; ax < LW + 40; ax += 512) {
+    if (spr("auto", ax + 20, 181)) continue;
     // a black-and-yellow auto-rickshaw: canopy, open side, single headlight
     g.fillStyle = P.ol; g.beginPath(); g.moveTo(ax - 1, 177); g.lineTo(ax - 1, 158); g.quadraticCurveTo(ax + 2, 150, ax + 14, 150); g.lineTo(ax + 30, 150); g.quadraticCurveTo(ax + 38, 152, ax + 39, 162); g.lineTo(ax + 40, 177); g.closePath(); g.fill();
     g.fillStyle = "#1d1b18"; g.beginPath(); g.moveTo(ax, 160); g.quadraticCurveTo(ax + 3, 151, ax + 14, 151); g.lineTo(ax + 30, 151); g.quadraticCurveTo(ax + 37, 153, ax + 37, 160); g.closePath(); g.fill();
@@ -1084,10 +1105,13 @@ function drawSubway(P) {
     }
     if (slot % 2 === 0) { R(px + 20, 34, 70, 20, "#f2c230"); text("BUNDER ROAD", px + 55, 44, 6.5, "#1d1b18"); text("बंदर रोड", px + 55, 52, 6.5, "#1d1b18", "center", "sans-serif"); }
     else { R(px + 20, 36, 60, 14, "#2f6b3a"); text("WAY OUT  >", px + 50, 46, 6.5, "#f7f4ee"); }
-    R(px + 110, 80, 34, 30, "#f7f4ee"); R(px + 111, 81, 32, 28, P.dark ? "#d9d4cb" : "#fffdf9");
-    g.strokeStyle = P.neon; g.lineWidth = 1.5; g.beginPath(); g.moveTo(px + 114, 100); g.lineTo(px + 126, 90); g.lineTo(px + 140, 96); g.stroke();
-    g.strokeStyle = P.neon2; g.beginPath(); g.moveTo(px + 116, 86); g.lineTo(px + 128, 104); g.stroke();
-    R(px + 170, 82, 26, 34, P.T.amber); R(px + 174, 88, 18, 3, "#1d1b18"); R(px + 174, 94, 14, 2, "#1d1b18"); R(px + 174, 104, 18, 8, P.neon);
+    if (!spr("routemap", px + 127, 111)) {
+      R(px + 110, 80, 34, 30, "#f7f4ee"); R(px + 111, 81, 32, 28, P.dark ? "#d9d4cb" : "#fffdf9");
+      g.strokeStyle = P.neon; g.lineWidth = 1.5; g.beginPath(); g.moveTo(px + 114, 100); g.lineTo(px + 126, 90); g.lineTo(px + 140, 96); g.stroke();
+      g.strokeStyle = P.neon2; g.beginPath(); g.moveTo(px + 116, 86); g.lineTo(px + 128, 104); g.stroke();
+    }
+    if (!spr(slot % 2 ? "ad_film" : "ad_chai", px + 183, 118)) { R(px + 170, 82, 26, 34, P.T.amber); R(px + 174, 88, 18, 3, "#1d1b18"); R(px + 174, 94, 14, 2, "#1d1b18"); R(px + 174, 104, 18, 8, P.neon); }
+    if (spr("clock", px + 225, 53)) continue;
     g.fillStyle = "#f7f4ee"; g.beginPath(); g.arc(px + 225, 44, 7, 0, 7); g.fill(); g.strokeStyle = "#1d1b18"; g.lineWidth = 1; g.stroke();
     g.strokeStyle = "#1d1b18"; g.lineWidth = 1; g.beginPath(); g.moveTo(px + 225.5, 44.5); g.lineTo(px + 224.5, 39); g.moveTo(px + 225.5, 44.5); g.lineTo(px + 223.6, 41.2); g.stroke();
   }
@@ -1136,12 +1160,17 @@ function drawRoof(P) {
     const x = i * 220 - (off % 220), seed = Math.floor(off / 220) + i;
     if (seed % 2 === 0) {
       // black plastic water tanks, the skyline of every Indian rooftop
-      for (let t = 0; t < 2; t++) { const tx = x + 16 + t * 26; R(tx, 84, 22, 24, "#1b1a1d"); R(tx - 1, 82, 24, 4, "#2a292d"); R(tx + 2, 90, 18, 1, "#2f2e33"); R(tx + 2, 98, 18, 1, "#2f2e33"); }
-      R(x + 14, 108, 54, 18, P.dark ? "#3a3640" : "#9a90a0");
+      if (!spr("roof_tanks", x + 41, 126)) {
+        for (let t = 0; t < 2; t++) { const tx = x + 16 + t * 26; R(tx, 84, 22, 24, "#1b1a1d"); R(tx - 1, 82, 24, 4, "#2a292d"); R(tx + 2, 90, 18, 1, "#2f2e33"); R(tx + 2, 98, 18, 1, "#2f2e33"); }
+        R(x + 14, 108, 54, 18, P.dark ? "#3a3640" : "#9a90a0");
+      }
     } else {
       // a washing line with saris drying
       g.strokeStyle = P.rail; g.lineWidth = 1; g.beginPath(); g.moveTo(x + 10, 80); g.quadraticCurveTo(x + 70, 88, x + 130, 80); g.stroke();
-      [["#d9741c", 20], ["#a8186a", 50], ["#2b54a8", 82], ["#2f6b3a", 108]].forEach(([c, dx]) => { const sw = Math.sin(frameNo / 30 + dx) * 1.5; R(x + dx + sw, 84, 14, 26, c); R(x + dx + sw, 84, 14, 2, "#f2c230"); });
+      [["#d9741c", 20, "cloth_sari"], ["#a8186a", 50, "cloth_dupatta"], ["#2b54a8", 80, "cloth_kurta"], ["#2f6b3a", 108, "cloth_gamcha"]].forEach(([c, dx, n]) => {
+        const sw = Math.sin(frameNo / 30 + dx) * 1.5, im = SPRITES[n], top = 80 + 4 * (1 - ((dx + 7 - 70) / 60) ** 2) - 1;   // pegged to the sagging line
+        if (!im || !spr(n, x + dx + 7 + sw, Math.round(top + im.height / 2))) { R(x + dx + sw, 84, 14, 26, c); R(x + dx + sw, 84, 14, 2, "#f2c230"); }
+      });
       R(x + 8, 78, 2, 48, P.rail); R(x + 130, 78, 2, 48, P.rail);
     }
     R(x + 170, 50, 1, 76, P.rail); R(x + 166, 60, 9, 1, P.rail); R(x + 167, 72, 7, 1, P.rail);
@@ -1151,20 +1180,28 @@ function drawRoof(P) {
   for (let k = 0; k < 4; k++) {
     const kx = ((k * 131 + frameNo * 0.15 - cam * 0.4) % (LW + 60) + LW + 60) % (LW + 60) - 30, ky = 24 + k * 9 + Math.sin(frameNo / 40 + k) * 4;
     const c = ["#a8186a", "#f2c230", "#2b54a8", "#d9741c"][k];
+    if (SPRITES.kite_m) {
+      // a long, faint manja string down to a roof somewhere off to the left
+      g.globalAlpha = 0.35; g.strokeStyle = P.dark ? "#8f8a96" : "#6f6a78"; g.lineWidth = 0.5;
+      g.beginPath(); g.moveTo(kx + 1, ky + 7); g.quadraticCurveTo(kx - 6, ky + 50, kx - 40, ky + 96); g.stroke(); g.globalAlpha = 1;
+      if (spr(["kite_m", "kite_y", "kite_b", "kite_o"][k], kx, ky + 10)) continue;
+    }
     g.fillStyle = c; g.beginPath(); g.moveTo(kx, ky - 6); g.lineTo(kx + 5, ky); g.lineTo(kx, ky + 6); g.lineTo(kx - 5, ky); g.fill();
     g.strokeStyle = P.dark ? "#8f8a96" : "#6f6a78"; g.lineWidth = 0.6; g.beginPath(); g.moveTo(kx, ky + 6); g.quadraticCurveTo(kx + 6, ky + 14, kx + 2, ky + 22); g.stroke();
   }
   // near parapet with vents, AC units and a stair door
   R(0, 120, LW, 30, P.parapet); R(0, 120, LW, 3, shade(P.parapet, 0.12));
   for (let px = -(cam % 300); px < LW + 60; px += 300) {
-    R(px + 20, 100, 44, 30, P.trim); R(px + 24, 104, 20, 20, shade(P.trim, -0.2));
-    g.strokeStyle = P.ol; g.lineWidth = 1; g.beginPath(); const a = frameNo / 6;
-    g.moveTo(px + 34 + Math.cos(a) * 8, 114 + Math.sin(a) * 8); g.lineTo(px + 34 - Math.cos(a) * 8, 114 - Math.sin(a) * 8);
-    g.moveTo(px + 34 + Math.cos(a + 1.57) * 8, 114 + Math.sin(a + 1.57) * 8); g.lineTo(px + 34 - Math.cos(a + 1.57) * 8, 114 - Math.sin(a + 1.57) * 8); g.stroke();
-    R(px + 100, 84, 46, 46, P.walls[1]); R(px + 112, 98, 20, 32, shade(P.walls[1], -0.3)); R(px + 114, 90, 16, 6, P.T.good); text("EXIT", px + 122, 95, 5, "#fff");
+    if (!spr("roof_ac", px + 42, 130)) {
+      R(px + 20, 100, 44, 30, P.trim); R(px + 24, 104, 20, 20, shade(P.trim, -0.2));
+      g.strokeStyle = P.ol; g.lineWidth = 1; g.beginPath(); const a = frameNo / 6;
+      g.moveTo(px + 34 + Math.cos(a) * 8, 114 + Math.sin(a) * 8); g.lineTo(px + 34 - Math.cos(a) * 8, 114 - Math.sin(a) * 8);
+      g.moveTo(px + 34 + Math.cos(a + 1.57) * 8, 114 + Math.sin(a + 1.57) * 8); g.lineTo(px + 34 - Math.cos(a + 1.57) * 8, 114 - Math.sin(a + 1.57) * 8); g.stroke();
+    }
+    if (!spr("roof_exit", px + 123, 130)) { R(px + 100, 84, 46, 46, P.walls[1]); R(px + 112, 98, 20, 32, shade(P.walls[1], -0.3)); R(px + 114, 90, 16, 6, P.T.good); text("EXIT", px + 122, 95, 5, "#fff"); }
     R(px + 206, 104, 8, 26, P.rail); R(px + 202, 100, 16, 5, P.rail);
     // a satellite dish
-    g.fillStyle = P.dark ? "#8f8a96" : "#c9c4cc"; g.beginPath(); g.ellipse(px + 182, 110, 7, 9, -0.4, 0, 7); g.fill(); R(px + 182, 112, 1.5, 9, P.rail);
+    if (!spr("roof_dish", px + 182, 124)) { g.fillStyle = P.dark ? "#8f8a96" : "#c9c4cc"; g.beginPath(); g.ellipse(px + 182, 110, 7, 9, -0.4, 0, 7); g.fill(); R(px + 182, 112, 1.5, 9, P.rail); }
   }
   // festival string lights along the parapet
   for (let lx = -(cam % 160); lx < LW + 160; lx += 160) {
@@ -1174,7 +1211,18 @@ function drawRoof(P) {
   }
   // the big poster for Unleash The Avatar, standing on the roof
   const bx = POSTER_X - cam;
-  if (bx > -140 && bx < LW + 80) { R(bx - 52, 108, 3, 42, P.rail); R(bx + 49, 108, 3, 42, P.rail); drawAvatarPoster(bx - 58, 40, 116, 70, false); }
+  if (bx > -170 && bx < LW + 90) {
+    if (SPRITES.poster) {
+      // a billboard on two steel legs, the pixelated key art inside a dark frame
+      const x0 = Math.round(bx - 56), y0 = 36;
+      R(x0 + 14, y0 + 92, 4, 22, P.rail); R(x0 + 94, y0 + 92, 4, 22, P.rail);
+      R(x0 - 3, y0 - 3, 118, 96, "#0b0912"); R(x0 - 2, y0 - 2, 116, 1, "#3a2c4a");
+      g.drawImage(SPRITES.poster, x0, y0, 112, 90);
+      const near = stageIdx === 2 && !posterUsed && alivePlayers().some((q) => Math.abs(q.x - POSTER_X) < 46 && q.y < Y0 + 14);
+      if (near && frameNo % 90 < 12) { g.globalAlpha = 0.14; R(x0, y0, 112, 90, "#ffd75e"); g.globalAlpha = 1; }
+      text("fan art", x0 + 109, y0 + 87, 4, "#cfc6b7", "right", "IBM Plex Sans");
+    } else { R(bx - 52, 108, 3, 42, P.rail); R(bx + 49, 108, 3, 42, P.rail); drawAvatarPoster(bx - 58, 40, 116, 70, false); }
+  }
   // tar roof
   R(0, 150, LW, LH - 150, P.tar);
   for (let i = 0; i < 70; i++) { const gx = ((i * 89 + 7) - cam) % LW, gy = 152 + (i * 37) % 60; R(gx < 0 ? gx + LW : gx, gy, 1, 1, P.tarDot); }
@@ -1424,6 +1472,81 @@ function pose(f) {
   return p;
 }
 
+/* ---------- 8-bit sprite fighters ---------- */
+const SHEET_OF = { rai: "rai", kai: "kai", grunt: "grunt", pipeGrunt: "pipeGrunt", pipeBare: "pipeBare", kicker: "kicker", thrower: "thrower", bruiser: "bruiser",
+  ox: "ox", rook: "rook", crane: "crane", rollback: "rollback", pOx: "ox", pRook: "rook", pCrane: "crane", pRollback: "rollback" };
+// which frame to show, and an optional spin, for each state and move
+function spriteFrame(f, sheet) {
+  const s = f.st, at = f.atkName;
+  if ((s === "walk" || s === "run") && SPRITES["w_" + sheet] && FIGHTER_FRAMES[sheet + "_walk"]) return { i: Math.floor(f.walkPh / 0.8) % 8, walk: true };
+  if (s === "walk") return { i: [1, 0, 2, 0][Math.floor(f.walkPh / 1.4) % 4] };
+  if (s === "run") return { i: [1, 2][Math.floor(f.walkPh / 1.2) % 2] };
+  if (s === "windup") return { i: 4 };
+  if (s === "hurt" || s === "grabbed") return { i: 9 };
+  if (s === "fly" || s === "thrown") return f.vz > 0 ? { i: 9, rot: -0.35 } : { i: 10 };
+  if (s === "lying" || s === "dead" || s === "out") return { i: 10 };
+  if (s === "getup") return { i: f.t > 13 ? 10 : 7 };
+  if (s === "pickup") return { i: 7 };
+  if (s === "taunt") return { i: sheet === "rai" || sheet === "crane" ? 11 : 0 };
+  if (s === "grab" || s === "knee") return { i: 3 };
+  if (s === "throw") return { i: 4 };
+  if (s === "air") {
+    const a = f.airAtk;
+    if (a === "dragon") return { i: 4 };
+    if (a === "jkick" || a === "flykick" || a === "eFly" || a === "dive" || a === "cyclone") return { i: 8 };
+    return { i: 7 };
+  }
+  if (s === "attack") {
+    if (at === "roll") return { i: 7, rot: f.t * 0.42 };
+    if (at === "eRoll" || at === "kroll") return { i: 11, rot: sheet === "rook" ? f.t * 0.42 : 0 };
+    if (at === "flurry") return { i: (f.t % 6) < 3 ? 11 : 6 };
+    if (at === "rush") return { i: 11 };
+    if (at === "charge") return { i: sheet === "ox" ? 11 : 6 };
+    if (at === "fan") return { i: sheet === "crane" ? 11 : 3 };
+    if (at === "quake" || at === "pound") return { i: 11 };
+    if (at === "eToss") return { i: f.t < ATK.eToss.spawn ? 4 : 6 };
+    if (at === "pipe") return sheet === "pipeGrunt" ? { i: f.t < f.atk.a0 ? 4 : 5 } : { i: f.t < f.atk.a0 ? 4 : 3 };
+    if (at === "toss") return { i: f.t < ATK.toss.spawn ? 4 : 3 };
+    if (at === "upper") return { i: 4 };
+    if (at === "heavy") return { i: sheet === "bruiser" ? 6 : 4 };
+    if (at === "kick" || at === "eKick") return { i: sheet === "pipeGrunt" ? 6 : 5 };
+    if (at === "round" || at === "spinheel") return { i: 6 };
+    if (at === "elbow") return { i: 3, back: true };
+    return { i: 3 };   // jab, jab2, ePunch, tackle, toss, chakra
+  }
+  return { i: 0 };
+}
+function drawSpriteFighter(f, x, y) {
+  const k = KINDS[f.kind], sheet = spriteSheet(f), fr = spriteFrame(f, sheet);
+  const im = SPRITES[(fr.walk ? "w_" : "f_") + sheet], d = FIGHTER_FRAMES[fr.walk ? sheet + "_walk" : sheet][fr.i], [sx, sy, w, h, ax, ay] = d, sc = k.scale;
+  const face = fr.back ? -f.face : f.face;
+  g.save();
+  g.translate(x, y - Math.round(f.z));
+  g.scale(face * sc, sc);
+  if (fr.rot) { g.translate(0, -h / 4); g.rotate(fr.rot); g.translate(0, h / 4); }
+  if (f.flash > 0) { f.flash--; g.filter = "brightness(2.6)"; }
+  g.drawImage(im, sx, sy, w, h, -ax / 2, -ay / 2, w / 2, h / 2);
+  g.filter = "none";
+  if (f.weapon && sheet !== "pipeGrunt") spriteWeapon(f, fr.walk ? 1 : fr.i);
+  g.restore();
+}
+// a picked-up lathi or knife, drawn in the sprite's front hand (game pixels from the feet, facing right)
+const HAND = [[9, -33], [8, -30], [8, -30], [24, -40], [6, -50], [6, -32], [4, -34], [9, -30], [8, -30], [-4, -36], null, [5, -48]];
+function spriteWeapon(f, i) {
+  const h = HAND[i];
+  if (!h) return;
+  let ang = f.weapon.kind === "pipe" ? -1.2 : -0.3;
+  if (f.st === "attack" && f.atkName === "pipe") { const ph = f.t / f.atk.len; ang = ph < 0.35 ? -2.2 : ph < 0.55 ? -2.2 + (ph - 0.35) / 0.2 * 2.6 : 0.4; }
+  const c = Math.cos(ang), sn = Math.sin(ang), [hx, hy] = h;
+  const seg = (a, b, w, col) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(hx + c * a, hy + sn * a); g.lineTo(hx + c * b, hy + sn * b); g.stroke(); };
+  g.lineCap = "butt";
+  if (f.weapon.kind === "pipe") { seg(-7, 21, 3.4, "#2a1a0e"); seg(-6.5, 20.5, 2, "#c79a52"); seg(1, 3, 2.2, "#6b4a22"); seg(11, 12.5, 2.2, "#6b4a22"); }
+  else { seg(-2, 8, 2.6, "#1e2226"); seg(-1.5, 1.5, 1.6, "#6b4a22"); seg(1.5, 7.5, 1.4, "#d8dde2"); }
+}
+const spriteSheet = (f) => f.kind === "pipeGrunt" && !f.weapon ? "pipeBare" : SHEET_OF[f.kind];
+const usesSprite = (f) => SHEET_OF[f.kind] && SPRITES["f_" + spriteSheet(f)] && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES[spriteSheet(f)] &&
+  !bigHead && !f.pigeon && !((f.kind === "rai" || f.kind === "kai") && costume !== "classic");
+
 const STANCE_STATES = new Set(["idle", "walk", "run", "windup", "grabbed", "hurt", "taunt"]);
 const DOWN_DRAW = new Set(["lying", "dead", "getup", "out"]);
 function drawFighter(f) {
@@ -1433,7 +1556,8 @@ function drawFighter(f) {
   if (f.inv > 0 && f.team === "p" && Math.floor(f.inv / 4) % 2 && !["attack", "air"].includes(f.st)) return;
   const x = Math.round(f.x - cam), y = Math.round(f.y);
   const flat = f.st === "lying" || f.st === "dead" || f.st === "getup";
-  g.fillStyle = P.shadow; g.beginPath(); g.ellipse(flat ? x - f.face * 14 * sc : x, y, flat ? 18 * sc : Math.max(5, 9 + B.cw * 0.35 - f.z * 0.08) * sc, 3 * sc, 0, 0, 7); g.fill();
+  g.fillStyle = P.shadow; g.beginPath(); g.ellipse(flat && !usesSprite(f) ? x - f.face * 14 * sc : x, y, flat ? 18 * sc : Math.max(5, 9 + B.cw * 0.35 - f.z * 0.08) * sc, 3 * sc, 0, 0, 7); g.fill();
+  if (usesSprite(f)) { drawSpriteFighter(f, x, y); fighterExtras(f, x, y, sc, P); return; }
   const p = pose(f), flash = f.flash > 0;
   if (flash) f.flash--;
   // heavier builds stand wider
@@ -1630,7 +1754,10 @@ function drawFighter(f) {
   }
   layer(arm(shF, p.ef, p.hf, same));
   g.restore();
-
+  fighterExtras(f, x, y, sc, P);
+}
+// aura, special-move warning and motion trail, shared by sprite and drawn fighters
+function fighterExtras(f, x, y, sc, P) {
   if (f.avatarT > 0) { g.globalAlpha = 0.35 + Math.sin(frameNo / 6) * 0.15; g.strokeStyle = "#f2c230"; g.lineWidth = 2; g.beginPath(); g.ellipse(x, y - f.z - 26 * sc, 14 * sc, 30 * sc, 0, 0, 7); g.stroke(); g.globalAlpha = 1; }
   // special move warning: a red "!" over bosses and specialists
   if (f.warn > 0 && f.st === "windup") { const wy = y - f.z - 58 * sc; text("!", x, wy, 14, P.T.red, "center", "IBM Plex Sans"); }
@@ -1658,6 +1785,14 @@ function drawBarrel(b) {
   const P = PAL;
   {
     const x = Math.round(b.x - cam + (b.shake ? (b.shake % 2 ? 1 : -1) : 0)), y = b.y;
+    if (b.kind === "hydrant" && SPRITES.pump) { g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x, y, 8, 2, 0, 0, 7); g.fill(); spr("pump", x + 2, y + 1); return; }
+    if (b.kind === "vending" && SPRITES.chai_machine) {
+      spr("chai_machine", x, y + 1);
+      if (b.hp <= 0) { g.globalAlpha = 0.45; R(x - 8, y - 42, 16, 14, "#1d1b18"); g.globalAlpha = 1; R(x - 5, y - 36, 10, 1, "#888"); }
+      return;
+    }
+    if (b.kind === "barrel" && b.hp <= 0) { spr("barrel_broken", x, y + 1); return; }
+    if (b.kind === "barrel" && SPRITES.barrel) { g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x, y, 10, 3, 0, 0, 7); g.fill(); spr("barrel", x, y + 1); return; }
     if (b.kind === "hydrant") { // a street hand pump
       const c = b.hp > 0 ? "#2f6b3a" : shade("#2f6b3a", -0.3), hy = b.hp > 0 ? Math.sin(frameNo / 25) * 1.5 : 4;
       R(x - 3, y - 18, 6, 18, P.ol); R(x - 2, y - 17, 4, 17, c); R(x + 2, y - 12, 6, 2, c); R(x - 4, y - 2, 8, 2, "#5d5852");
@@ -1680,7 +1815,11 @@ function drawItem(it, P) {
   {
     const x = Math.round(it.x - cam), y = Math.round(it.y - it.z);
     g.fillStyle = P.shadow; g.beginPath(); g.ellipse(x, it.y, 7, 2, 0, 0, 7); g.fill();
-    if (it.kind === "pipe") { g.strokeStyle = P.ol; g.lineWidth = 4; g.beginPath(); g.moveTo(x - 9, y - 2); g.lineTo(x + 9, y - 4); g.stroke(); g.strokeStyle = "#b08a4a"; g.lineWidth = 2.4; g.stroke(); }
+    if (it.kind === "pipe" && spr("lathi", x, y - 1)) { /* bamboo lathi */ }
+    else if (it.kind === "knife" && spr("knife", x, y - 1)) { /* throwing knife */ }
+    else if (it.kind === "food" && spr("samosa", x, y)) { /* samosa */ }
+    else if (it.kind === "letter" && spr("letter", x, y)) { /* Nani's letter */ }
+    else if (it.kind === "pipe") { g.strokeStyle = P.ol; g.lineWidth = 4; g.beginPath(); g.moveTo(x - 9, y - 2); g.lineTo(x + 9, y - 4); g.stroke(); g.strokeStyle = "#b08a4a"; g.lineWidth = 2.4; g.stroke(); }
     else if (it.kind === "knife") { R(x - 6, y - 4, 4, 3, "#3b2a1d"); R(x - 2, y - 4, 9, 2, "#d8dde2"); }
     else if (it.kind === "food") { // a samosa
       g.fillStyle = P.ol; g.beginPath(); g.moveTo(x - 7, y); g.lineTo(x, y - 11); g.lineTo(x + 7, y); g.closePath(); g.fill();
@@ -1704,6 +1843,12 @@ function drawShot(s, P) {
 }
 
 function drawCat(P) {
+  if (cat.st !== "run" && SPRITES.cat) {
+    const x = Math.round(cat.x - cam);
+    spr("cat", x, cat.y + 1);
+    if (cat.st === "purr" && frameNo % 60 < 30) text("z", x + 9, cat.y - 20, 6, P.T.muted);
+    return;
+  }
   const x = Math.round(cat.x - cam), y = cat.y, sw = Math.sin(frameNo / 12) * 3;
   const c = P.dark ? "#0b0a0c" : "#1d1b18";
   if (cat.st === "run") { const b = Math.abs(Math.sin(frameNo / 3)) * 2; R(x - 7, y - 7 - b, 14, 5, c); R(x - 9, y - 10 - b, 5, 5, c); R(x + 6, y - 9 - b, 5, 2, c); return; }
@@ -1760,7 +1905,7 @@ function drawHud() {
     bar(x + 4, 15, 82, 6, p.hp / p.max, c);
     bar(x + 4, 25, 82, 3, p.sp / 100, P.amber);
     text("SP", x + 90, 29, 5, P.T.muted, "left");
-    for (let i = 0; i < Math.max(3, p.lives); i++) R(x + 96 + i * (p.lives > 3 ? 5 : 8), 15, p.lives > 3 ? 4 : 6, 6, i < p.lives ? c : (P.dark ? "#3a3632" : "#cfc6b7"));
+    for (let i = 0; i < (KINDS[p.kind].guest ? 1 : Math.max(3, p.lives)); i++) R(x + 96 + i * (p.lives > 3 ? 5 : 8), 15, p.lives > 3 ? 4 : 6, 6, i < p.lives ? c : (P.dark ? "#3a3632" : "#cfc6b7"));
     if (p.combo >= 2 && p.comboT > 0) { g.globalAlpha = Math.min(1, p.comboT / 20); text(p.combo + " hits", x + 4, 46, 10, c, "left", "Newsreader"); g.globalAlpha = 1; }
   };
   if (players[0]) panel(players[0], 4);
@@ -1827,7 +1972,7 @@ function demo(si) {
   const cast = [["ox", "kicker", "thrower"], ["rook", "kicker", "grunt"], ["crane", "thrower", "bruiser"], ["rollback", "bruiser", "pipeGrunt"]][si];
   enemies = cast.map((k, i) => { const e = fighter(k, 300 - i * 34, 168 + i * 12, "e"); e.face = -1; return e; });
   const r = fighter(pick1 || "rai", 90, 180, "p"); r.pi = 0; players = [r];
-  if (startPlayers === 2) { const k = fighter("kai", 60, 195, "p"); k.pi = 1; players.push(k); }
+  if (startPlayers === 2) { const k = fighter(pick1 === "kai" ? "rai" : "kai", 60, 195, "p"); k.pi = 1; players.push(k); }
   items = []; shots = []; fx = [];
 }
 
@@ -1868,10 +2013,12 @@ function buildFighters() {
   for (const [id, name] of ROSTER) {
     const open = id === "rai" || id === "kai" || have.includes(id);
     const b = document.createElement("button"); b.type = "button"; b.className = "chip";
-    b.textContent = open ? name + ": " + SPECIALS[id][2] : "Locked: beat " + KINDS[Object.keys(UNLOCK_BY).find((k) => UNLOCK_BY[k] === id)].name; b.disabled = !open;
+    const face = { rai: "rai", kai: "kai", pOx: "ox", pRook: "rook", pCrane: "crane", pRollback: "rollback" }[id];
+    if (open) { const im = document.createElement("img"); im.src = "/game/street/sprites/portraits/" + face + ".png?v=1"; im.alt = ""; im.className = "chip-face"; b.appendChild(im); }
+    b.append(open ? name + ": " + SPECIALS[id][2] : "Locked: beat " + KINDS[Object.keys(UNLOCK_BY).find((k) => UNLOCK_BY[k] === id)].name); b.disabled = !open;
     if (!open) b.title = "Beat " + KINDS[Object.keys(UNLOCK_BY).find((k) => UNLOCK_BY[k] === id)].name + " to unlock";
     b.setAttribute("aria-pressed", String(id === pick1));
-    b.addEventListener("click", () => { pick1 = id; try { localStorage.setItem("street:fighter", id); } catch (e) { /* ignore */ } buildFighters(); demo(chosenStage); });
+    b.addEventListener("click", () => { pick1 = id; try { localStorage.setItem("street:fighter", id); } catch (e) { /* ignore */ } buildStageChips(); demo(chosenStage); });
     box.appendChild(b);
   }
 }
@@ -1880,12 +2027,14 @@ function buildStageChips() {
   buildCostumes(); buildFighters(); if (typeof storyOn !== "undefined") buildSettings();
   const box = $("stages"); if (!box) return;
   box.innerHTML = "";
-  const max = unlocked();
+  const from = GUEST_FROM[pick1] || 0, max = Math.max(unlocked(), from);
+  chosenStage = clamp(chosenStage, from, max);
   STAGES.forEach((s, i) => {
     const b = document.createElement("button");
     b.type = "button"; b.className = "chip"; b.textContent = (i + 1) + ". " + s.name;
-    b.disabled = i > max; b.setAttribute("aria-pressed", String(i === chosenStage));
+    b.disabled = i > max || i < from; b.setAttribute("aria-pressed", String(i === chosenStage));
     if (i > max) b.title = "Clear stage " + i + " to unlock";
+    else if (i < from) b.title = KINDS[pick1].name + " joins you from stage " + (from + 1);
     b.addEventListener("click", () => { chosenStage = i; buildStageChips(); demo(i); });
     box.appendChild(b);
   });
@@ -1912,5 +2061,5 @@ Arcade.setupFullscreen((on) => {
   if (on && state === "play" && !paused) countdown = 180;
 });
 buildStageChips();
-demo(0);
+demo(chosenStage);
 requestAnimationFrame(loop);

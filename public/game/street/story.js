@@ -8,6 +8,11 @@
    - what happened to the street "before the fire"?
    Four letters from Nani are hidden in barrels, one per stage. Find all
    four (or finish without a continue) for the true ending.
+   Raghav and Cheel are Nani's old students who chose the wrong side. Once
+   beaten they come back to hers, and can be played from the next stage on
+   (Raghav from the rooftops, Cheel at the mill) with scenes of their own
+   (SCENES["name_rook"], SCENES["name_crane"]). A turncoat gets one chance,
+   which is why they play with a single life.
    Loaded after street.js and shares its globals. */
 "use strict";
 
@@ -27,56 +32,115 @@ const SCENES = {
   end0: [
     { who: "ox", text: "Bas, bas. I only empty shops. The boss wanted your Nani." },
     { who: "ox", text: "And he said to leave the watch where you two would find it." },
-    { who: "rai", text: "Who is your boss?" },
-    { who: "ox", text: "Ask Raghav. The Harbour Line. He rides the last train." },
+    { who: "rai", swap: true, text: "Who is your boss?" },
+    { who: "ox", text: "Ask Raghav. The Harbour Line. He rides the last train. Me, I'm going back to my akhada." },
     { who: "kai", text: "The Harbour Line? That station closed before we were born." },
     { who: "N", dark: 0.6, text: "Somewhere under the city, a train that should not exist blows its horn." }
   ],
-  intro1: [{ who: "N", dark: 0.5, text: "Bunder Road station. Shut since 1987. Tonight every lamp is lit. The clock says 11:58." }],
+  intro1: [{ who: "N", dark: 0.5, text: "Bunder Road station, on the old Harbour Line. Shut since 1987. Tonight every lamp is lit, and the platform clock is stuck at 11:58, like Nani's watch." }],
   bossrook: [{ who: "rook", text: "Nani taught me this stance. Let's see if she taught you better." }],
   end1: [
     { who: "rook", text: "She trained me, you know. Long before she trained you." },
-    { who: "rai", text: "Then why fight for the man who took her?" },
-    { who: "rook", text: "He promised me the kalari she ran. The whole lane, the way it was before the fire." },
+    { who: "rai", swap: true, text: "Then why fight for the man who took her?" },
+    { who: "rook", text: "He promised me Nani's old kalari. It stood on the half of the lane she sold after the fire. He said it would all go back the way it was." },
     { who: "kai", text: "What fire?" },
     { who: "N", text: "Raghav holds out an old photo: young Nani on a rooftop, laughing, beside a man in dark glasses." },
-    { who: "rook", text: "Cheel has her up on the roofs. Get there before midnight, and ask Nani about the fire." }
+    { who: "rook", text: "Cheel has her up on the roofs. Get there before she takes Nani on to the mill. And ask Nani about the fire." },
+    { who: "rook", text: "She trained me in that kalari for nothing. He only promised me its keys. From tonight I fight for her. Call me when you need me." }
   ],
-  intro2: [{ who: "N", dark: 0.5, text: "The rooftops. Kites from last Sankranti still hang in the wires. 11:59." }],
+  intro2: [{ who: "N", dark: 0.5, text: "The rooftops. Kites from last Sankranti still hang in the wires. Six floors down the whole lane is dark, and the station clock still says 11:58." }],
   bosscrane: [{ who: "crane", text: "Six floors for one old woman? She said you would come. She smiled when she said it." }],
   end2: [
     { who: "crane", text: "I never dragged her anywhere. She walked with us. Her choice." },
-    { who: "rai", text: "That's a lie." },
+    { who: "rai", swap: true, text: "That's a lie." },
     { who: "crane", text: "Is it? The man in that photo was her partner. Together they owned this whole lane." },
     { who: "crane", text: "Then one night it burned. She sold half the lane to rebuild the rest. He never forgave her." },
-    { who: "crane", text: "Right now she is cooking dinner for him. Does that sound like a hostage to you?" },
+    { who: "crane", text: "She left for the mill an hour ago, to cook dinner for him. Does that sound like a hostage to you?" },
     { who: "N", dark: 0.6, text: "Across the river, the old mill chimney starts to smoke for the first time in forty years." },
-    { who: "kai", text: "He doesn't just want Nani. He wants the whole lane." }
+    { who: "kai", text: "He doesn't just want Nani. He wants the whole lane." },
+    { who: "crane", text: "I flew his messages across these roofs for years. I'll fly one more, for her. I'm with you." }
   ],
   intro3: [{ who: "N", dark: 0.5, text: "Chandni Mills. Its looms went quiet forty years ago. Tonight they are running." }],
   block3_3: [{ who: "N", dark: 0.5, text: "On a desk: two cups of chai, one untouched, beside a second pocket watch. Stopped at the same minute." }],
-  bossrollback: [{ who: "rollback", text: "Welcome home. At midnight the clock goes back, and so does everything else." }],
+  bossrollback: [{ who: "rollback", text: "Welcome home. Tonight the clock goes back to 1987, and so does everything else." }],
   end3: [
     { who: "rollback", name: "Ranjit", text: "I lit the lamp that night, at 11:58. The fire was mine. I have spent forty years trying to undo it." },
     { who: "nani", text: "The fire was never yours to carry, Ranjit. The running was. Nothing goes back. Not lanes. Not people." },
-    { who: "nani", text: "I came tonight to tell you that myself. These two just arrived a little early." },
+    { who: "nani", duo: true, text: "I came tonight to tell you that myself. These two just arrived a little early." },
+    { who: "nani", solo: true, text: "I came tonight to tell you that myself. This one just arrived a little early." },
     { who: "nani", text: "But people can go forward. You could too, if you let them." },
-    { who: "N", dark: 0.82, text: "At midnight, every light on Chandni Lane comes back on." },
+    { who: "N", dark: 0.82, text: "The mill hooter sounds. On Nani's watch, on the station wall, on the desk upstairs, the stopped clocks move at last. 11:59. Then midnight." },
     { who: "kai", duo: true, text: "Nani, your watch. It's ticking again." },
     { who: "kai", solo: true, text: "Bhaiya? Her watch, here on the counter. It just started ticking again." },
-    { who: "nani", text: "Of course it is. Now come home, you two. Rai, Kai. Who's hungry?" }
+    { who: "nani", duo: true, text: "Of course it is. Now come home, you two. Rai, Kai. Who's hungry?" },
+    { who: "nani", solo: true, text: "Of course it is. Now come home, and tell whoever is minding my dhaba to put the chai on." }
   ],
   trueEnd: [
     { who: "N", text: "The next morning, a card lies on the dhaba counter. Same handwriting as before." },
     { who: "card", text: "Table for one?\nR." },
-    { who: "nani", text: "Set out another plate, you two. Some people take forty years to find their way home." },
+    { who: "nani", text: "Set out another plate. Some people take forty years to find their way home." },
     { who: "N", text: "The end. Thank you for playing Rollback Street." }
   ],
   plainEnd: [
     { who: "N", text: "Nani sets out a plate that no one comes for. Some of her letters are still out there." },
     { who: "N", text: "The end, for now. Find all four letters to see what happens the next morning." }
   ],
-  join: [{ who: "kai", swap: true, text: "Changed my mind, bhaiya. The phone can ring without me." }]
+  join: [{ who: "kai", swap: true, text: "Changed my mind, bhaiya. The phone can ring without me." }],
+
+  intro2_rook: [
+    { who: "N", dark: 0.5, text: "The rooftops. Kites from last Sankranti still hang in the wires. Six floors down the whole lane is dark, and the station clock still says 11:58." },
+    { who: "rook", alone: true, text: "Rai and Kai are patching up after the station. I'll go up first." },
+    { who: "rook", pair: true, text: "Stay close, Kai. Cheel fights from above." },
+    { who: "rook", text: "I sold her out once. A man who changes sides gets one chance, not two." }
+  ],
+  bosscrane_rook: [
+    { who: "crane", text: "Raghav? You of all people. He promised you the kalari." },
+    { who: "rook", text: "Nani gave me everything I know in that kalari. He only promised me its keys. Step aside, Cheel." }
+  ],
+  end2_rook: [
+    { who: "crane", text: "You know she walked with us. Her choice. She's at the mill now, cooking dinner for him." },
+    { who: "crane", text: "The man in that photo was her partner. The night the lane burned, he ran, and she rebuilt it alone." },
+    { who: "rook", text: "Then she's not his prisoner. She's there to finish something." },
+    { who: "N", dark: 0.6, text: "Across the river, the old mill chimney starts to smoke for the first time in forty years." },
+    { who: "crane", text: "I flew his messages across these roofs for years. I'll fly one more, for her." }
+  ],
+  intro3_rook: [
+    { who: "N", dark: 0.5, text: "Chandni Mills. Its looms went quiet forty years ago. Tonight they are running." },
+    { who: "rook", alone: true, text: "Rai and Kai are holding the lane. If I fall here, they finish it." }
+  ],
+  intro3_crane: [
+    { who: "N", dark: 0.5, text: "Chandni Mills. Its looms went quiet forty years ago. Tonight they are running." },
+    { who: "crane", alone: true, text: "Rai and Kai went back down to get the shopkeepers off the lane. The mill is mine. I know every door in it; I carried his notes through all of them." },
+    { who: "crane", pair: true, text: "Stay behind me, Kai. His men know my face. They will hesitate before they swing." },
+    { who: "crane", text: "One chance to make it right." }
+  ],
+  bossrollback_rook: [
+    { who: "rollback", text: "Raghav. I promised you a kalari and you bring me a fight." },
+    { who: "rook", text: "You promised me what was never yours." }
+  ],
+  bossrollback_crane: [
+    { who: "rollback", text: "My own messenger. Who are you carrying notes for tonight, Cheel?" },
+    { who: "crane", text: "For her. This one says: let her go home." }
+  ],
+  end3_rook: [
+    { who: "rollback", name: "Ranjit", text: "I lit the lamp that night, at 11:58. The fire was mine. I have spent forty years trying to undo it." },
+    { who: "nani", text: "The fire was never yours to carry, Ranjit. The running was. Nothing goes back. Not lanes. Not people." },
+    { who: "nani", text: "Raghav. You came back to your teacher after all." },
+    { who: "N", dark: 0.82, text: "The mill hooter sounds. On Nani's watch, on the station wall, on the desk upstairs, the stopped clocks move at last. 11:59. Then midnight." },
+    { who: "nani", alone: true, text: "Rai and Kai are waiting at the dhaba. Walk me home, beta." },
+    { who: "nani", pair: true, text: "Kai, Raghav. Walk an old woman home." }
+  ],
+  end3_crane: [
+    { who: "rollback", name: "Ranjit", text: "I lit the lamp that night, at 11:58. The fire was mine. I have spent forty years trying to undo it." },
+    { who: "nani", text: "The fire was never yours to carry, Ranjit. The running was. Nothing goes back. Not lanes. Not people." },
+    { who: "nani", text: "Cheel. Still flying his kites for him?" },
+    { who: "crane", text: "Not any more. Tonight I flew one for you." },
+    { who: "N", dark: 0.82, text: "The mill hooter sounds. On Nani's watch, on the station wall, on the desk upstairs, the stopped clocks move at last. 11:59. Then midnight." },
+    { who: "nani", alone: true, text: "Rai and Kai are waiting at the dhaba. Come, there's chai for everyone." },
+    { who: "nani", pair: true, text: "Come home, both of you. There's chai for everyone." }
+  ],
+  join_rook: [{ who: "kai", text: "Raghav! You're not doing this alone. Nani taught all three of us." }],
+  join_crane: [{ who: "kai", text: "Cheel. We don't trust you yet. But we're going the same way." }]
 };
 // Nani's letters, one hidden in a barrel on each stage
 const LETTERS = [
@@ -97,7 +161,8 @@ function playScene(name, then, extra) {
   // when a boss is picked, the siblings' phone lines are left out
   const solo = !players[1], p1 = players[0] ? players[0].kind : "rai", sibling = p1 === "rai" || p1 === "kai";
   const swap = (p) => (p1 === "kai" && (p.solo || p.swap) ? { ...p, who: p.who === "rai" ? "kai" : p.who === "kai" ? "rai" : p.who, text: p.text.replace("Kai,", "Bhaiya,").replace("Go, bhaiya.", "Go, Kai.").replace("Bhaiya? Her", "Kai? Her").replace("Changed my mind, bhaiya.", "Changed my mind, Kai.") } : p);
-  const panels = (extra || []).concat(SCENES[name] || []).filter((p) => (!p.solo || (solo && sibling)) && (!p.duo || !solo || !sibling)).map(swap);
+  const guest = { pRook: "rook", pCrane: "crane" }[p1], key = guest && SCENES[name + "_" + guest] ? name + "_" + guest : name;
+  const panels = (extra || []).concat(SCENES[key] || []).filter((p) => (!p.solo || (solo && sibling)) && (!p.duo || !solo || !sibling) && (!p.alone || solo) && (!p.pair || !solo)).map(swap);
   if (!storyOn || !panels.length) { then(); return; }
   if (scene) { const prev = scene.then; scene.panels.push(...panels); scene.then = () => { prev(); then(); }; return; }
   scene = { panels, i: 0, shown: 0, then, name };
@@ -173,6 +238,16 @@ function wrap(textStr, maxW, font) {
 }
 function drawPortrait(kind, x, y, w, h) {
   R(x, y, w, h, PAL.dark ? "#26222a" : "#efe7ec");
+  const im = SPRITES["p_" + kind];
+  if (im) {
+    // the generated 8-bit portrait, bottom-aligned in the frame
+    const pw = im.width / 2, ph = im.height / 2;
+    g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
+    g.drawImage(im, Math.round((x + (w - pw) / 2) * 2) / 2, Math.round((y + h - ph) * 2) / 2, pw, ph);
+    g.restore();
+    g.strokeStyle = PAL.T.accent; g.lineWidth = 1; g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    return;
+  }
   g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip();
   const f = fighter(kind, 0, 0, "e"); f.face = 1; f.st = "idle";
   const camWas = cam; cam = 0;

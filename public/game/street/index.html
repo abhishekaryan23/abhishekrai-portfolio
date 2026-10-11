@@ -13,7 +13,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site.css?v=3">
-  <link rel="stylesheet" href="/game/style.css?v=12">
+  <link rel="stylesheet" href="/game/style.css?v=13">
 </head>
 <body>
 <header class="site-head">
@@ -56,7 +56,7 @@
       <div class="overlay" id="overlay">
         <div class="card" id="card-menu">
           <h2>Rollback Street</h2>
-          <p>Nani has vanished from her dhaba on Chandni Lane, and the only clue is a card signed R. Four stages, four bosses, one long night. Beat a boss to play as them.</p>
+          <p>Nani has vanished from her dhaba on Chandni Lane, and the only clue is a card signed R. Four stages, four bosses, one long night. Beat Raghav or Cheel and they change sides.</p>
           <div class="chips" id="stages" role="group" aria-label="Starting stage"></div>
           <div class="chips" id="fighters" role="group" aria-label="Fighter"></div>
           <div class="chips" id="costumes" role="group" aria-label="Costume" hidden></div>
@@ -72,7 +72,7 @@
                 rolling kick (special, or punch and kick together, 30 SP), cyclone kick (special in the air, 25 SP),
                 rising dragon (down, forward, punch, or down and special, 40 SP).</li>
               <li><b>Story:</b> four of Nani's letters are hidden in barrels, one per stage. Find them all for the true ending.</li>
-              <li><b>Fighters:</b> each has their own Special. Rai rolls, Kai kicks like lightning, and every boss you beat joins with their own power.</li>
+              <li><b>Fighters:</b> each has their own Special. Rai rolls, Kai kicks like lightning. Beat Raghav or Cheel and they change sides: play as them from the next stage on, with their own power but less health and a single life.</li>
               <li><b>Pickups:</b> lathis swing (every hit knocks down), knives throw, samosas heal, kulhad chai refills SP. Jump over thrown knives and shockwaves.</li>
             </ul>
           </details>
@@ -129,7 +129,8 @@
 
 <script src="/assets/nav.js" defer></script>
 <script src="/game/arcade.js?v=9"></script>
-<script src="/game/street/street.js?v=14"></script>
-<script src="/game/street/story.js?v=6"></script>
+<script src="/game/street/fighters.js?v=3"></script>
+<script src="/game/street/street.js?v=23"></script>
+<script src="/game/street/story.js?v=10"></script>
 </body>
 </html>
