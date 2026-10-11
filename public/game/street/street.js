@@ -222,7 +222,7 @@ function loadStage(si) {
 function join(i, mid) {
   const k1 = pick1 || "rai", kind = i ? (k1 === "kai" ? "rai" : "kai") : k1;
   const p = fighter(kind, cam + 50 + i * 24, i ? 192 : 172, "p");
-  fighterArt(SHEET_OF[kind]);
+  fighterArt(SHEET_OF[kind]); fighterArt(SHEET_OF[kind] + "Lathi");
   p.pi = i; p.inv = 90; if (EASY) p.lives = 5; if (KINDS[kind].guest) p.lives = 1; players[i] = p;
   if (mid) { startPlayers = 2; texts.push({ x: p.x, y: p.y - 64, s: KINDS[kind].name + " joins", t: 70 }); if (!joinedOnce) { joinedOnce = true; playScene("join", () => {}); } }
 }
@@ -904,7 +904,7 @@ const SPRITES = {};
 // Art is fetched a stage at a time (plus the next stage, in the background), so a
 // phone only downloads what it is about to show. Anything not loaded yet is drawn
 // the old way, in code, so a slow connection never blocks play.
-const ART_V = 5, ART = "/game/street/sprites/", asked = new Set();
+const ART_V = 6, ART = "/game/street/sprites/", asked = new Set();
 function sprite(name, src) { if (asked.has(name)) return; asked.add(name); const im = new Image(); im.onload = () => (SPRITES[name] = im); im.src = src + "?v=" + ART_V; }
 const art = (names) => names.forEach((n) => sprite(n, ART + n + ".png"));
 const fighterArt = (sheet) => { if (!sheet) return; sprite("f_" + sheet, ART + "fighters/" + sheet + ".png"); sprite("w_" + sheet, ART + "fighters/" + sheet + "_walk.png"); };
@@ -1519,8 +1519,22 @@ function pose(f) {
 const SHEET_OF = { rai: "rai", kai: "kai", grunt: "grunt", pipeGrunt: "pipeGrunt", pipeBare: "pipeBare", kicker: "kicker", thrower: "thrower", bruiser: "bruiser",
   ox: "ox", rook: "rook", crane: "crane", rollback: "rollback", pOx: "ox", pRook: "rook", pCrane: "crane", pRollback: "rollback" };
 // which frame to show, and an optional spin, for each state and move
+// frames for a fighter holding a lathi (the lathi thug, or a player's "<name>Lathi" sheet)
+function lathiFrame(f) {
+  const s = f.st, at = f.atkName;
+  if (s === "taunt") return { i: 11 };
+  if (s === "air") return { i: f.airAtk && f.airAtk !== "dragon" ? 8 : f.airAtk === "dragon" ? 4 : 7, rot: f.airAtk === "cyclone" ? f.airT * 0.5 : 0 };
+  if (s !== "attack") return null;
+  if (at === "pipe") return { i: f.t < f.atk.a0 ? 4 : 5 };
+  if (at === "roll" || at === "kroll" || at === "eRoll") return { i: 7, rot: f.t * 0.42 };
+  if (at === "flurry") return { i: (f.t % 6) < 3 ? 6 : 3 };
+  if (at === "kick" || at === "eKick" || at === "round" || at === "spinheel") return { i: 6 };
+  if (at === "upper" || at === "heavy" || at === "quake") return { i: f.t < 8 ? 4 : 5 };
+  return { i: 3 };
+}
 function spriteFrame(f, sheet) {
   const s = f.st, at = f.atkName;
+  if (sheet === "pipeGrunt" || sheet.endsWith("Lathi")) { const lf = lathiFrame(f); if (lf) return lf; }
   if ((s === "walk" || s === "run") && SPRITES["w_" + sheet] && FIGHTER_FRAMES[sheet + "_walk"]) return { i: Math.floor(f.walkPh / 0.8) % 8, walk: true };
   if (s === "walk") return { i: [1, 0, 2, 0][Math.floor(f.walkPh / 1.4) % 4] };
   if (s === "run") return { i: [1, 2][Math.floor(f.walkPh / 1.2) % 2] };
@@ -1548,11 +1562,11 @@ function spriteFrame(f, sheet) {
     if (at === "fan") return { i: sheet === "crane" ? 11 : 3 };
     if (at === "quake" || at === "pound") return { i: 11 };
     if (at === "eToss") return { i: f.t < ATK.eToss.spawn ? 4 : 6 };
-    if (at === "pipe") return sheet === "pipeGrunt" ? { i: f.t < f.atk.a0 ? 4 : 5 } : { i: f.t < f.atk.a0 ? 4 : 3 };
+    if (at === "pipe") return { i: f.t < f.atk.a0 ? 4 : 3 };
     if (at === "toss") return { i: f.t < ATK.toss.spawn ? 4 : 3 };
     if (at === "upper") return { i: 4 };
     if (at === "heavy") return { i: sheet === "bruiser" ? 6 : 4 };
-    if (at === "kick" || at === "eKick") return { i: sheet === "pipeGrunt" ? 6 : 5 };
+    if (at === "kick" || at === "eKick") return { i: 5 };
     if (at === "round" || at === "spinheel") return { i: 6 };
     if (at === "elbow") return { i: 3, back: true };
     return { i: 3 };   // jab, jab2, ePunch, tackle, toss, chakra
@@ -1570,7 +1584,7 @@ function drawSpriteFighter(f, x, y) {
   if (f.flash > 0) { f.flash--; g.filter = "brightness(2.6)"; }
   g.drawImage(im, sx, sy, w, h, -ax / 2, -ay / 2, w / 2, h / 2);
   g.filter = "none";
-  if (f.weapon && sheet !== "pipeGrunt") spriteWeapon(f, fr.walk ? 1 : fr.i);
+  if (f.weapon && sheet !== "pipeGrunt" && !sheet.endsWith("Lathi")) spriteWeapon(f, fr.walk ? 1 : fr.i);
   g.restore();
 }
 // a picked-up lathi or knife, drawn in the sprite's front hand (game pixels from the feet, facing right)
@@ -1586,7 +1600,11 @@ function spriteWeapon(f, i) {
   if (f.weapon.kind === "pipe") { seg(-7, 21, 3.4, "#2a1a0e"); seg(-6.5, 20.5, 2, "#c79a52"); seg(1, 3, 2.2, "#6b4a22"); seg(11, 12.5, 2.2, "#6b4a22"); }
   else { seg(-2, 8, 2.6, "#1e2226"); seg(-1.5, 1.5, 1.6, "#6b4a22"); seg(1.5, 7.5, 1.4, "#d8dde2"); }
 }
-const spriteSheet = (f) => f.kind === "pipeGrunt" && !f.weapon ? "pipeBare" : SHEET_OF[f.kind];
+const spriteSheet = (f) => {
+  if (f.kind === "pipeGrunt" && !f.weapon) return "pipeBare";
+  const base = SHEET_OF[f.kind], armed = base + "Lathi";
+  return f.team === "p" && f.weapon && f.weapon.kind === "pipe" && SPRITES["f_" + armed] && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES[armed] ? armed : base;
+};
 const usesSprite = (f) => SHEET_OF[f.kind] && SPRITES["f_" + spriteSheet(f)] && typeof FIGHTER_FRAMES !== "undefined" && FIGHTER_FRAMES[spriteSheet(f)] &&
   !bigHead && !f.pigeon && !((f.kind === "rai" || f.kind === "kai") && costume !== "classic");
 
