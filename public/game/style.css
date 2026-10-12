@@ -81,7 +81,7 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
 .stick::before { content: ""; position: absolute; inset: 22%; border-radius: 50%; border: 1px dashed var(--line2); }
 .stick span { position: absolute; left: 50%; top: 50%; width: 58px; height: 58px; margin: -29px 0 0 -29px; border-radius: 50%; background: var(--accent-bg); border: 1px solid var(--accent); pointer-events: none; }
 .stick.on span { background: var(--accent); }
-@media (pointer: coarse) { .pad { display: flex; } .keys { display: none; } }
+@media (any-pointer: coarse) { .pad { display: flex; } .keys { display: none; } }
 
 .legend .sw-teal { background: #13756f; } .legend .sw-red { background: #b42318; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .legend .sw-teal { background: #5cc8c0; } :root:not([data-theme="light"]) .legend .sw-red { background: #ff7b72; } }
@@ -102,8 +102,8 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
 .stage-wrap.fs .fs-exit { display: block; position: absolute; top: 8px; right: 8px; z-index: 5; appearance: none; border: 1px solid rgba(255, 255, 255, 0.35); background: rgba(14, 13, 12, 0.55); color: #fff; font: 500 0.8rem var(--sans); padding: 6px 10px; border-radius: 6px; }
 .stage-wrap.fs .fs-exit { top: 30px; right: 50%; transform: translateX(50%); }
 .stage-wrap.fs:has(.hud) .fs-exit { top: auto; bottom: 8px; }
-@media (pointer: coarse) {
-  .stage-wrap.fs .pad { display: flex; position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; margin: 0; padding: 0 20px 16px; pointer-events: none; }
+@media (any-pointer: coarse) {
+  .stage-wrap.fs .pad { display: flex; position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; margin: 0; padding: 0 calc(20px + env(safe-area-inset-right)) calc(16px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left)); pointer-events: none; }
   .stage-wrap.fs .pad > * { pointer-events: auto; }
   .stage-wrap.fs .stick { background: rgba(20, 18, 22, 0.35); border-color: rgba(255, 255, 255, 0.4); }
   .stage-wrap.fs .stick::before { border-color: rgba(255, 255, 255, 0.25); }
@@ -127,7 +127,7 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
   .card { border: 0; padding: 4px; background: transparent; }
 }
 .game-actions { margin-left: auto; display: flex; gap: 8px; }
-@media (pointer: coarse) { [data-keyboard] { display: none; } }
+@media (any-pointer: coarse) { [data-keyboard] { display: none; } }
 .game-actions .icon-btn { white-space: nowrap; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
 .chip { appearance: none; border: 1px solid var(--line2); background: var(--surface); color: var(--ink2); font: 500 0.85rem var(--sans); padding: 5px 10px; border-radius: 4px; cursor: pointer; }
@@ -152,19 +152,20 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
 .stage-wrap.story .pad, .stage-wrap.story .pad > *, .stage-wrap.story .pad button { opacity: 0.12; pointer-events: none; }
 .stick[data-dash]::after { content: ""; position: absolute; inset: 16%; border-radius: 50%; border: 1px dotted var(--accent); opacity: 0.5; pointer-events: none; }
 .pad .pause-btn { align-self: flex-start; padding: 6px 12px; font-size: 0.8rem; }
-@media (pointer: coarse) { .stage-wrap.fs .pad .pause-btn { position: absolute; top: 8px; left: 8px; border-radius: 6px; padding: 6px 10px; } }
+/* Pause sits top-right under Exit, clear of the ✕ that iPad Safari puts top-left in full screen */
+@media (any-pointer: coarse) { .stage-wrap.fs .pad .pause-btn { position: absolute; top: calc(42px + env(safe-area-inset-top)); right: calc(6px + env(safe-area-inset-right)); left: auto; border-radius: 6px; padding: 6px 12px; } }
 #letters blockquote { margin: 8px 0; padding: 8px 12px; border-left: 3px solid var(--accent); background: var(--surface2); font-family: var(--serif); font-style: italic; color: var(--ink2); }
 /* no page zoom or scrolling from taps while playing */
 .pad, .pad * { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 .fs-lock, .fs-lock body { touch-action: none; }
 .screen canvas { touch-action: manipulation; }
 /* on phones the exit button sits small in the corner, out of the way of the HUD */
-@media (pointer: coarse) {
-  .stage-wrap.fs .fs-exit { top: 6px; right: 6px; left: auto; transform: none; font-size: 0.72rem; padding: 4px 8px; opacity: 0.75; }
+@media (any-pointer: coarse) {
+  .stage-wrap.fs .fs-exit { top: calc(6px + env(safe-area-inset-top)); right: calc(6px + env(safe-area-inset-right)); left: auto; transform: none; font-size: 0.72rem; padding: 4px 8px; opacity: 0.75; }
 }
 
 /* full screen: the pad covers the whole stage so Pause can sit in the top-left corner */
-@media (pointer: coarse) { .stage-wrap.fs .pad { top: 0; } }
+@media (any-pointer: coarse) { .stage-wrap.fs .pad { top: 0; } }
 /* narrow phones in portrait: shrink the pad so Pause stays on screen */
 @media (max-width: 420px) {
   .pad .act { grid-template-columns: repeat(2, 56px); grid-template-rows: repeat(2, 52px); }
@@ -173,3 +174,21 @@ kbd { font: 500 0.8rem var(--mono); border: 1px solid var(--line2); border-botto
 }
 .chip:has(.chip-face) { display: inline-flex; align-items: center; }
 .chip .chip-face { flex: none; width: 22px; height: 22px; object-fit: cover; object-position: top; border-radius: 3px; margin-right: 6px; vertical-align: middle; image-rendering: pixelated; background: var(--surface2); }
+
+/* keyboard players (a touch laptop, an iPad with a keyboard) get the keys list back and no pad */
+:root.kbd .pad, :root.kbd .stage-wrap.fs .pad { display: none !important; }
+:root.kbd .keys { display: flex; }
+:root.kbd .chips[data-keyboard] { display: flex; }
+/* tablets: thumb-sized controls that grow with the screen */
+@media (any-pointer: coarse) and (min-width: 700px) and (min-height: 500px) {
+  .stage-wrap.fs .stick { width: clamp(150px, 22vmin, 210px); height: clamp(150px, 22vmin, 210px); }
+  .stage-wrap.fs .stick span { width: 40%; height: 40%; margin: -20% 0 0 -20%; }
+  .stage-wrap.fs .pad .act { grid-template-columns: repeat(2, clamp(68px, 11vmin, 96px)); grid-template-rows: repeat(2, clamp(68px, 11vmin, 96px)); gap: 12px; }
+  .stage-wrap.fs .pad button { font-size: 0.9rem; }
+  .stage-wrap.fs .pad .pause-btn { min-height: 40px; padding: 8px 16px; }
+}
+/* held upright in full screen: a gentle nudge to turn the tablet */
+.rotate-hint { display: none; }
+.stage-wrap.fs.portrait .rotate-hint { display: block; position: absolute; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 5; padding: 6px 12px; border-radius: 6px; background: rgba(14, 13, 12, 0.7); color: #fff; font: 500 0.82rem var(--sans); pointer-events: none; }
+/* no text selection, callouts or tap flashes anywhere on the game while full screen */
+.stage-wrap.fs, .stage-wrap.fs * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }

@@ -23,7 +23,7 @@
 
 const LW = 384, LH = 216, SCALE = 2, TICK = 1000 / 60;
 const Y0 = 150, Y1 = 206, GRAV = 0.32, BS = 1.12;   // depth band, gravity, base body scale
-const TOUCH = matchMedia("(pointer: coarse)").matches;
+const TOUCH = matchMedia("(any-pointer: coarse)").matches;   // includes iPads with a keyboard or trackpad
 const canvas = document.getElementById("game"), g = canvas.getContext("2d");
 const $ = (id) => document.getElementById(id);
 const rand = (a, b) => a + Math.random() * (b - a);
@@ -186,7 +186,7 @@ let countdown = 0;   // frames of "get ready" before play resumes
 function togglePause() {
   paused = !paused;
   const btn = document.querySelector(".pad .pause-btn");
-  if (paused) { countdown = 0; savedBanner = banner; banner = { text: TOUCH ? "Paused. Tap Resume" : "Paused. Press P to resume", t: 1e9 }; if (btn) btn.textContent = "Resume"; }
+  if (paused) { countdown = 0; savedBanner = banner; banner = { text: TOUCH && !document.documentElement.classList.contains("kbd") ? "Paused. Tap Resume" : "Paused. Press P to resume", t: 1e9 }; if (btn) btn.textContent = "Resume"; }
   else { banner = savedBanner; savedBanner = null; countdown = 120; if (btn) btn.textContent = "Pause"; }
 }
 

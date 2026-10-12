@@ -70,8 +70,10 @@
   function fitStage() {
     if (!fs.on) return;
     const vw = window.innerWidth, vh = window.innerHeight;
-    fs.rot = !(document.fullscreenElement || document.webkitFullscreenElement) && matchMedia("(pointer: coarse)").matches && vh > vw;
+    fs.rot = !(document.fullscreenElement || document.webkitFullscreenElement) && matchMedia("(any-pointer: coarse)").matches && vh > vw;
     fs.wrap.classList.toggle("rot", fs.rot);
+    // held upright in real full screen (an iPad, say): suggest turning it for a bigger game
+    fs.wrap.classList.toggle("portrait", !fs.rot && vh > vw * 1.1);
     const W = fs.rot ? vh : vw, H = fs.rot ? vw : vh;
     fs.wrap.style.width = W + "px"; fs.wrap.style.height = H + "px";
     const c = fs.canvas, k = Math.min(W / c.width, H / c.height);
@@ -108,6 +110,14 @@
     const left = () => { if (fs.on && fs.api && !document.fullscreenElement && !document.webkitFullscreenElement) exitFs(); };
     document.addEventListener("fullscreenchange", left); document.addEventListener("webkitfullscreenchange", left);
     addEventListener("keydown", (e) => { if (e.code === "Escape" && fs.on && !fs.api) exitFs(); });
+    const hint = document.createElement("div"); hint.className = "rotate-hint"; hint.textContent = "Turn your tablet sideways for a bigger game";
+    fs.wrap.appendChild(hint);
+    // iPad and iPhone Safari: pointer events alone do not stop the page from panning or bouncing,
+    // pinch zoom, or the full-screen view being dragged down to close. Cancel the native touch
+    // moves over the game while it is full screen (a menu card can still scroll).
+    const stopPan = (e) => { if (fs.on && !(e.target.closest && e.target.closest(".overlay .card"))) e.preventDefault(); };
+    fs.wrap.addEventListener("touchmove", stopPan, { passive: false });
+    for (const t of ["gesturestart", "gesturechange"]) fs.wrap.addEventListener(t, (e) => { if (fs.on) e.preventDefault(); });
   }
 
   /* touch pad: buttons carry data-code="KeyW" etc. and fire the same
@@ -177,6 +187,14 @@
     addEventListener("blur", reset); document.addEventListener("visibilitychange", () => { if (document.hidden) reset(); });
   }
   function bindPad(onDown, onUp) {
+    document.querySelectorAll(".pad").forEach((pad) => {
+      pad.addEventListener("touchstart", (e) => e.preventDefault(), { passive: false });
+      pad.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+    });
+    // keyboard players do not need the on-screen pad (a touch laptop, an iPad with a keyboard);
+    // it comes back on the next touch
+    addEventListener("keydown", (e) => { if (!e.metaKey && !e.ctrlKey && !e.altKey && !/INPUT|TEXTAREA/.test((document.activeElement || {}).tagName || "")) root.classList.add("kbd"); });
+    addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") root.classList.remove("kbd"); }, true);   // a finger or an Apple Pencil
     document.querySelectorAll(".pad .stick[data-codes]").forEach((el) => bindStick(el, onDown, onUp));
     document.querySelectorAll(".pad .grp.act").forEach((el) => bindGroup(el, onDown, onUp));
     document.querySelectorAll(".pad button[data-code]").forEach((b) => {
