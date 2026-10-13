@@ -321,6 +321,10 @@ kbd {
 .reveal .fragment.highlight-current-blue.current-fragment { color: var(--accent) !important; }
 
 .reveal-viewport { background: var(--paper); }
+/* Slide mode: keep slides clear of the fixed site trail (top) and toolbar (bottom).
+   Reveal scales each slide to fit this box, so on short, wide windows the slide
+   shrinks instead of sliding under the bars. */
+html:not(.article-mode) .reveal { position: absolute; top: 38px; bottom: 48px; left: 0; right: 0; width: auto; height: auto; }
 
 @media (max-width: 800px) {
   .grid2, .grid3, .grid4, .toc { grid-template-columns: 1fr; }
