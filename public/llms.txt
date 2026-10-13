@@ -1,0 +1,55 @@
+# Abhishek Rai
+
+> Abhishek Rai is a VMware Cloud Foundation (VCF 9) automation specialist and local AI developer based in Pune, India. He works as a Broadcom PS Developer (VMware Automation Specialist) at Mastercom Technologies Services, delivering under Broadcom Professional Services. He has seven years of cloud automation experience with VCF Automation, VCF Orchestrator, NSX, vSphere Kubernetes Service, Terraform, Ansible, AWS and Microsoft Azure. He builds AI tools that run locally on Apple Silicon and wrote two free courses: DevOps From Basics and VCF Automation From Basics. His website is AbhishekrAI.dev (the capital "AI" is a play on his surname).
+
+## Profiles
+
+- [Website](https://abhishekrai.dev/): portfolio, work history, credentials, projects and contact form
+- [LinkedIn](https://www.linkedin.com/in/abhishek-rai-043a55166/)
+- [GitHub](https://github.com/abhishekaryan23)
+- [Microsoft Learn credentials](https://learn.microsoft.com/en-us/users/abhishekrai-1837/)
+- Email: abhishek@abhishekrai.dev
+
+## Work
+
+- Broadcom PS Developer (VMware Automation Specialist), Mastercom Technologies Services, Pune, January 2026 to present. Kubernetes as a service on VCF 9: the full cluster lifecycle automated with VCF 9 VM Applications Orchestrator, control planes and worker pools ready in under 15 minutes, a 95% reduction in delivery time. Network segmentation as code: VCF Automation 9 network profiles that consume NSX segments and build microsegmentation and security groups inside NSX VPCs. End-to-end VM provisioning with Infoblox IPAM, Active Directory over LDAPS and Ansible Automation Controller. Generative AI for Orchestrator JavaScript actions and blueprint scaffolding, cutting feature delivery time by 40%.
+- Senior Software Developer, Neurealm (formerly GS Lab | GAVS), Pune, May 2025 to December 2025. Hardened Aria Automation YAML blueprints enforcing CIS Benchmarks and bank audit requirements; high-availability PostgreSQL blueprints; Orchestrator workflow rework that reduced failures by 25%.
+- Cloud Automation and DevOps Engineer, Cognizant Technology Solutions, Pune, December 2019 to May 2025. ServiceNow, Aria Service Broker and Orchestrator integration keeping the CMDB in sync; AWS self-healing with CloudWatch, SNS, Lambda and Systems Manager (mean time to recovery under 2 minutes); serverless ingestion with S3, Lambda and Glue; Azure HPC batch at a 99.98% completion rate.
+- IT Infrastructure and Cloud Intern, NiteoIT Solutions, Bengaluru, January 2019 to December 2019.
+
+## Certifications
+
+- [Broadcom Partner Certification: Certified Expert, VMware Cloud Foundation implementation](https://www.credly.com/badges/83735047-bd6c-4941-9cc0-c06ca282aefe/public_url) (June 2026)
+- [VMware Certified Professional: VCF 9 Administrator](https://www.credly.com/badges/ddd7e5d6-b68e-439f-a8a7-cb49eb640bbd)
+- Partner VCAP: vSphere Kubernetes Service (VCAPVKS9)
+- VMware Aria Automation 8.3 Specialist
+- AWS Certified Solutions Architect: Associate
+- [Microsoft Certified: Azure AI Engineer Associate](https://learn.microsoft.com/en-us/users/abhishekrai-1837/credentials/dcbda8578bcc0b2b)
+- Microsoft Certified: Azure Fundamentals
+
+## Free courses
+
+- [DevOps From Basics](https://abhishekrai.dev/learn/devops/): a free animated course from "what is a server?" to Kubernetes in production. 15 modules: computer basics, SDLC and Agile, what DevOps is, Linux and Bash, networking, Git and GitHub, CI/CD, containers and Docker, Kubernetes, cloud computing (AWS), Terraform and Ansible, observability, DevSecOps, roadmap and career, and a capstone project. Each module has plain explanations, animations, a cheat sheet, interview questions and a quiz.
+- [VCF Automation From Basics](https://abhishekrai.dev/learn/vcf-automation/): a free animated course from "what is a virtual machine?" to a self-service private cloud. 11 modules: virtualization and vSphere, VMware Cloud Foundation, what VCF Automation is, architecture and tenancy, preparing infrastructure, blueprints in YAML, catalog, forms and governance, Orchestrator and extensibility, integrations and infrastructure as code, day-2 operations and troubleshooting, projects and career.
+- [Both courses](https://abhishekrai.dev/learn/): no sign-up; progress is stored only in the learner's browser.
+
+## Projects
+
+- [SteerVox](https://github.com/SteerVox/SteerVox): a macOS menu bar app for local-first dictation and AI-assisted rewriting. MLX Whisper speech recognition on Apple Silicon and Kokoro text-to-speech; user corrections are embedded locally and stored in SQLite with sqlite-vec, then reused as context so it learns the user's terms and style offline.
+- SmartScissor: a native macOS app (Swift with a local Python engine) that segments and clips objects on screen with SAM-2 and Florence-2 on the Apple Silicon GPU through Metal Performance Shaders, with automatic CPU fallback. Uses SigLIP embeddings. Source not yet public.
+- [AIOps incident commander](https://github.com/abhishekaryan23/devops_dashboard): a Flask dashboard combining Jira, Confluence and Dynatrace data, drafting root-cause analysis reports with a local Ollama model.
+- [Onived](https://onived.org): plain-language explanations of CVEs for developers.
+
+## Local AI tools he uses
+
+- Language models: Bonsai 27B, Qwen 2.5 (run locally, including through Ollama)
+- Speech: Whisper (including MLX Whisper on Apple Silicon), Kokoro TTS
+- Images: FLUX.2, Z-Image-Turbo
+- Embeddings and vector search: SigLIP, SQLite-vec
+- Agents: Model Context Protocol (MCP) servers
+- Evaluation: benchmarking small language models (tokens per second, memory use, quantization quality loss)
+
+## Optional
+
+- [Ghost Deploy](https://abhishekrai.dev/game/): a one-minute daily browser puzzle race, themed on getting a deploy past firewalls to production.
+- [Rollback Street](https://abhishekrai.dev/game/street/): a side-scrolling browser beat 'em up for one or two players.

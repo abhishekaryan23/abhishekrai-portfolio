@@ -1,5 +1,28 @@
+# abhishekrai.dev: everything public is meant to be read, quoted and cited,
+# by search engines and by AI assistants alike. Only the two API endpoints are off limits.
+# A plain-text summary for language models is at https://abhishekrai.dev/llms.txt
+
 User-agent: *
 Allow: /
-Disallow:
+Disallow: /api/
+Disallow: /functions/
+
+# AI search and assistant crawlers, named so the intent is explicit
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: GPTBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: ClaudeBot
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Bingbot
+User-agent: DuckAssistBot
+User-agent: CCBot
+Allow: /
+Disallow: /api/
+Disallow: /functions/
 
 Sitemap: https://abhishekrai.dev/sitemap.xml
