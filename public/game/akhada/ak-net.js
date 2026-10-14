@@ -99,7 +99,7 @@ function netMatchOver(w) {
    screen. What could still decide a result is the host's refereeing, so the guest checks every
    correction and round call against its own fight, and both sides reject impossible inputs.
    Three strikes and the match ends as no contest on both screens: tampering never wins. */
-function strike(what) {
+function netStrike(what) {
   NET.strikes = (NET.strikes || 0) + 1;
   if (NET.strikes >= 3 && NET.started) { netSend({ k: "void" }); netVoid(true); }
 }
@@ -107,8 +107,8 @@ function strike(what) {
 function checkEnd(w) {
   const dying = (team) => fighters.filter((f) => f.team === team).every((f) => !alive(f) || f.hp <= f.maxHp * 0.35);
   const pct = (team) => fighters.filter((f) => f.team === team).reduce((a, f) => a + f.hp / f.maxHp, 0);
-  if (timer > 2) { if ((w >= 0 && !dying(1 - w)) || (w < 0 && !dying(0) && !dying(1))) strike("end"); }
-  else if (w >= 0 && pct(w) < pct(1 - w) - 0.1) strike("end");   // time up: the winner must not be clearly behind
+  if (timer > 2) { if ((w >= 0 && !dying(1 - w)) || (w < 0 && !dying(0) && !dying(1))) netStrike("end"); }
+  else if (w >= 0 && pct(w) < pct(1 - w) - 0.1) netStrike("end");   // time up: the winner must not be clearly behind
 }
 function netVoid(local) {
   if (!NET.started && state === "over") return;
@@ -163,15 +163,15 @@ function netMsg(m) {
   if (m.type === "left") { NET.peer = false; netStatus("Your friend left room " + NET.code + "."); netLost(); netUi(); return; }
   switch (m.k) {
     case "i":
-      if (!Array.isArray(m.i) || m.i.length > 40) { strike("inputs"); break; }
+      if (!Array.isArray(m.i) || m.i.length > 40) { netStrike("inputs"); break; }
       for (const e of m.i) {
         const [t, h, p] = Array.isArray(e) ? e : [];
         // only real button bits for frames near now are accepted
-        if (![t, h, p].every(Number.isInteger) || h < 0 || h > 2047 || p < 0 || p > 2047 || t < NET.t - 64 || t > NET.t + 64) { strike("inputs"); continue; }
+        if (![t, h, p].every(Number.isInteger) || h < 0 || h > 2047 || p < 0 || p > 2047 || t < NET.t - 64 || t > NET.t + 64) { netStrike("inputs"); continue; }
         if (t >= NET.t) NET.inp[1 - NET.side].set(t, [h, p]);   // resent frames already played are ignored
       }
       break;
-    case "ev": if (NET.side === 1 && m.e && m.e.kind === "end" && Number.isInteger(m.e.at) && [-1, 0, 1].includes(m.e.w) && m.e.at > NET.t - 2) NET.ev.push(m.e); else strike("event"); break;
+    case "ev": if (NET.side === 1 && m.e && m.e.kind === "end" && Number.isInteger(m.e.at) && [-1, 0, 1].includes(m.e.w) && m.e.at > NET.t - 2) NET.ev.push(m.e); else netStrike("event"); break;
     case "void": netVoid(false); break;
     case "fix": netFix(m); break;
     case "pick": if (typeof m.id === "string" && ROSTER[m.id] && !ROSTER[m.id].hidden) { NET.picks[1 - NET.side] = m.id; netUi(); } break;
@@ -191,14 +191,14 @@ function netFix(m) {
     if (m.t >= NET.t && m.t <= NET.t + 64 && NET.later.size < 8) NET.later.set(m.t, m);
     return;
   }
-  if (!Array.isArray(m.f)) { strike("fix"); return; }
+  if (!Array.isArray(m.f)) { netStrike("fix"); return; }
   // anti-cheat: a correction must be possible (health within the bar, inside the arena) and close
   // to what this browser computed for the same frame; small float drift is expected, big jumps are not
   for (let i = 0; i < fighters.length; i++) {
     const h = m.f[i], s = mine[i], f = fighters[i];
-    if (!Array.isArray(h) || h.length !== 5 || !h.every(Number.isFinite)) { strike("fix"); return; }
+    if (!Array.isArray(h) || h.length !== 5 || !h.every(Number.isFinite)) { netStrike("fix"); return; }
     if (h[3] < 0 || h[3] > f.maxHp || h[4] < 0 || h[4] > 500 || h[0] < 0 || h[0] > AW || Math.abs(h[3] - s[3]) > f.maxHp * 0.44 || Math.abs(h[0] - s[0]) > 320) {
-      if (m.t - (NET.fixStrikeAt ?? -999) >= 60) { NET.fixStrikeAt = m.t; strike("fix"); }
+      if (m.t - (NET.fixStrikeAt ?? -999) >= 60) { NET.fixStrikeAt = m.t; netStrike("fix"); }
       return;
     }
   }
@@ -207,12 +207,12 @@ function netFix(m) {
     for (const [k, j, eps] of [["x", 0, 0.75], ["y", 1, 0.75], ["z", 2, 0.75], ["hp", 3, 0], ["mp", 4, 0.5]]) { const d = h[j] - s[j]; if (Math.abs(d) > eps) f[k] += d; }
     f.hp = clamp(Math.round(f.hp), 0, f.maxHp); f.mp = clamp(f.mp, 0, 500);
   });
-  if (Number.isInteger(m.tm) && m.tm >= 0 && m.tm <= 99) { if (Math.abs(timer - m.tm) > 3) strike("timer"); else if (Math.abs(timer - m.tm) > 1) timer = m.tm; }
+  if (Number.isInteger(m.tm) && m.tm >= 0 && m.tm <= 99) { if (Math.abs(timer - m.tm) > 3) netStrike("timer"); else if (Math.abs(timer - m.tm) > 1) timer = m.tm; }
 }
 // both browsers load the same fight; the host's "go" starts it on frame 0 for both
 function netBegin(m) {
   const okPick = (id) => ROSTER[id] && !ROSTER[id].hidden;
-  if (!okPick(m.p0) || !okPick(m.p1) || !Number.isInteger(m.stage) || !STAGES[m.stage]) { strike("start"); return; }
+  if (!okPick(m.p0) || !okPick(m.p1) || !Number.isInteger(m.stage) || !STAGES[m.stage]) { netStrike("start"); return; }
   NET.started = false; NETON = false; NET.strikes = 0; NET.fixStrikeAt = -999;
   NET.stage = m.stage;
   const c = { mode: "versus", players: 2, lvl: 2, fair: true, online: true, p1: m.p0, p2: m.p1, stage: m.stage };
