@@ -47,7 +47,8 @@ for (const k of ["kite_b", "kite_m", "kite_o", "kite_y"]) load(k, "/game/street/
 
 // a frame ref is "m3" (main sheet), "w" (walk, picked by phase), "p2" (powers sheet) or "x5" (extra sheet)
 function frameOf(f, ref) {
-  const id = f.d.sheet, c = ref[0], i = +ref.slice(1);
+  if (typeof ref !== "string" || !ref) ref = "m0";   // a missing pose never makes a fighter vanish
+  const id = f.d.sheet, c = ref[0], i = +ref.slice(1) || 0;
   if (c === "w") { const fr = FIGHTER_FRAMES[id + "_walk"]; return fr ? [id + "_walk", fr[Math.floor(f.walkPh) % fr.length]] : [id, FIGHTER_FRAMES[id][1 + (Math.floor(f.walkPh / 2) % 2)]]; }
   const sheet = c === "p" ? id + "_pow" : c === "x" ? id + "_ext" : id;
   const fr = FIGHTER_FRAMES[sheet];

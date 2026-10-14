@@ -576,6 +576,7 @@ function poseOf(f) {
     case "move": { const m = f.mv, q = m.pose; p = typeof q === "function" ? q(f, f.t) : Array.isArray(q) ? q.reduce((a, [t, r]) => (f.t >= t ? r : a), q[0][1]) : q || "m3"; break; }
     default: p = "m0";
   }
+  if (typeof p !== "string" || !p) p = "m0";
   f.lastPose = p; return p;
 }
 const BUFF_COL = { iron: "#d39a5a", sun: "#ff8a3a", wings: "#ffb347", grow: "#9a6bff", regen: "#ffd36a", charge: "#fff38a", rhythm: "#c58aff", aim: "#5aa8ff" };
@@ -695,7 +696,7 @@ function draw() {
   if (state === "loading") { g.fillStyle = "rgba(10,8,14,0.6)"; g.fillRect(0, 0, LW, LH); text("Loading", LW / 2, LH / 2, 9, "#f7f4ee"); }
   if (state === "intro") {
     const k = introT;
-    if (k < 70) text("Round " + round, LW / 2, LH / 2 - 10, 18, "#f7f4ee", "center", "Newsreader", true);
+    if (k < 70) text(match && match.mode === "training" ? "Training" : "Round " + round, LW / 2, LH / 2 - 10, 18, "#f7f4ee", "center", "Newsreader", true);
     else text("Fight!", LW / 2, LH / 2 - 10, 22 + (k - 70) * 0.1, "#f07ab8", "center", "Newsreader", true);
     if (k < 70) text(stage.name, LW / 2, LH / 2 + 10, 8, "#e8dcc8");
   }

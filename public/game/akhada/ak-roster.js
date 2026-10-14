@@ -430,7 +430,7 @@ const ROSTER = {
         hit: { from: 2, to: 56, every: 10, range: [-10, 44], zr: [0, 64], dmg: 26, knock: true, kx: 3.5, kz: 4 }, end: (f) => (f.bob = 0) },
       DDJ: { name: "Dhyan", mp: 80, len: 40, pose: "x2", ev: { 20: (f) => { f.buff.aim = 420; pop(f, "Focused", "#5aa8ff"); S.power(); } } },
       H1: { name: "Pehla Baan", hell: true, mp: 250, len: 150, beats: beatsAt(80, 95, 110),
-        pose: (f, t) => t < 8 ? "x0" : t < 16 ? "x1" : t < 50 ? "x4" : ["x0", "x1", "x2", "x3"][Math.min(3, Math.floor(((t - 66) % 15) / 4))],
+        pose: (f, t) => t < 8 ? "x0" : t < 16 ? "x1" : t < 50 ? "x4" : t < 66 ? "x0" : ["x0", "x1", "x2", "x3"][Math.min(3, Math.floor(((t - 66) % 15) / 4))],
         tick: (f, t) => {
           if (t === 24) { S.shot(); f.redUp = { z: 60 }; }
           if (f.redUp) f.redUp.z += 7;
