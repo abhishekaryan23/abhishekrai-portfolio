@@ -17,13 +17,14 @@ const AIP = [
 ];
 const H2_HP = 0.3;
 // fair-fight damage taken, tuned from CPU-vs-CPU round-robins: Bhola is wide as well as tall, Jatayu needs no help
-const FAIR_TAKE = { ox: 0.86, jatayu: 0.97 };
-const canAwaken = (f) => f.train || ((f.d.legend || f.d.hidden) && !f.fair) || f.hp <= f.maxHp * H2_HP;
+const FAIR_TAKE = { ox: 0.86, jatayu: 0.84 };   // Jatayu, the flagship: a heavy, grounded bruiser
+// the Awakened Hell move is a last stand for everyone: below 30% HP in every mode (Training lets you try it any time)
+const canAwaken = (f) => f.train || f.hp <= f.maxHp * H2_HP;
 
 /* ---------- input ---------- */
 const BIND = [
-  { up: ["KeyW"], down: ["KeyS"], left: ["KeyA"], right: ["KeyD"], A: ["KeyJ"], J: ["KeyK"], D: ["KeyL"], run: ["StickDash"], charge: ["VCharge"] },
-  { up: ["ArrowUp"], down: ["ArrowDown"], left: ["ArrowLeft"], right: ["ArrowRight"], A: ["Digit1", "Numpad1", "Comma"], J: ["Digit2", "Numpad2", "Period"], D: ["Digit3", "Numpad3", "Slash"], run: [], charge: [] }
+  { up: ["KeyW"], down: ["KeyS"], left: ["KeyA"], right: ["KeyD"], A: ["KeyJ"], J: ["KeyK"], D: ["KeyL"], run: ["StickDash"], charge: ["VCharge"], hell: ["VHell", "KeyI"] },
+  { up: ["ArrowUp"], down: ["ArrowDown"], left: ["ArrowLeft"], right: ["ArrowRight"], A: ["Digit1", "Numpad1", "Comma"], J: ["Digit2", "Numpad2", "Period"], D: ["Digit3", "Numpad3", "Slash"], run: [], charge: [], hell: ["Quote", "Digit4", "Numpad4"] }
 ];
 const keysDown = new Set();
 function keyOf(code) { for (let i = 0; i < 2; i++) for (const [a, list] of Object.entries(BIND[i])) if (list.includes(code)) return [i, a]; return null; }
@@ -31,7 +32,7 @@ const heldK = (i, a) => BIND[i][a].some((c) => keysDown.has(c));
 const human = (i) => fighters.find((f) => f.ctrl === "p" + i);
 function onDown(code) {
   if (code === "KeyP" || code === "Escape") {
-    if (state === "loading" && match && match.online && code === "Escape" && typeof netLost === "function") { netSend({ k: "abort" }); netLost("You left before the fight started."); return; }
+    if (state === "loading" && match && match.online && code === "Escape" && typeof netLost === "function") { netLost("You left before the fight started."); return; }
     if (["fight", "intro", "ko"].includes(state) && !NETON) togglePause(); return;
   }
   const k = keyOf(code); if (!k) return;
@@ -58,7 +59,7 @@ function togglePause() {
     if (paused) {
       $("end-title").textContent = "Training";
       $("end-result").textContent = train.best ? "Best combo on the dummy: " + train.best + " damage." : "Try a combo on the dummy.";
-      $("end-note").textContent = "Specials: Defend, a direction, then Attack or Jump. Hell moves: Defend, Forward (or Up), Jump, Attack. Hold J, K and L together to charge chakra.";
+      $("end-note").textContent = "Specials: Defend, a direction, then Attack or Jump. Hell moves: Defend, Forward (or Up), then Hell (I), or Jump then Attack. Quick moves: Jump + Attack, or Attack + Defend, together. Defend while running vanishes. Hold J, K and L together to charge chakra.";
       $("continue").textContent = "Resume"; $("continue").dataset.resume = "1";
       $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
     } else { $("overlay").hidden = true; $("card-end").hidden = true; }
@@ -88,6 +89,7 @@ function seqTail(f) {
 }
 function handle(f, ev) {
   if (f.st === "move" && f.mv && f.mv.hell) { if (ev === "A") beatPress(f); return; }
+  const lp = f.lastP || (f.lastP = { A: -99, J: -99, D: -99 }), win = f.touchInput ? PAIR_TOUCH : PAIR;
   const rev = f.fx.reverse ? -1 : 1;
   if (ev === "left" || ev === "right") {
     const dir = (ev === "left" ? -1 : 1) * rev, key = rev > 0 ? ev : ev === "left" ? "right" : "left";
@@ -98,9 +100,21 @@ function handle(f, ev) {
   if (ev === "down") return pushSeq(f, rev > 0 ? "N" : "U");
   if (ev === "run") { if (canAct(f) && grounded(f) && f.hold.mx) startRun(f, Math.sign(f.hold.mx)); return; }
   if (ev === "D") {
-    pushSeq(f, "D");
+    pushSeq(f, "D"); lp.D = tick;
+    if (f.st === "run" && grounded(f)) { vanish(f); return; }   // Defend while running: vanish and reappear further on
     if (f.st === "hurt" && grounded(f) && !f.fx.marma && f.mp >= ESCAPE) { escape(f); return; }
-    if (canAct(f) && grounded(f)) { setSt(f, "block", 0); f.run = 0; }
+    if (f.d.small && tick - lp.A <= win) { f.pair = { code: "QD", t: 3 }; return; }   // Attack + Defend together
+    if (canAct(f) && grounded(f) && f.st !== "block") { setSt(f, "block", 0); f.run = 0; }
+    return;
+  }
+  // the Hell key (I, Player 2 ' or 4, the touch pad's Hell button) finishes a Hell move in place of
+  // Jump then Attack: Defend, Forward (Hell move) or Up (Awakened), then Hell. Every player has it, on
+  // keys and on touch, so nobody gets an easier Hell move than their opponent; the NTSD input
+  // (Defend, direction, Jump, Attack) works as well. Same chakra, same rules either way
+  if (ev === "hell") {
+    const b = seqTail(f); f.pend = null;
+    if (b && (b.k === "H" || b.k === "U")) { f.seq = []; doMove(f, b.k === "H" ? "H1" : "H2", b.dir); }
+    else if (f.ctrl[0] === "p") pop(f, "Defend + stick, then Hell", "#ffd36a");
     return;
   }
   if (ev === "A" || ev === "J") {
@@ -110,14 +124,42 @@ function handle(f, ev) {
     if (b) {
       f.seq = [];
       const code = "D" + (b.k === "H" ? "F" : b.k === "U" ? "U" : "D") + ev;
-      if (ev === "J" && (b.k === "H" || b.k === "U")) { f.pend = { code, dir: b.dir, t: 9 }; return; }   // wait a moment: Attack next makes it a Hell move
+      if (ev === "J" && (b.k === "H" || b.k === "U")) { f.pend = { code, dir: b.dir, t: f.touchInput ? 16 : 9 }; return; }   // wait a moment: Attack next makes it a Hell move
       doMove(f, code, b.dir); return;
     }
+    // two buttons together (NTSD style): Jump + Attack, or Attack + Defend. Decided a few frames
+    // later, so pressing J, K and L to charge chakra never fires one by accident
+    lp[ev] = tick;
+    if (f.d.small && tick - lp[ev === "A" ? "J" : "A"] <= win) { f.pair = { code: "QJ", t: 3 }; return; }
+    if (f.d.small && ev === "A" && tick - lp.D <= win) { f.pair = { code: "QD", t: 3 }; return; }
     if (ev === "A") attack(f); else jump(f);
     return;
   }
 }
 const ESCAPE = 100;
+// quick moves and the vanish dash
+const PAIR = 3, PAIR_TOUCH = 6, QUICK_MP = 30, VANISH_MP = 30;
+function quickMove(f, code) {
+  const m = f.d.small && f.d.small[code];
+  if (!m || !alive(f) || f.lockBy || f.fx.frozen || f.fx.stopped || f.fx.marma) return false;
+  // the first of the two presses may already have started a jab, a hop or a guard: that gives way
+  const early = (f.st === "move" && f.code && f.code[0] === "A" && f.t <= 8) || (f.st === "air" && tick - f.jumpT <= 8 && f.z < 30 && !f.airAtk) || f.st === "block";
+  if (!canAct(f) && !early) return false;
+  if (f.mp < QUICK_MP) { if (f.ctrl[0] === "p") { pop(f, "Not enough chakra", "#9fd0ff"); f.mpFlash = 20; } S.no(); return false; }
+  if (f.st === "air") { f.z = 0; f.vz = 0; f.vx = 0; }
+  f.mp -= QUICK_MP; startMove(f, m, code); pop(f, m.name, f.d.col);
+  return true;
+}
+const VANISH = { name: "Vanish", len: 16, inv: [0, 15], pose: tl([0, "p1"], [11, "m0"]), vel: (f, t) => (t < 11 ? 6.4 : 0.4),
+  tick: (f, t) => {
+    if (t === 1 || t === 11) { f.hide = t === 1; dust(f.x, f.y, 8, "rgba(235,235,245,0.9)"); burst(f.x, f.y, f.z + 26, "#ffffff", 6); }
+    if (t > 1 && t < 11 && t % 3 === 0) parts.push({ x: f.x, y: f.y, z: f.z + rand(10, 40), vx: -f.face * 0.6, vz: 0.2, life: 10, max: 10, col: "rgba(235,235,245,0.8)", r: 2 });
+  },
+  end: (f) => { f.hide = false; } };
+function vanish(f) {
+  if (f.mp < VANISH_MP) { if (f.ctrl[0] === "p") { pop(f, "Not enough chakra", "#9fd0ff"); f.mpFlash = 20; } S.no(); setSt(f, "idle"); f.run = 0; return; }
+  f.mp -= VANISH_MP; f.face = f.run || f.face; f.run = 0; startMove(f, VANISH, "RV"); S.jump();
+}
 const WALL = 40;   // this close to the arena's edge counts as cornered
 const cornered = (f, tg) => tg && ((f.x < WALL && tg.x > f.x) || (f.x > AW - WALL && tg.x < f.x)) && Math.abs(tg.x - f.x) < 60;
 function escape(f) {
@@ -147,7 +189,12 @@ const BASIC = [
 ];
 const RUN_ATK = { pose: "p5", len: 24, vel: (f, t) => Math.max(0, 4.6 - t * 0.2), hit: { from: 2, to: 12, range: [0, 30], dmg: 26, knock: true, kx: 3, kz: 3 } };
 function basicFor(f, n) {
-  if (f.d.atk) { const [pose, dmg, range] = f.d.atk[n]; const b = BASIC[n]; return Object.assign({}, b, { pose: n === 2 ? tl([0, "x0"], [6, pose]) : pose, len: b.len + (n === 2 ? 8 : 2), hit: Object.assign({}, b.hit, { dmg, range, from: b.hit.from + (n === 2 ? 6 : 1), to: b.hit.to + (n === 2 ? 6 : 1) }), ev: n === 2 ? { 12: () => { shake = 6; S.heavy(); dust(f.x + f.face * 30, f.y, 6); } } : null }); }
+  const atk = (f.wounded && f.d.atkW) || f.d.atk;
+  if (atk) { const [pose, dmg, range] = atk[n]; const b = BASIC[n], wind = (f.wounded && f.d.atkWindW) || f.d.atkWind || "x0";
+    // Dasharatha's Vow: every basic hit is a heavy guard-breaker
+    const vow = f.buff.vow > 0 ? { gb: 30 } : null;
+    return Object.assign({}, b, { pose: n === 2 ? tl([0, wind], [6, pose]) : pose, len: b.len + (n === 2 ? 8 : 2), hit: Object.assign({}, b.hit, { dmg, range, from: b.hit.from + (n === 2 ? 6 : 1), to: b.hit.to + (n === 2 ? 6 : 1) }, vow),
+      ev: n === 2 ? { 12: () => { shake = 6; S.heavy(); dust(f.x + f.face * 30, f.y, 6); if (f.d.wingSwoosh) parts.push({ x: f.x + f.face * 22, y: f.y, z: 30, vx: 0, vz: 0, life: 14, max: 14, anim: "swoosh", sc: 0.8, rot: 0.3 * f.face, flip: f.face < 0 }); } } : null }); }
   if (n === 2 && f.atkAlt) return Object.assign({}, BASIC[2], { pose: tl([0, "m3"], [4, "m4"], [19, "m0"]), hit: Object.assign({}, BASIC[2].hit, { zr: [10, 60], kz: 4.6, kx: 1.4 }) });
   return BASIC[n];
 }
@@ -163,10 +210,11 @@ function attack(f) {
 function jump(f) {
   if (!canAct(f) || !grounded(f)) return;
   const running = f.st === "run";
-  setSt(f, "air"); f.vz = f.d.jump || 5.4; f.jumpT = tick;
+  setSt(f, "air"); f.vz = (f.d.jump || 5.4) * (f.wounded ? 0.7 : 1); f.jumpT = tick;   // clipped wings: half the height
   f.vx = running ? f.run * 3.6 : f.hold.mx * f.d.spd * 1.2; f.vy = f.hold.my * 0.8; f.run = 0; S.jump();
 }
-function startRun(f, dir) { if (!canAct(f)) return; setSt(f, "run"); f.run = dir; f.face = dir; }
+// clipped wings (Jatayu after Martyr's Eclipse): no dash
+function startRun(f, dir) { if (!canAct(f) || f.wounded) return; setSt(f, "run"); f.run = dir; f.face = dir; }
 function startMove(f, def, code) {
   if (f.st === "move" && f.mv) leaveMove(f);   // cancelling one move into another still cleans up the first
   setSt(f, "move"); f.mv = def; f.code = code; f.t = 0; f.hitSet = new Set(); f.mvStart = tick; f.qA = false; f.mvDir = f.face;
@@ -179,6 +227,7 @@ function doMove(f, code, dir) {
   const cancelHell = hell && f.cancel > 0 && f.st === "move" && f.mv && !f.mv.hell;
   if (!canAct(f) && !cancelBasic && !cancelHell) return false;
   if (!grounded(f) && !m.air) return false;
+  if (f.wounded && f.d.sealed && f.d.sealed.includes(code)) { if (f.ctrl[0] === "p") { pop(f, "Wings clipped", "#ffb0a0"); S.no(); } return false; }
   if (code === "H2" && !canAwaken(f)) { if (f.ctrl[0] === "p") pop(f, "Below 30% HP", "#ffb0a0"); S.no(); return false; }
   if (f.mp < m.mp) { if (f.ctrl[0] === "p") { pop(f, "Not enough chakra", "#9fd0ff"); f.mpFlash = 20; } S.no(); return false; }
   f.mp = code === "H2" ? 0 : f.mp - m.mp; if (dir) f.face = dir; f.run = 0; f.cancel = 0;
@@ -207,6 +256,8 @@ function updateFighter(f) {
   // timers and status effects
   if (f.inv > 0) f.inv--; if (f.flash > 0) f.flash--; if (f.cancel > 0) f.cancel--; if (f.comboT > 0) f.comboT--; else f.combo = 0;
   if (f.mpFlash > 0) f.mpFlash--; if (f.stagT > 0) f.stagT--;
+  // Training has no rounds to reset Jatayu's clipped wings, so they grow back after 20 seconds
+  if (f.wounded && f.train && ++f.woundT > 1200) { f.wounded = false; f.woundT = 0; pop(f, "Wings restored", "#ffcf4a"); }
   for (const k in f.buff) if (f.buff[k] > 0 && k !== "chargeN") { f.buff[k]--; if (f.buff[k] === 0 && k === "grow" && !(f.st === "move" && f.code === "H2")) f.sc = 1; }
   if (f.buff.regen > 0 && tick % 5 === 0 && alive(f)) f.hp = Math.min(f.maxHp, f.hp + 1);
   if (alive(f)) {
@@ -220,6 +271,7 @@ function updateFighter(f) {
   for (const k of ["burn", "poison", "stun", "marma", "reverse", "slow", "blind", "mark", "frozen"]) if (f.fx[k] > 0) f.fx[k]--;
   if (tick % 4 === 0) { f.hist.push({ x: f.x, y: f.y, hp: f.hp }); if (f.hist.length > 30) f.hist.shift(); }
   for (const a of f.after) a.a -= 0.04; f.after = f.after.filter((a) => a.a > 0);
+  if (f.pair && --f.pair.t <= 0) { const q = f.pair; f.pair = null; if (!f.hold.chord && !f.hold.charge) quickMove(f, q.code); }
   if (f.pend && --f.pend.t <= 0) { const p = f.pend; f.pend = null; if (p.code === "DFJ") doMove(f, "DFJ", p.dir); else jump(f); }
 
   // stopped in time (Freeze Frame, Total Rollback): everything waits, then lands at once
@@ -237,7 +289,7 @@ function updateFighter(f) {
 
   if (f.ai && alive(f)) { aiThink(f); if (f.fx.reverse) { f.hold.mx = -f.hold.mx; f.hold.my = -f.hold.my; } }
   if (alive(f)) { const q = f.evq; f.evq = []; for (const ev of q) handle(f, ev); }
-  const spdK = (f.fx.slow > 0 ? 0.6 : 1) * (f.buff.rhythm > 0 ? 1.35 : 1) * (f.buff.wings > 0 ? 1.3 : 1) * (f.spdK || 1);
+  const spdK = (f.fx.slow > 0 ? 0.6 : 1) * (f.buff.rhythm > 0 ? 1.35 : 1) * (f.buff.wings > 0 ? 1.3 : 1) * (f.buff.vow > 0 ? 0.8 : 1) * (f.spdK || 1);
   if (f.hold.charge && f.mp < 500 && alive(f) && (canAct(f) && grounded(f) || (f.st === "move" && f.code === "A0" && f.t < 8) || (f.st === "air" && tick - f.jumpT < 8))) { f.z = 0; f.vz = 0; f.vx = f.vy = 0; f.airAtk = 0; setSt(f, "charge"); f.run = 0; }
 
   switch (f.st) {
@@ -367,6 +419,10 @@ function aiThink(f) {
   // offence
   const saving = A.lvl >= 1 && f.mp >= 220 && f.mp < f.d.moves.H1.mp;   // close to a Hell move: keep the chakra
   const h1 = f.mp >= f.d.moves.H1.mp, h2 = f.mp >= f.d.moves.H2.mp && canAwaken(f), opening = tg.st === "hurt" || tg.fx.stun || tg.fx.marma || tg.fx.frozen || tg.fx.stopped;
+  if (f.d.small && f.mp >= QUICK_MP + 40 && adx < 46 && ady < 12) {
+    const wall = f.x < WALL + 10 || f.x > AW - WALL - 10;
+    if (rnd() < (wall ? 0.12 : 0.035) * P.aggr) { faceTo(f, tg); if (quickMove(f, wall || rnd() < 0.4 ? "QD" : "QJ")) return; }
+  }
   if ((h2 || h1) && (opening || adx < 150) && !["down", "getup", "fall"].includes(tg.st) && rnd() < P.hell * (opening ? 6 : 1)) { faceTo(f, tg); if (doMove(f, h2 ? "H2" : "H1", dir)) return; }
   if (tg.z > 18 && adx < 54 && ady < 14 && rnd() < 0.25 * P.aggr) { if (f.mp >= f.d.moves.DUA.mp + 100 && doMove(f, "DUA", dir)) return; f.evq.push("J"); return; }
   // charge chakra when the foe is far away or down, and stop when they come close
@@ -377,7 +433,7 @@ function aiThink(f) {
     if (!saving && ady < 10 && f.mp >= f.d.moves.DFA.mp + 80 && rnd() < P.spec * 2) { if (doMove(f, "DFA", dir)) return; }
     if (!Object.keys(f.buff).some((k) => f.buff[k] > 0) && f.mp > 320 && rnd() < P.spec * 0.3) { if (doMove(f, "DDJ", dir)) return; }
     if (adx > 200 && f.st !== "run" && rnd() < 0.03 * P.aggr) { startRun(f, dir); A.keepRun = true; return; }
-    if (f.st === "run") { if (adx < 70 || ady > 30) { setSt(f, "idle"); f.run = 0; A.keepRun = false; } else { f.hold.mx = dir; f.hold.my = Math.sign(dy) * (ady > 4 ? 1 : 0); if (adx < 90 && rnd() < 0.15) f.evq.push(rnd() < 0.5 ? "A" : "J"); return; } }
+    if (f.st === "run") { if (adx < 70 || ady > 30) { setSt(f, "idle"); f.run = 0; A.keepRun = false; } else { f.hold.mx = dir; f.hold.my = Math.sign(dy) * (ady > 4 ? 1 : 0); if (adx < 90 && rnd() < 0.15) f.evq.push(rnd() < 0.5 ? "A" : "J"); else if (adx < 130 && f.mp >= VANISH_MP + 120 && rnd() < 0.02) f.evq.push("D"); return; } }
     f.hold.mx = lowHp ? 0 : dir; f.hold.my = ady > 3 ? Math.sign(dy) : 0; return;
   }
   if (adx > 38) {
@@ -427,7 +483,7 @@ function startMatch(cfg) {
 }
 let loadT = 0;
 function startRound() {
-  round++; objs = []; parts = []; texts = []; cine = null; tint = null; flashA = 0; slowmo = 0;
+  round++; objs = []; parts = []; texts = []; cine = null; tint = null; flashA = 0; slowmo = 0; hitstop = 0; shake = 0;
   const L = match.list, n = [0, 0];
   fighters = L.map((s) => {
     const k = n[s.team]++, cnt = L.filter((o) => o.team === s.team).length;
@@ -618,10 +674,13 @@ function poseOf(f) {
     case "move": { const m = f.mv, q = m.pose; p = typeof q === "function" ? q(f, f.t) : Array.isArray(q) ? q.reduce((a, [t, r]) => (f.t >= t ? r : a), q[0][1]) : q || "m3"; break; }
     default: p = "m0";
   }
+  // a fighter with its own stance art (Jatayu) swaps the shared poses for its own
+  const look = f.wounded ? f.d.lookW : f.d.look;
+  if (look && look[f.st] && !(f.st === "move" && f.code && f.code[0] !== "A")) { const q = look[f.st]; p = typeof q === "function" ? q(f, p) : q; }
   if (typeof p !== "string" || !p) p = "m0";
   f.lastPose = p; return p;
 }
-const BUFF_COL = { iron: "#d39a5a", sun: "#ff8a3a", wings: "#ffb347", grow: "#9a6bff", regen: "#ffd36a", charge: "#fff38a", rhythm: "#c58aff", aim: "#5aa8ff" };
+const BUFF_COL = { vow: "#ffcf4a", iron: "#d39a5a", sun: "#ff8a3a", wings: "#ffb347", grow: "#9a6bff", regen: "#ffd36a", charge: "#fff38a", rhythm: "#c58aff", aim: "#5aa8ff" };
 function drawFighter(f) {
   if (f.hide) return;
   const ref = poseOf(f), [sheet, fr] = frameOf(f, ref), im = IMG[sheet];
@@ -646,7 +705,8 @@ function drawFighter(f) {
   let over = null;
   if (f.fx.frozen > 0) over = ["#9fe6ff", 0.75];
   else if (f.fx.stopped > 0) over = ["#c9a96a", 0.6];
-  else if (f.flash > 0) over = ["#ffffff", 0.7];
+  // a hit flashes white and fades fast; someone held in a combo only glints, so they never vanish
+  else if (f.flash > 0) over = ["#ffffff", Math.min(f.flash / 8, 1) * (f.lockBy ? 0.3 : 0.6)];
   else if (f.fx.burn > 0 && tick % 10 < 4) over = ["#ff7a2a", 0.5];
   else if (f.fx.poison > 0 && tick % 14 < 5) over = ["#7fe07a", 0.45];
   if (over) { const c = tinted(sheet, fr, over[0], "solid"); if (c) blitCanvas(c, fr, x, y, flip, sc, over[1]); }
@@ -728,7 +788,7 @@ function drawParts() {
   for (const p of parts) {
     const x = p.x - cam, y = p.y - p.z, a = p.life / p.max;
     if (p.obj) { objDraw(p.obj, x, y, { sc: p.sc, rot: p.rot, ay: 0.5, a: Math.min(1, a * 2) }); continue; }
-    if (p.anim) { if (!animDraw(p.anim, 1 - a, x, y, { sc: p.sc || 1, rot: p.rot || 0 })) fxDraw("burst", x, y, { sc: (p.sc || 1) * 0.3, a }); continue; }
+    if (p.anim) { if (!animDraw(p.anim, 1 - a, x, y, { sc: p.sc || 1, rot: p.rot || 0, flip: p.flip })) fxDraw("burst", x, y, { sc: (p.sc || 1) * 0.3, a }); continue; }
     if (p.ring) { g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = a; g.strokeStyle = p.col; g.lineWidth = 1 + a; g.beginPath(); g.ellipse(x, y, p.ring * (1.6 - a), p.ring * (1.6 - a) * 0.8, 0, 0, Math.PI * 2); g.stroke(); g.restore(); continue; }
     g.save(); g.globalAlpha = a; if (p.add) g.globalCompositeOperation = "lighter";
     if (p.line) { g.strokeStyle = p.col; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x - p.vx * 2, y + p.vz * 2); g.stroke(); }
@@ -900,7 +960,7 @@ function buildGrids() {
   if (typeof MUSIC !== "undefined") chips($("music"), [[true, "On"], [false, "Off"]], MUSIC.on, (v) => { setMusic(v); buildGrids(); });
   $("levelwrap").hidden = online() || training && cfg.dummy !== "cpu" || (cfg.players === 2 && cfg.mode === "versus");
   $("rulewrap").hidden = cfg.mode === "arcade" || online();
-  $("rulenote").textContent = online() ? "" : cfg.mode === "arcade" ? "Eight fights, then the last one. The final bosses fight at full power." : cfg.fair ? "Fair fight: everyone has the same health and power, Awakened moves wait for low health, and one Hell move can only do so much." : (unlockedHidden ? "Full power: Legends and the two who joined at the end" : "Full power: Legends") + " keep their extra health, power and Awakened moves at any health.";
+  $("rulenote").textContent = online() ? "" : cfg.mode === "arcade" ? "Eight fights, then the last one. The final bosses fight at full power." : cfg.fair ? "Fair fight: everyone has the same health and power, and one Hell move can only do so much. Awakened moves wait for low health." : (unlockedHidden ? "Full power: Legends and the two who joined at the end" : "Full power: Legends") + " keep their extra health and power. Awakened moves always wait for low health.";
   for (const b of document.querySelectorAll("#players [data-players]")) b.setAttribute("aria-pressed", String(+b.dataset.players === cfg.players));
   $("stagewrap").hidden = cfg.mode === "arcade";
   // the grid
@@ -974,10 +1034,11 @@ for (const b of document.querySelectorAll("#players [data-players]")) b.addEvent
 function moveList() {
   const d = ROSTER[cfg.p1], m = d.moves, el = $("movelist");
   const row = (k, mv, pre = "", post = "") => "<li><b>" + k + "</b> " + pre + mv.name + post + " <span class='muted'>· " + mv.mp + "</span></li>";
-  const anyHp = cfg.mode === "training" || ((d.legend || d.hidden) && !(cfg.fair && cfg.mode !== "arcade"));
+  const anyHp = cfg.mode === "training";
   el.innerHTML = "<p class='small muted' style='margin:0 0 6px'>" + d.blurb + " The number is the chakra each move costs (the bar holds 500).</p><ul>" +
     row("D → A", m.DFA) + row("D ↓ A", m.DDA) + row("D ↑ A", m.DUA) + row("D → J", m.DFJ) + row("D ↓ J", m.DDJ) +
-    row("D → J A", m.H1, "Hell move: ") + row("D ↑ J A", m.H2, "Awakened: ", anyHp ? " (any HP)" : " (below 30% HP)") + "</ul>";
+    row("D → Hell / D → J A", m.H1, "Hell move: ") + row("D ↑ Hell / D ↑ J A", m.H2, "Awakened: ", anyHp ? " (any HP)" : " (below 30% HP)") +
+    (d.small ? row("J + A", d.small.QJ, "Quick: ") + row("A + D", d.small.QD, "Quick: ") : "") + row("Run, then D", { name: "Vanish", mp: VANISH_MP }) + "</ul>";
   $("movename").textContent = d.name + "'s moves";
 }
 // Arcade: eight fights (regular fighters, then Ashwatthama, Jatayu and Ghatotkacha), then Barbarik
@@ -1017,12 +1078,17 @@ function demo() {
 }
 
 /* ---------- loop ---------- */
+let hellLit = null;
+function hellBtn() {
+  const f = state === "fight" && (NETON ? fighters[NET.side] : human(0)), on = !!(f && f.mp >= f.d.moves.H1.mp);
+  if (on !== hellLit) { hellLit = on; const b = $("hell-btn"); if (b) b.classList.toggle("ready", on); }
+}
 let last = performance.now(), acc = 0;
 function loop(now) {
   acc += Math.min(100, now - last); last = now;
   try {
     while (acc >= TICK) { if (NETON && !netStep()) { acc = Math.min(acc, TICK); break; } else if (!NETON) update(); acc -= TICK; }
-    draw();
+    draw(); hellBtn();
   } catch (e) { acc = 0; console.error(e); }
   requestAnimationFrame(loop);
 }

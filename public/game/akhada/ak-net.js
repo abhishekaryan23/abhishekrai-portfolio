@@ -13,8 +13,8 @@ const NET = {
   inp: [new Map(), new Map()], out: [], press: 0, ev: [], endAt: -1, snaps: new Map(), later: new Map(), strikes: 0,
   picks: [null, null], ready: [false, false], rtt: 0, stall: 0, seed: 1, stage: 0, lastPing: 0
 };
-const NBIT = { up: 1, down: 2, left: 4, right: 8, A: 16, J: 32, D: 64, run: 128, charge: 256, touch: 512, chord: 1024 };
-const ORDER_EV = ["up", "down", "left", "right", "D", "run", "A", "J"];
+const NBIT = { up: 1, down: 2, left: 4, right: 8, A: 16, J: 32, D: 64, run: 128, charge: 256, touch: 512, chord: 1024, hell: 2048 };
+const ORDER_EV = ["up", "down", "left", "right", "D", "run", "A", "J", "hell"];
 
 function netSend(o) { if (NET.ws && NET.ws.readyState === 1) NET.ws.send(JSON.stringify(o)); }
 function netPress(action) { if (NBIT[action]) NET.press |= NBIT[action]; }
@@ -44,7 +44,7 @@ function netStep() {
   }
   NET.stall = 0;
   for (const f of fighters) if (f.net) f.netIn = NET.inp[f.team].get(t);
-  for (const e of NET.ev.filter((e) => e.at === t)) { if (e.kind === "end") { if (NET.side === 1) { checkEnd(e.w); if (!NET.started) return true; } NET.endAt = -1; endRound(e.w); } }
+  for (const e of NET.ev.filter((e) => e.at === t)) { if (e.kind === "end") { if (NET.side === 1) { checkEnd(e.w, e.at); if (!NET.started) return true; } NET.endAt = -1; endRound(e.w); } }
   NET.ev = NET.ev.filter((e) => e.at > t);
   update();
   if (NET.side === 1) {
@@ -104,9 +104,11 @@ function netStrike(what) {
   if (NET.strikes >= 3 && NET.started) { netSend({ k: "void" }); netVoid(true); }
 }
 // the host called a round: does it match this browser's own fight?
-function checkEnd(w) {
+function checkEnd(w, at) {
   const dying = (team) => fighters.filter((f) => f.team === team).every((f) => !alive(f) || f.hp <= f.maxHp * 0.35);
-  const pct = (team) => fighters.filter((f) => f.team === team).reduce((a, f) => a + f.hp / f.maxHp, 0);
+  // a time-up is judged on the frame the host called it, so a hit landing after that cannot cause a false strike
+  const snap = NET.snaps.get(at - NET.D - 4);
+  const pct = (team) => fighters.reduce((a, f, i) => f.team === team ? a + (snap ? snap[i][3] : f.hp) / f.maxHp : a, 0);
   if (timer > 2) { if ((w >= 0 && !dying(1 - w)) || (w < 0 && !dying(0) && !dying(1))) netStrike("end"); }
   else if (w >= 0 && pct(w) < pct(1 - w) - 0.1) netStrike("end");   // time up: the winner must not be clearly behind
 }
@@ -151,6 +153,7 @@ function netClose() { const ws = NET.ws; NET.ws = null; if (ws) try { ws.close(1
 function netLost(why) {
   if (state === "over" && $("continue").dataset.online) { $("continue").disabled = true; if (!why) $("end-note").textContent = "Your friend left the room."; return; }
   if (state === "fight" || state === "intro" || state === "ko" || state === "loading") {
+    if (why && NET.peer) netSend({ k: "abort" });
     NET.started = false; NETON = false;
     $("end-title").textContent = why ? "Fight stopped" : "Your opponent left"; $("end-result").textContent = ""; $("end-note").textContent = why || "The fight could not continue.";
     $("continue").textContent = "Rematch"; $("continue").disabled = !(NET.peer && NET.side === 0); $("continue").dataset.online = "1"; $("again").textContent = "Back to the room";
@@ -167,7 +170,7 @@ function netMsg(m) {
       for (const e of m.i) {
         const [t, h, p] = Array.isArray(e) ? e : [];
         // only real button bits for frames near now are accepted
-        if (![t, h, p].every(Number.isInteger) || h < 0 || h > 2047 || p < 0 || p > 2047 || t < NET.t - 64 || t > NET.t + 64) { netStrike("inputs"); continue; }
+        if (![t, h, p].every(Number.isInteger) || h < 0 || h > 4095 || p < 0 || p > 4095 || t < NET.t - 64 || t > NET.t + 64) { netStrike("inputs"); continue; }
         if (t >= NET.t) NET.inp[1 - NET.side].set(t, [h, p]);   // resent frames already played are ignored
       }
       break;

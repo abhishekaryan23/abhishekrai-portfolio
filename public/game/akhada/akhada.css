@@ -10,17 +10,19 @@
 #p2wrap[hidden], #stagewrap[hidden], #rulewrap[hidden], #trainwrap[hidden], #players[hidden] { display: none; }
 
 /* the touch pad (.six is the old name): Defend and Charge on top, Jump and Attack below */
-.pad .act.six { grid-template-columns: repeat(2, 60px); grid-template-rows: repeat(2, 54px); }
+.pad .act.six { grid-template-columns: repeat(2, 60px); grid-template-rows: 38px repeat(2, 54px); }
+.pad button.ak-hell { grid-column: 1 / -1; opacity: 0.45; transition: opacity 0.2s, box-shadow 0.2s; }
+.pad button.ak-hell.ready { opacity: 1; box-shadow: 0 0 12px rgba(255, 211, 106, 0.8); }
 .pad button.ak-def { border-color: #5aa8ff; color: #2a7fd8; }
 .stage-wrap.fs .pad button.ak-def { border-color: #9fd0ff; color: #9fd0ff; }
 .pad button.ak-charge { border-color: #4aa3ff; color: #2a7fd8; }
 .stage-wrap.fs .pad button.ak-charge { border-color: #7fc4ff; color: #7fc4ff; }
 .pad button.ak-sp { border-color: var(--accent); color: var(--accent); }
 .pad button.ak-hell { border-color: #c99a2e; color: #b07d10; font-weight: 700; }
-.stage-wrap.fs .pad .act.six { grid-template-columns: repeat(2, 66px); grid-template-rows: repeat(2, 66px); }
+.stage-wrap.fs .pad .act.six { grid-template-columns: repeat(2, 66px); grid-template-rows: 44px repeat(2, 66px); }
 .stage-wrap.fs .pad button.ak-sp { border-color: #f07ab8; color: #f07ab8; }
 .stage-wrap.fs .pad button.ak-hell { border-color: #ffd36a; color: #ffd36a; }
-@media (max-width: 420px) { .pad .act.six { grid-template-columns: repeat(2, 56px); grid-template-rows: repeat(2, 52px); gap: 8px; } }
+@media (max-width: 420px) { .pad .act.six { grid-template-columns: repeat(2, 56px); grid-template-rows: 36px repeat(2, 52px); gap: 8px; } }
 @media (any-pointer: coarse) and (min-width: 700px) {
   .stage-wrap.fs .pad .act.six { grid-template-columns: repeat(2, clamp(66px, 11vmin, 96px)); grid-template-rows: repeat(2, clamp(66px, 11vmin, 96px)); gap: 12px; }
 }

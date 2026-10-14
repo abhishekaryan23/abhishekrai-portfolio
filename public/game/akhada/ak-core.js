@@ -47,22 +47,21 @@ function sheetSrc(sheet) {
   if (FROM_STREET.has(base) && !sheet.endsWith("_pow")) return STREET_ART + sheet + ".png?v=" + STREET_V;
   return ART + "fighters/" + sheet + ".png?v=" + ART_V;
 }
-function fighterArt(id) {
-  for (const s of [id, id + "_walk", id + "_pow"]) load(s, sheetSrc(s));
-  if (FIGHTER_FRAMES[id + "_ext"]) load(id + "_ext", sheetSrc(id + "_ext"));
-}
-function artReady(ids) {
-  return ids.every((id) => [id, id + "_walk", id + "_pow"].concat(FIGHTER_FRAMES[id + "_ext"] ? [id + "_ext"] : []).every((s) => IMG[s] || failed.has(s)));
-}
+// optional extra sheets: x extra moves, s stance, v supers, u wounded (only Jatayu has the last three)
+const SHEET_OF = { p: "_pow", x: "_ext", s: "_st", v: "_sp", u: "_wd" };
+const sheetsOf = (id) => [id, id + "_walk", id + "_pow"].concat(["_ext", "_st", "_sp", "_wd"].map((x) => id + x).filter((s) => FIGHTER_FRAMES[s]));
+function fighterArt(id) { for (const s of sheetsOf(id)) load(s, sheetSrc(s)); }
+function artReady(ids) { return ids.every((id) => sheetsOf(id).every((s) => IMG[s] || failed.has(s))); }
 load("fx", ART + "fx.webp?v=" + ART_V); load("obj", ART + "obj.png?v=" + ART_V); load("faces", ART + "portraits.png?v=" + ART_V);
 for (const k of ["kite_b", "kite_m", "kite_o", "kite_y"]) load(k, "/game/street/sprites/" + k + ".png?v=" + STREET_V);
 
-// a frame ref is "m3" (main sheet), "w" (walk, picked by phase), "p2" (powers sheet) or "x5" (extra sheet)
+// a frame ref is "m3" (main sheet), "w" (walk, picked by phase), "p2" (powers sheet), "x5" (extra sheet)
+// or one of Jatayu's "s" stance, "v" supers and "u" wounded sheets
 function frameOf(f, ref) {
   if (typeof ref !== "string" || !ref) ref = "m0";   // a missing pose never makes a fighter vanish
   const id = f.d.sheet, c = ref[0], i = +ref.slice(1) || 0;
   if (c === "w") { const fr = FIGHTER_FRAMES[id + "_walk"]; return fr ? [id + "_walk", fr[Math.floor(f.walkPh) % fr.length]] : [id, FIGHTER_FRAMES[id][1 + (Math.floor(f.walkPh / 2) % 2)]]; }
-  const sheet = c === "p" ? id + "_pow" : c === "x" ? id + "_ext" : id;
+  const sheet = SHEET_OF[c] ? id + SHEET_OF[c] : id;
   const fr = FIGHTER_FRAMES[sheet];
   if (!fr || !IMG[sheet]) return [id, FIGHTER_FRAMES[id][c === "m" ? Math.min(i, 11) : 0]];
   return [sheet, fr[Math.min(i, fr.length - 1)]];
@@ -332,6 +331,8 @@ function hurt(t, dmg, o) {
   let k = Math.max(o.hell ? 0.55 : 0.35, 1 - chain * 0.07);
   if (src) {
     if (src.buff.sun) k *= 1.35; if (src.buff.grow) k *= 1.4; if (src.dmgMul) k *= src.dmgMul;
+    if (src.wounded && !o.hell) k *= 1.5;
+    if (src.buff.vow && !o.hell) k *= 1.2;   // Dasharatha's Vow: heavier blows   // Jatayu after Martyr's Eclipse: clipped wings, deadlier talons
   }
   if (t.dmgTake) k *= t.dmgTake; if (t.buff.iron) k *= 0.75; if (t.buff.grow) k *= 0.8;
   dmg = Math.max(1, Math.round(dmg * k));
@@ -340,6 +341,27 @@ function hurt(t, dmg, o) {
   const awaken = o.awaken != null ? o.awaken : !!(o.hell && src && src.code === "H2");
   const key = o.hell && src ? o.hellKey || live || src.uid + ":" + src.hellId : null;
   const facing = Math.sign((o.fromX != null ? o.fromX : src ? src.x : t.x) - t.x) === t.face || o.fromX == null;
+  // Wing Guard (Jatayu): Defend pressed just before a hit parries it. No damage, the attacker is
+  // thrown back off balance and Jatayu acts first. Hell moves cannot be parried, and a parried hit
+  // leaves the guard up (t.t >= 8), so a parry cannot be chained by holding Defend.
+  // the CPU reads attacks: a CPU Jatayu sometimes parries straight out of his stance
+  const cpuParry = t.ai && t.d.parry && canAct(t) && t.st !== "run" && facing && !o.unblock && !o.hell && grounded(t) && src && src !== t && rnd() < [0.08, 0.14, 0.2][t.ai.lvl || 0];
+  // one parry, then a breather: tapping Defend cannot chain them
+  const parryReady = tick - (t.parryAt || -99) > 45;
+  if (parryReady && (cpuParry || (t.d.parry && t.st === "block" && t.t < 7 && facing && !o.unblock && !o.hell && grounded(t)))) {
+    if (t.st !== "block") setSt(t, "block", 0);
+    t.parryAt = tick;
+    t.t = 8; t.mp = Math.min(500, t.mp + 30); t.inv = Math.max(t.inv, 10); hitstopAt(8);
+    S.block(); sparks(t.x - dir * 8, t.y, t.z + 32, "#ffe08a", 12); burst(t.x - dir * 8, t.y, t.z + 32, "#ffd36a", 10);
+    parts.push({ x: t.x - dir * 10, y: t.y, z: t.z + 32, vx: 0, vz: 0, life: 14, max: 14, anim: "impact", sc: 0.7, rot: 0 });
+    pop(t, "Parry", "#ffe08a");
+    // the attacker is thrown off balance: knocked out of the air, or staggered on the ground (armour holds)
+    if (src && src !== t && Math.abs(src.x - t.x) < 70 && alive(src) && !src.lockBy && !(src.st === "move" && src.mv && src.mv.hell)) {
+      if (!grounded(src)) knockdown(src, -dir * 2, 2);
+      else if (["idle", "walk", "run", "move", "block"].includes(src.st) && !(src.buff.vow || src.buff.iron || (src.st === "move" && src.mv && src.mv.armor))) { setSt(src, "hurt", 22); src.vx = -dir * 2.6; }
+    }
+    return false;
+  }
   if (t.st === "block" && facing && !o.unblock && grounded(t)) {
     // blocking softens every hit but never cancels a Hell move: it still chips, and an Awakened move
     // that is blocked all the way through still takes half its share (20% of the health)
@@ -349,7 +371,7 @@ function hurt(t, dmg, o) {
       if (key !== live && taken < cap) chip = cap - taken;
       chip = Math.max(0, Math.min(chip, cap - taken)); by[key] = taken + chip;
     }
-    t.hp = Math.max(1, t.hp - chip); t.guard -= dmg * 0.6; t.vx = dir * 1.6; t.t = Math.max(t.t, 8);
+    t.hp = Math.max(1, t.hp - chip); t.guard -= dmg * 0.6 + (o.gb || 0); t.vx = dir * 1.6; t.t = Math.max(t.t, 8);
     S.block(); sparks(t.x - dir * 6, t.y, t.z + 30, "#cfe8ff", 5);
     if (src && src !== t && (t.x < 40 || t.x > AW - 40) && Math.abs(src.x - t.x) < 50 && grounded(src)) src.x = clamp(src.x - dir * 5, 12, AW - 12);
     t.mp = Math.min(500, t.mp + dmg * 0.2);
@@ -389,7 +411,7 @@ function hurt(t, dmg, o) {
   t.flash = 6; if (dmg >= 35) stamp(t);
   if (o.eff) status(t, o.eff, o.dur || 60, src);
   if (t.hp <= 0) { knockdown(t, dir * Math.max(2.4, o.kx || 2.4), Math.max(4, o.kz || 4)); return true; }
-  const armored = (t.buff.iron || (t.st === "move" && t.mv && t.mv.armor) || t.d.heavyArmor && !t.fair && dmg < 26) && !o.hell;
+  const armored = (t.buff.iron || t.buff.vow || (t.st === "move" && t.mv && t.mv.armor) || t.d.heavyArmor && !t.fair && dmg < 26) && !o.hell;
   if (armored && !o.launch) { t.flash = 10; return true; }
   if (t.lockBy) return true;   // held in a Hell combo: the holder decides what happens
   if (o.knock || !grounded(t) || t.st === "fall") {

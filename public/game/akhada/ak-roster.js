@@ -1,9 +1,10 @@
 /* Akhada: the roster. Every fighter has five specials and two Hell moves:
      D→A, D↓A, D↑A, D→J, D↓J            (Defend, a direction, Attack or Jump)
      H1 = D→JA  Hell move               (400 chakra)
-     H2 = D↑JA  Awakened Hell move      (500 chakra, below 30% HP; Legends and the
-                                         two hidden fighters can use it at any HP
-                                         unless the fight is a Fair fight)
+     H2 = D↑JA  Awakened Hell move      (500 chakra, below 30% HP for everyone,
+                                         except in Training)
+     (D→ or D↑ then the Hell key works too: I, Player 2 ' or 4, the touch pad's Hell)
+     QJ, QD     quick moves             (Jump + Attack, Attack + Defend together; 30 chakra)
    The mp numbers written below are base prices; the loop at the end of the file
    sets the real chakra cost of every move.
    A move is { name, mp, len, pose, vel, hit, ev: { tick: fn }, tick, beats, ... }:
@@ -21,6 +22,8 @@ function blink(f, x, y) { stamp(f, 2); burst(f.x, f.y, f.z + 26, f.d.col, 6); f.
 const faceTo = (f, t) => { if (t) f.face = Math.sign(t.x - f.x) || f.face; };
 const hitT = (f, t, dmg, o = {}) => t && alive(t) && hurt(t, dmg, Object.assign({ src: f, fromX: f.x }, o));
 function eachFoe(f, fn) { for (const t of foesOf(f)) fn(t); }
+// a wing swoosh in front of a fighter (visual only)
+function swooshAt(f, dx, sc, rot = 0.3, z = f.z + 30) { parts.push({ x: f.x + f.face * dx, y: f.y, z, vx: 0, vz: 0, life: 14, max: 14, anim: "swoosh", sc, rot: rot * f.face, flip: f.face < 0 }); }
 
 /* drawing helpers for summons */
 function columnDraw(colA, colB, w) {
@@ -341,48 +344,158 @@ const ROSTER = {
         } }
     } },
 
-  jatayu: { name: "Jatayu", sheet: "jatayu", hp: 700, spd: 1.5, w: 13, h: 60, col: "#ff9a3a", el: "King of the sky", legend: true, dmgMul: 1.15, jump: 6.4, blurb: "The vulture king of the Ramayana, who fought Ravana in the sky. The strongest in the akhada.",
+  /* Jatayu, a stance-based aerial bruiser. He stays grounded and fights with his wingspan
+     (wide sweeps, a Wing Guard parry), and takes to the air only in his specials:
+       D→A Feather Blades   D↓A Pinion Sweep     D↑A Solar Dive (unblockable, but its shadow can be dodged)
+       D→J Typhoon Pinion   D↓J Dasharatha's Vow (10 s of hyper armour, slower, guard-breaking basics)
+       H1  Pankh Pralay     H2  Martyr's Eclipse (his last stand, below 30% HP: a command grab, then
+                                his wings are clipped for the rest of the round: Wounded Stance, no dash,
+                                half jump, no Solar Dive or Typhoon Pinion, 1.5x damage) */
+  jatayu: { name: "Jatayu", sheet: "jatayu", hp: 760, spd: 1.5, w: 13, h: 60, col: "#ff9a3a", el: "King of the sky", legend: true, dmgMul: 1.25, jump: 6.4,
+    parry: true, lastStand: true, wingSwoosh: true, sealed: ["DUA", "DFJ"],
+    blurb: "The vulture king of the Ramayana, who fought Ravana in the sky to save Sita. A grounded bruiser with a wingspan like a wall.",
+    look: {
+      idle: () => (tick % 70 < 35 ? "s0" : "s1"),
+      walk: (f) => ["s2", "s0", "s3", "s1"][Math.floor(f.walkPh * 0.5) % 4],
+      block: "s8", hurt: "s10", held: "s10",
+      fall: (f, p) => (p === "m9" ? "s10" : "s11"), down: "s11", ko: "s11",
+      getup: (f, p) => (p === "m10" ? "s11" : p === "m9" ? "s10" : "s0"),
+      win: (f) => (f.t % 80 < 50 ? "v7" : "m11"), charge: "v6"
+    },
+    lookW: {
+      idle: () => (tick % 60 < 30 ? "u0" : "u1"),
+      walk: (f) => ["u2", "u0", "u3", "u1"][Math.floor(f.walkPh * 0.5) % 4],
+      block: "u1", hurt: "u6", held: "u6",
+      fall: (f, p) => (p === "m9" ? "u6" : "s11"), down: "s11", ko: "s11",
+      getup: (f, p) => (p === "m10" ? "s11" : p === "m9" ? "u6" : "u0"),
+      win: "u7", charge: "u1"
+    },
+    // basic chain: talon slash, wing sweep, double wing smash (wounded: claw, lunge, lunge)
+    atk: [["s6", 18, [4, 34]], [tl([0, "s4"], [5, "s5"]), 20, [0, 46]], ["s7", 32, [4, 46]]], atkWind: "s4",
+    atkW: [["u4", 16, [4, 32]], ["u5", 18, [6, 38]], ["u5", 28, [4, 38]]], atkWindW: "u1",
     moves: {
-      DFA: { name: "Feather Blades", mp: 50, len: 28, pose: "p2", ev: { 9: (f) => { S.shot(); for (let i = -1; i <= 1; i++) shoot(f, { fx: "featherblade", spd: 5.2, vy: i * 0.5, dmg: 20, power: 2 }); } } },
-      DDA: { name: "Wing Storm", mp: 80, len: 40, pose: "m11", ev: { 12: (f) => { S.power(); const z = zone(f, { x: f.x + f.face * 30, y: f.y, vx: f.face * 1.6, life: 100, rx: 18, ry: 14, every: 8, dmg: 11, kz: 0.5,
-        draw: (z) => fxDraw("tornado", z.x - cam, z.y - 44, { sc: 0.6, a: z.life - z.t < 10 ? (z.life - z.t) / 10 : 1 }) });
-        z.onDie = (z) => zone(f, { x: z.x, y: z.y, life: 6, rx: 26, ry: 16, dmg: 18, knock: true, kz: 6 });
-        const up = z.update; z.update = (z) => { up(z); for (const o of foesOf(f)) if (Math.abs(o.x - z.x) < 50 && Math.abs(o.y - z.y) < 20) o.x += Math.sign(z.x - o.x) * 0.8; }; } } },
-      DUA: { name: "Sky Lift", mp: 50, len: 44, air: true, grav: 0.18, pose: "p3", ev: { 2: (f) => { f.vz = 6.5; S.power(); } }, hit: { from: 2, to: 26, range: [-10, 26], zr: [20, 84], dmg: 40, knock: true, kz: 5 } },
-      DFJ: { name: "Talon Dive", mp: 50, len: 28, pose: "p1", vel: () => 6.2, tick: (f, t) => { if (t % 2) stamp(f); }, hit: { from: 2, to: 22, range: [0, 30], dmg: 44, knock: true } },
-      DDJ: { name: "Sun Wings", mp: 100, len: 24, pose: "p7", ev: { 10: (f) => { f.buff.wings = 260; f.buff.sun = 260; f.inv = 40; pop(f, "Sun wings", "#ffb347"); S.power(); } } },
+      DFA: { name: "Feather Blades", mp: 50, len: 30, pose: tl([0, "v0"], [9, "v1"], [24, "s0"]), ev: { 9: (f) => { S.shot(); swooshAt(f, 20, 0.7); for (let i = -1; i <= 1; i++) shoot(f, { fx: "featherblade", spd: 5.2, vy: i * 0.5, dmg: 20, power: 2 }); } } },
+      DDA: { name: "Pinion Sweep", mp: 55, len: 34, pose: tl([0, "s4"], [9, "s5"], [19, "s7"], [30, "s0"]),
+        // the sweep staggers and draws them in, the smash that follows knocks them flat
+        hit: { from: 9, to: 13, range: [-8, 52], zr: [0, 50], dmg: 20, stun: 20, push: -0.8, gb: 28 },
+        ev: { 9: (f) => { S.swing(); swooshAt(f, 26, 1.1); },
+          20: (f) => { S.heavy(); shake = Math.max(shake, 4); dust(f.x + f.face * 30, f.y, 8); swooshAt(f, 30, 0.9, 0.9); f.hitSet.clear(); melee(f, { range: [0, 46], zr: [0, 50], dmg: 28, knock: true, kz: 3.2, kx: 2.4, gb: 28 }); } } },
+      DUA: { name: "Solar Dive", mp: 75, len: 72,
+        pose: (f, t) => (t < 9 ? "v2" : t < 26 ? "v3" : t < 58 ? "v4" : "v5"),
+        tick: (f, t) => {
+          if (t < 58) f.vz = 0;
+          if (t === 8) { S.jump(); dust(f.x, f.y, 10); swooshAt(f, 0, 0.9, -1.4); }
+          if (t > 8 && t < 26) { f.z += 10; if (t % 2) stamp(f); }   // off the top of the screen
+          if (t === 26) { f.fx.sky = 1; f.hide = true; const tg = nearest(f); f.mark = { x: tg ? tg.x : clamp(f.x + f.face * 80, 12, AW - 12), y: tg ? tg.y : f.y }; }
+          // the target shadow chases for a moment, then stops: the last 18 frames are the time to step out
+          if (f.mark && t > 26 && t < 40) { const tg = nearest(f); if (tg) { f.mark.x = lerp(f.mark.x, tg.x, 0.13); f.mark.y = lerp(f.mark.y, tg.y, 0.13); } }
+          if (t === 46) { f.face = f.mark.x >= f.x ? 1 : -1; f.x = f.mark.x; f.y = f.mark.y; f.z = 216; f.hide = false; S.power(); }
+          if (t > 46 && t < 58) { f.z = Math.max(0, 216 - (t - 46) * 19); stamp(f); flame(f.x, f.y - 0, 1); }
+          if (t === 58) {
+            f.z = 0; f.vz = 0; f.fx.sky = 0; S.boom(); shake = Math.max(shake, 10); hitstopAt(4);
+            explode(f.x, f.y, 6, 0.9); dust(f.x, f.y, 16); rocks(f.x, f.y, 6);
+            for (const o of foesOf(f)) if (Math.abs(o.x - f.x) < 22 && Math.abs(o.y - f.y) < 12 && o.z < 40) hitT(f, o, 52, { unblock: true, knock: true, kz: 5.8, kx: (Math.sign(o.x - f.x) || f.face) * 0.6, fromX: f.x });   // ground bounce: open for a juggle
+            ring(f, f.x, f.y, { max: 58, grow: 12, dmg: 24, knock: true, kz: 3, ground: true });   // the shockwave: jump it or be far away
+          }
+        },
+        end: (f) => { f.hide = false; f.fx.sky = 0; f.mark = null; },
+        drawFx: (f, t) => {
+          if (f.mark && t >= 26 && t < 58) {   // the falling shadow, a sun-ringed target on the floor
+            const x = f.mark.x - cam, y = f.mark.y, k = clamp((t - 26) / 32, 0, 1), locked = t >= 40;
+            g.save(); g.fillStyle = "rgba(0,0,0," + (0.25 + k * 0.35) + ")"; g.beginPath(); g.ellipse(x, y, 10 + k * 12, 3 + k * 2.5, 0, 0, 7); g.fill();
+            g.strokeStyle = locked ? "rgba(255,90,40,0.95)" : "rgba(255,190,70,0.8)"; g.lineWidth = 1; g.globalAlpha = 0.5 + 0.5 * Math.abs(Math.sin(t * 0.5));
+            g.beginPath(); g.ellipse(x, y, 26, 6, 0, 0, 7); g.stroke(); g.restore();
+          }
+          if (t >= 46 && t < 58) fxDraw("firebird", f.x - cam, f.y - f.z - 10, { sc: 0.7, rot: Math.PI / 2 * f.face * 0.9, a: 0.8 });
+        } },
+      DFJ: { name: "Typhoon Pinion", mp: 85, len: 36, pose: tl([0, "v0"], [12, "v1"], [30, "s0"]),
+        ev: { 12: (f) => {
+          S.power(); shake = Math.max(shake, 3); swooshAt(f, 24, 1.2);
+          // a slow wall of wind: it eats enemy projectiles and juggles whoever it catches
+          const z = zone(f, { x: f.x + f.face * 34, y: f.y, vx: f.face * 1.05, life: 150, rx: 20, ry: 13, every: 9, dmg: 8, knock: true, kz: 3.4, kx: f.face * 0.25, spark: "#e8f6ff",
+            draw: (z) => { const a = z.life - z.t < 14 ? (z.life - z.t) / 14 : Math.min(1, z.t / 8);
+              g.save(); g.globalAlpha = 0.35 * a; g.fillStyle = "#000"; g.beginPath(); g.ellipse(z.x - cam, z.y, 18, 4, 0, 0, 7); g.fill(); g.restore();
+              fxDraw("tornado", z.x - cam + Math.sin(z.t * 0.3) * 2, z.y - 46, { sc: 0.66, a }); } });
+          const up = z.update;
+          z.update = (z) => {
+            up(z);
+            for (const o of objs) if (o.kind === "shot" && o.team !== f.team && o.life > 0 && Math.abs(o.x - z.x) < 22 && Math.abs(o.y - z.y) < 16) { o.life = 0; burst(o.x, o.y, o.z, "#e8f6ff", 8); S.zap(); }
+            for (const o of foesOf(f)) if (Math.abs(o.x - z.x) < 50 && Math.abs(o.y - z.y) < 20 && !o.lockBy) o.x += Math.sign(z.x - o.x) * 0.7;
+            if (z.t % 6 === 0) parts.push({ x: z.x + rand(-10, 10), y: z.y, z: rand(4, 60), vx: rand(-1.2, 1.2), vz: rand(0.4, 1.4), life: 26, max: 26, obj: "feather", sc: 0.3, rot: rand(0, 6) });
+          };
+        } } },
+      DDJ: { name: "Dasharatha's Vow", mp: 120, len: 50, armor: true, pose: tl([0, "v6"], [30, "v7"]),
+        ev: { 4: (f) => { S.power(); tint = { col: "rgba(255,200,80,0.16)", t: 46 }; },
+          30: (f) => { f.buff.vow = 600; pop(f, "Dasharatha's Vow", "#ffcf4a"); S.heavy(); burst(f.x, f.y, f.z + 34, "#ffd36a", 16); ring(f, f.x, f.y, { max: 60, grow: 16, dmg: 0 }); } },
+        // the spirit of the vow: a golden eagle rises and spreads its wings behind him
+        drawFx: (f, t) => {
+          const k = Math.min(1, t / 30), a = t < 40 ? k : (50 - t) / 10, x = f.x - cam, y = f.y - f.z;
+          fxDraw("eagle", x - f.face * 4, y - 44 - k * 8, { sc: 0.4 + 0.3 * k, a: 0.85 * a, flip: f.face < 0 });
+          g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = 0.6 * a; g.strokeStyle = "#ffcf4a"; g.lineWidth = 1;
+          for (let i = 0; i < 2; i++) { const r = ((t * 1.2 + i * 18) % 36) + 6; g.beginPath(); g.ellipse(x, f.y, r * 1.4, r * 0.32, 0, 0, 7); g.stroke(); }
+          g.restore();
+        } },
       H1: { name: "Pankh Pralay", hell: true, mp: 250, len: 130, beats: beatsAt(86, 96, 106),
-        pose: (f, t) => t < 72 ? "p7" : t < 84 ? "p1" : t < 114 ? ["m5", "m6", "p5"][Math.floor(t / 6) % 3] : "m11",
+        pose: (f, t) => t < 72 ? (Math.floor(t / 8) % 2 ? "v1" : "v0") : t < 84 ? "v8" : t < 114 ? ["s6", "s5", "s7"][Math.floor(t / 6) % 3] : "v1",
         tick: (f, t) => {
           if (t >= 10 && t <= 70 && t % 3 === 0) { const tg = nearest(f); if (tg) faceTo(f, tg); shoot(f, { obj: "feather", sc: 0.6, spd: 5, vy: rand(-0.6, 0.6), z: rand(14, 50), homing: 0.05, dmg: 7, hell: true, life: 90, objDy: 0, spin: 0 }); }
           if (t === 74) { const tg = foeNear(f, 300); if (tg) { blink(f, tg.x - f.face * 22, tg.y); faceTo(f, tg); lock(f, tg, 50); } }
-          if (f.lockT0 && [86, 96, 106].includes(t)) hitT(f, f.lockT0, 20, { hell: true });
-          if (t === 116 && f.lockT0) { const tg = f.lockT0; unlock(tg, f); hitT(f, tg, 50, { hell: true, knock: true, kz: 6, kx: f.face * 3 }); S.boom(); }
+          if (f.lockT0 && [86, 96, 106].includes(t)) { hitT(f, f.lockT0, 20, { hell: true }); swooshAt(f, 18, 0.8, rand(-0.6, 0.6)); }
+          if (t === 116 && f.lockT0) { const tg = f.lockT0; unlock(tg, f); hitT(f, tg, 50, { hell: true, knock: true, kz: 6, kx: f.face * 3 }); S.boom(); swooshAt(f, 24, 1.3); }
         }, drawFx: (f, t) => { if (t < 72) for (const s of [-1, 1]) fxDraw("tornado", f.x - cam + s * 34, f.y - 44, { sc: 0.5, a: 0.7 }); } },
-      H2: { name: "Last Flight", hell: true, mp: 350, len: 150, beats: beatsAt(60, 70, 80),
-        pose: (f, t) => t < 96 ? "p1" : "p4",
+      H2: { name: "Martyr's Eclipse", hell: true, mp: 350, len: 160, beats: beatsAt(56, 70, 84),
+        pose: (f, t) => f.eMiss ? "s0" : t < 18 ? "v8" : t < 40 ? "v3" : t < 96 ? ["v9", "s6", "v9", "s5"][Math.floor((t - 40) / 7) % 4] : t < 118 ? "v10" : "v11",
+        vel: (f, t) => (t < 16 && !f.lockT0 ? 6 : 0),
         tick: (f, t) => {
-          if (t < 30) { f.z += 6; f.fx.sky = 1; }
-          if (t === 30) { f.hide = true; tint = { col: "rgba(255,120,30,0.28)", t: 110 }; S.power(); }
-          const tg = nearest(f);
-          if (t === 40) f.mark = { x: tg ? tg.x : f.x, y: tg ? tg.y : f.y };
-          if (f.mark && t > 40 && t < 80 && tg) { f.mark.x = lerp(f.mark.x, tg.x, 0.06); f.mark.y = lerp(f.mark.y, tg.y, 0.06); }
-          if (t === 96 && f.mark) {
-            S.boom(); shake = 14; flashA = 0.9; flashC = "#fff0d0"; explode(f.mark.x, f.mark.y, 20, 1.3);
-            for (const o of foesOf(f)) if (Math.abs(o.x - f.mark.x) < 100 && Math.abs(o.y - f.mark.y) < 40) hitT(f, o, 230 + f.beats * 20, { hell: true, knock: true, kz: 8, kx: 3 * (Math.sign(o.x - f.mark.x) || 1), eff: "burn", dur: 120, fromX: f.mark.x });
-            f.x = f.mark.x; f.y = f.mark.y; f.z = 0; f.vz = 0; f.hide = false; f.fx.sky = 0;
-            for (let i = 0; i < 30; i++) flame(f.mark.x + rand(-60, 60), f.mark.y, 1);
+          if (t === 1) { const tg = nearest(f); if (tg) faceTo(f, tg); stamp(f, 2); }
+          // the lunge is an unblockable command grab: it seizes anyone in reach, on the ground or in the air
+          if (t >= 4 && t <= 16 && !f.lockT0) {
+            const tg = foesOf(f).find((o) => inReach(f, o, { range: [-4, 34], zr: [0, 70], depth: 14 }));
+            if (tg && lock(f, tg, 170)) { S.heavy(); hitstopAt(6); flashA = 0.5; flashC = "#ffffff"; tint = { col: "rgba(12,4,24,0.55)", t: 140 }; f.eclipse = 1; pop(tg, "Caught", "#ffd36a"); }
           }
-          if (t > 96 && t < 104) f.z = 0;
-        }, end: (f) => { f.hide = false; f.fx.sky = 0; f.mark = null; },
+          if (t === 18 && !f.lockT0) { f.eMiss = true; f.t = 146; return; }   // missed: back to his stance, the chakra is spent
+          const tg = f.lockT0; if (!tg) return;
+          f.vz = 0; tg.vz = 0;
+          if (t === 19) { S.power(); dust(f.x, f.y, 14); swooshAt(f, 0, 1.1, -1.4); }
+          if (t > 18 && t <= 40) { const k = (t - 18) / 22; f.z = 70 * k; tg.z = 76 * k; tg.x = clamp(f.x + f.face * 18, 12, AW - 12); tg.y = f.y; if (t % 2) stamp(f); }
+          if (t > 40 && t < 96) {   // a blur of feathers and talons from every side
+            tg.z = 76 + Math.sin(t * 0.3) * 4;   // high above the floor but clear of the health bars
+            if ((t - 40) % 7 === 0) {
+              const n = (t - 40) / 7, side = n % 2 ? 1 : -1;
+              stamp(f, 2); f.x = clamp(tg.x - side * 24, 12, AW - 12); f.z = tg.z + [-16, 4, 12, -6][n % 4]; f.face = side;
+              hitT(f, tg, 16, { hell: true, fromX: f.x, spark: "#ffd36a" });
+              swooshAt(f, 14, 0.75, [-0.8, 0.4, 1.0, -0.2][n % 4], f.z + 20);
+              for (let i = 0; i < 4; i++) parts.push({ x: tg.x + rand(-8, 8), y: tg.y, z: tg.z + rand(10, 40), vx: rand(-1.6, 1.6), vz: rand(-0.6, 1.4), life: 30, max: 30, obj: "feather", sc: 0.3, rot: rand(0, 6) });
+            }
+          }
+          if (t === 96) { f.x = clamp(tg.x - f.face * 10, 12, AW - 12); f.z = tg.z + 16; S.power(); flashA = 0.5; flashC = "#ffb347"; }
+          if (t > 96 && t < 116) {   // the meteor: he folds his wings and drives them both into the earth
+            const k = (t - 96) / 20; f.z = 92 * (1 - k * k); tg.z = Math.max(0, f.z - 16); tg.x = clamp(f.x + f.face * 10, 12, AW - 12);
+            stamp(f); flame(f.x, f.y, 2); if (t % 2) parts.push({ x: f.x + rand(-6, 6), y: f.y, z: f.z + rand(10, 40), vx: rand(-0.5, 0.5), vz: rand(1, 2.5), life: 22, max: 22, col: pick(["#ffb347", "#ff6a2a", "#ffe28a"]), r: rand(2, 4), add: true });
+          }
+          if (t === 116) {
+            f.z = 0; tg.z = 0; unlock(tg, f); f.lockT0 = null;
+            hitT(f, tg, 200 + f.beats * 30, { hell: true, knock: true, kz: 7, kx: f.face * 3.2 });
+            S.boom(); S.boom(); shake = 18; flashA = 0.85; flashC = "#fff2c0"; slowmo = Math.max(slowmo, calmSim() ? 0 : 14);
+            explode(f.x, f.y, 8, 1.5); rocks(f.x, f.y, 10); dust(f.x, f.y, 26);
+            for (let i = 0; i < 14; i++) flame(f.x + rand(-50, 50), f.y + rand(-6, 6), 1);
+            // the shockwave hits everyone else on the ground as well (team battles)
+            ring(f, f.x, f.y, { max: 150, grow: 22, dmg: 60, hell: true, knock: true, kz: 5, ground: true });
+            f.wounded = true; pop(f, "Wings clipped", "#ffb0a0");
+            for (let i = 0; i < 16; i++) parts.push({ x: f.x + rand(-14, 14), y: f.y, z: rand(20, 60), vx: rand(-1.4, 1.4), vz: rand(0.5, 2.2), g: 0.06, life: 60, max: 60, obj: "feather", sc: 0.3, rot: rand(0, 6) });
+          }
+        },
+        end: (f) => { f.eclipse = 0; f.eMiss = false; },
         drawFx: (f, t) => {
-          if (t >= 30 && t < 110) { g.save(); g.globalCompositeOperation = "lighter"; const r = 30 + Math.min(1, (t - 30) / 20) * 26; const gr = g.createRadialGradient(LW / 2, 30, 4, LW / 2, 30, r); gr.addColorStop(0, "rgba(255,250,220,1)"); gr.addColorStop(0.5, "rgba(255,180,60,0.8)"); gr.addColorStop(1, "rgba(255,90,20,0)"); g.fillStyle = gr; g.beginPath(); g.arc(LW / 2, 30, r, 0, 7); g.fill(); g.restore(); }
-          if (f.mark && t >= 40 && t < 96) { warnDraw({ x: f.mark.x, y: f.mark.y, t: t % 24, delay: 24, rx: 60, warnCol: "rgba(255,150,40,0.9)" }); }
-          if (f.mark && t >= 80 && t < 98) { const k = (t - 80) / 16; fxDraw("firebird", lerp(LW / 2, f.mark.x - cam, k), lerp(20, f.mark.y - 30, k), { sc: 1.2, flip: f.mark.x - cam < LW / 2 }); }
-          if (t >= 96 && t < 112) fxDraw("burst", f.x - cam, f.y - 20, { sc: 1.2 + (t - 96) * 0.05, a: 1 - (t - 96) / 16 });
+          if (f.eclipse && t > 16 && t < 152) {   // the sun goes dark behind them
+            const a = Math.min(1, (t - 16) / 14) * (t > 132 ? (152 - t) / 20 : 1), x = LW * 0.72, y = 36;
+            g.save(); g.globalAlpha = a; g.fillStyle = "#07030c"; g.beginPath(); g.arc(x, y, 13, 0, 7); g.fill(); g.restore();
+            fxDraw("eclipse", x, y, { sc: 0.42 + Math.sin(t * 0.15) * 0.015, a, rot: t * 0.01 });
+          }
+          if (t > 96 && t < 117 && f.eclipse) fxDraw("meteor", f.x - cam, f.y - f.z - 6, { sc: 0.9, rot: -f.face * 0.5, flip: f.face < 0 });
+          if (t >= 116 && t < 138) fxDraw("burst", f.x - cam, f.y - 20, { sc: 1.4 + (t - 116) * 0.07, a: 1 - (t - 116) / 22 });
         } }
     } },
-
   ghatotkacha: { name: "Ghatotkacha", sheet: "ghatotkacha", hp: 820, spd: 1.15, w: 16, h: 74, col: "#9a6bff", el: "Giant of maya", hidden: true, heavyArmor: true, dmgMul: 1.15,
     atk: [["m3", 18, [6, 40]], ["x1", 22, [0, 50]], ["x2", 34, [6, 48]]],
     blurb: "Son of Bhima and Hidimbi, half rakshasa. He can grow as tall as a mountain.",
@@ -535,6 +648,42 @@ function arrowOf(f, fx, o) {
 function volley(f, vy) { S.shot(); arrowOf(f, "arrowBlue", { spd: 7.5, vy, z: 18, dmg: 22, sc: 0.45 }); }
 // the fighters in roster order; the last two appear only once the arcade has been finished
 const ORDER = ["rai", "kai", "rook", "crane", "ox", "rollback", "surya", "hima", "jogi", "meera", "ashwatthama", "jatayu", "ghatotkacha", "barbarik"];
+
+/* quick moves, NTSD style: two buttons pressed together for a small, fast technique (30 chakra).
+     QJ  Jump + Attack     a quick strike or shot
+     QD  Attack + Defend   a shove that wins back space: good for getting out of a corner */
+function qStrike(name, pose, hit, o = {}) {
+  return Object.assign({ name, mp: 30, len: o.len || 22, pose: tl([0, o.wind || "m0"], [4, pose], [(o.len || 22) - 4, o.rest || "m0"]),
+    hit: Object.assign({ from: 4, to: 9, range: [2, 38], dmg: 16, stun: 16 }, hit),
+    ev: { 4: (f) => { S.swing(); swooshAt(f, 16, 0.55, o.rot || 0.3); } } }, o.extra);
+}
+function qShot(name, pose, shot, o = {}) {
+  return { name, mp: 30, len: 22, pose: tl([0, o.wind || "m0"], [4, pose], [18, o.rest || "m0"]),
+    ev: { 6: (f) => { S.shot(); shoot(f, Object.assign({ spd: 6.6, dmg: 14, power: 1, life: 60 }, shot)); } } };
+}
+function qShove(name, pose, col, o = {}) {
+  return { name, mp: 30, len: 24, pose: tl([0, o.wind || "p0"], [5, pose], [20, o.rest || "m0"]),
+    hit: { from: 5, to: 9, range: [0, 36], dmg: o.dmg || 10, knock: true, kx: 3.6, kz: 1.8, gb: 24, spark: col },
+    ev: { 5: (f) => { S.swing(); burst(f.x + f.face * 18, f.y, f.z + 30, col, 8); swooshAt(f, 18, 0.6, 0); if (o.ev) o.ev(f); } } };
+}
+const qDash = (v, until) => ({ vel: (f, t) => (t < until ? v : 0) });
+const SMALL = {
+  rai: { QJ: qStrike("Rising Palm", "m4", { zr: [0, 62], knock: true, kz: 4.2, kx: 0.6 }), QD: qShove("Prana Push", "m3", "#9fe0ff") },
+  kai: { QJ: qStrike("Spark Kick", "m5", { dmg: 15, eff: "stun", dur: 12, spark: "#fff38a" }, { extra: qDash(4.4, 9) }), QD: qShove("Static Shove", "m3", "#fff38a") },
+  rook: { QJ: qStrike("Urumi Flick", "m6", { range: [10, 64], dmg: 14 }), QD: qShove("Kalari Sweep", "m5", "#ffd36a", { dmg: 12 }) },
+  crane: { QJ: qShot("Kite Dart", "m3", { fx: "spark", sc: 0.55, spd: 7.2, dmg: 12, trail: "#cfe8ff" }), QD: qShove("Wind Shove", "m3", "#cfe8ff", { dmg: 8 }) },
+  ox: { QJ: qStrike("Shoulder Barge", "m6", { dmg: 18, knock: true, kx: 3, kz: 2 }, { extra: qDash(4.2, 10) }), QD: qShove("Headbutt", "m3", "#d39a5a", { dmg: 14, ev: () => { shake = Math.max(shake, 3); } }) },
+  rollback: { QJ: qShot("Tick Blade", "m3", { obj: "clockhand", sc: 0.4, spin: 0.5, objDy: 0, dmg: 13 }), QD: qShove("Pause Push", "m3", "#e8c05a") },
+  surya: { QJ: qShot("Ember Flick", "m3", { fx: "fireball", sc: 0.45, dmg: 12, eff: "burn", dur: 40, trail: "#ffb050" }), QD: qShove("Heat Burst", "m6", "#ff8a3a", { ev: (f) => { for (let i = 0; i < 4; i++) flame(f.x + f.face * 20, f.y, 1); } }) },
+  hima: { QJ: qStrike("Frost Kick", "m5", { dmg: 14, eff: "slow", dur: 60, spark: "#bff2ff" }), QD: qShove("Cold Snap", "m3", "#bff2ff") },
+  jogi: { QJ: qStrike("Fang Snap", "m3", { range: [6, 46], dmg: 12, eff: "poison", dur: 60, spark: "#7fe07a" }, { extra: qDash(3, 8) }), QD: qShove("Hiss Back", "m6", "#7fe07a") },
+  meera: { QJ: qStrike("Pirouette", "m5", { from: 4, to: 13, every: 4, range: [-14, 34], dmg: 8 }, { len: 24 }), QD: qShove("Tatkar Step", "m3", "#c58aff") },
+  ashwatthama: { QJ: qShot("Quick Arrow", "m3", { fx: "arrow", sc: 0.5, spd: 8.4, dmg: 14, trail: "#ffe9a8" }), QD: qShove("Bow Strike", "m6", "#ffe9a8", { dmg: 12 }) },
+  jatayu: { QJ: qStrike("Talon Rake", "s6", { range: [4, 46], dmg: 18, knock: true, kz: 3, kx: 1.5 }, { wind: "s4", rest: "s0", extra: qDash(3.6, 9) }), QD: qShove("Wing Buffet", "s5", "#ffcf4a", { dmg: 12, wind: "s4", rest: "s0" }) },
+  ghatotkacha: { QJ: qStrike("Gada Swing", "x1", { range: [0, 52], dmg: 20, knock: true, kz: 2.5, kx: 2.5 }, { wind: "x0" }), QD: qShove("Stomp", "x2", "#9a6bff", { dmg: 14, ev: (f) => { shake = Math.max(shake, 4); dust(f.x, f.y, 8); } }) },
+  barbarik: { QJ: qShot("Snap Shot", "m3", { fx: "arrowBlue", sc: 0.5, spd: 8.6, dmg: 15, trail: "#9fd0ff" }), QD: qShove("Bow Bash", "m6", "#7fc4ff", { dmg: 12 }) }
+};
+for (const id of ORDER) ROSTER[id].small = SMALL[id];
 
 /* chakra prices: a special takes a real bite out of the bar, a Hell move most of it and
    the Awakened move all of it, so the big moves have to be earned or charged (J+K+L) */

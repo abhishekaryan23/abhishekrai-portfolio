@@ -12,3 +12,6 @@ build/
 repos/
 .wrangler/
 .claude/
+
+# large marketing videos and art, kept out of the repo and the site
+/marketing/
