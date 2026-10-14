@@ -3,7 +3,7 @@
 .ak-label { margin: 6px 0 2px; font: 600 0.72rem var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
 .ak-grid { gap: 4px; margin-bottom: 8px; }
 .ak-grid .chip { padding: 3px 8px 3px 3px; font-size: 0.8rem; }
-.chip .ak-face { background-image: url("/game/akhada/sprites/portraits.png?v=1"); background-size: 308px 22px; background-repeat: no-repeat; image-rendering: pixelated; }
+.chip .ak-face { background-image: url("/game/akhada/sprites/portraits.png?v=2"); background-size: 308px 22px; background-repeat: no-repeat; image-rendering: pixelated; }
 .ak-card #movelist ul { margin: 0; padding-left: 0; list-style: none; font-size: 0.85rem; }
 .ak-card #movelist li { margin: 2px 0; }
 .ak-card #movelist b { display: inline-block; min-width: 4.6em; font: 500 0.78rem var(--mono); color: var(--accent); }

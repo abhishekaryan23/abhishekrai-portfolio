@@ -21,7 +21,7 @@ let fighters = [], objs = [], parts = [], texts = [], stage = null, cam = 0, cin
 const train = { hits: 0, dmg: 0, best: 0, last: -999 };   // training mode: the current and best combo on the dummy
 
 /* ---------- art ---------- */
-const ART = "/game/akhada/sprites/", STREET_ART = "/game/street/sprites/fighters/", ART_V = 1, STREET_V = 8;
+const ART = "/game/akhada/sprites/", STREET_ART = "/game/street/sprites/fighters/", ART_V = 2, STREET_V = 8;
 const FROM_STREET = new Set(["rai", "kai", "ox", "rook", "crane", "rollback"]);
 const IMG = {}, asked = new Set(), failed = new Set();
 function load(name, src) {
@@ -71,6 +71,16 @@ function fxDraw(name, x, y, o = {}) {
   g.drawImage(im, sx, sy, w, h, -w * sc * (o.ax == null ? 0.5 : o.ax), -h * sc * (o.ay == null ? 0.5 : o.ay), w * sc, h * sc);
   g.restore();
 }
+// animated effects: 8-frame strips in fx.webp named "<name>_0" .. "<name>_7" (impact sparks,
+// swooshes, explosions, the charging aura, lightning). k is progress 0..1, or pass o.frame to loop
+const ANIM = { explosion: 8, impact: 8, swoosh: 8, aura: 8, lightning: 8 };
+function animDraw(name, k, x, y, o = {}) {
+  const n = ANIM[name]; if (!n) return false;
+  const i = o.frame != null ? ((o.frame % n) + n) % n : Math.max(0, Math.min(n - 1, Math.floor(k * n)));
+  if (!FX_FR[name + "_" + i]) return false;
+  fxDraw(name + "_" + i, x, y, o); return true;
+}
+function explode(x, y, z, sc = 1) { parts.push({ x, y, z, vx: 0, vz: 0, life: 26, max: 26, anim: "explosion", sc }); }
 // solid summons live on transparency in obj.png (2 atlas px per game px)
 function objDraw(name, x, y, o = {}) {
   const im = IMG.obj, fr = OBJ_FR[name]; if (!im || !fr) return;
@@ -135,10 +145,11 @@ const S = {
 };
 
 /* ---------- fighters ---------- */
+let fighterN = 0;
 function makeFighter(id, team, ctrl, x, y) {
   const d = ROSTER[id];
   return {
-    id, d, team, ctrl, x, y, z: 0, vx: 0, vy: 0, vz: 0, face: team === 0 ? 1 : -1,
+    uid: ++fighterN, id, d, team, ctrl, x, y, z: 0, vx: 0, vy: 0, vz: 0, face: team === 0 ? 1 : -1,
     hp: d.hp, maxHp: d.hp, lag: d.hp, mp: 150, st: "idle", t: 0, mv: null, code: null, hitSet: new Set(),
     combo: 0, comboT: 0, maxCombo: 0, juggle: 0, inv: 0, guard: 70, walkPh: 0, run: 0, flash: 0,
     fx: {}, buff: {}, seq: [], pend: null, lastTap: { left: -99, right: -99 }, idleT: 0, landT: 0,
@@ -169,13 +180,39 @@ function leaveMove(f) {
   if (v && v.lockBy === f) { v.lockBy = null; v.lockT = 0; if (v.st === "held") { if (alive(v)) knockdown(v, f.face * 1.5, 2); else knockdown(v, 0, 2); } }
   f.rot = 0; f.bob = 0; f.hide = false; f.fx.sky = 0; f.beatOpen = 0; f.landed = false;
   if (!f.buff.grow) f.sc = 1;
-  f.beam = f.naag = f.redUp = f.mark = null; f.chains = 0;
+  f.beam = f.naag = f.redUp = f.mark = null; f.chains = 0; f.opener = false;
 }
 function stamp(f, n = 1) { for (let i = 0; i < n; i++) f.after.push({ x: f.x, y: f.y, z: f.z, face: f.face, ref: poseOf(f), a: 0.5 }); }
 
 /* ---------- objects: projectiles, zones, summons ---------- */
 // every object: { team, owner, x, y, z, life, t, update(o), draw(o) } plus whatever it needs
-function add(o) { o.t = 0; o.hitAt = new Map(); objs.push(o); return o; }
+function add(o) {
+  o.t = 0; o.hitAt = new Map();
+  const f = o.owner;
+  if (o.hellKey == null && f && f.st === "move" && f.mv && f.mv.hell) { o.hellKey = f.uid + ":" + f.hellId; o.awaken = f.code === "H2"; }
+  objs.push(o); return o;
+}
+// Barbarik's opening arrow in the final fight: it flies to its target and always lands
+function sureArrow(f, t, dmg, last) {
+  const p = add({ team: f.team, owner: f, x: f.x + f.face * 16, y: f.y, z: 30, life: 200, kind: "fx", t0: tick,
+    update: (p) => {
+      const tx = t.x, ty = t.y, tz = t.z + bodyH(t) * 0.55, dx = tx - p.x, dy = ty - p.y, dz = tz - p.z, d = Math.hypot(dx, dy * 2, dz);
+      p.ang = Math.atan2(-dz, Math.abs(dx)) * Math.sign(dx || 1); p.dir = Math.sign(dx) || 1;
+      if (d < 9) {
+        p.life = 0; t.hp = Math.max(1, t.hp - dmg); t.lastHit = tick; t.flash = 8; pop(t, "-" + dmg, "#7fc4ff", true);
+        sparks(t.x, t.y, tz, "#bfe6ff", 10); burst(t.x, t.y, tz, "#7fc4ff", 8); shake = Math.max(shake, 5); S.heavy();
+        if (last) { knockdown(t, p.dir * 2.4, 4.5); if (!CALM) slowmo = Math.max(slowmo, 14); }
+        else if (alive(t) && !t.lockBy && !["fall", "down", "getup"].includes(t.st)) {
+          if (grounded(t) && !t.fx.sky && !t.hide) { setSt(t, "hurt", 16); t.vx = p.dir * 1.2; } else knockdown(t, p.dir * 1.2, 1);
+        }
+        return;
+      }
+      const k = Math.min(1, 9 / d); p.x += dx * k; p.y += dy * k; p.z += dz * k;
+      if (p.t % 2 === 0) parts.push({ x: p.x, y: p.y, z: p.z, vx: 0, vz: 0, life: 12, max: 12, col: "#7fc4ff", r: 2, add: true });
+    },
+    draw: (p) => fxDraw("arrowBlue", p.x - cam, p.y - p.z, { sc: 0.55, flip: p.dir < 0, rot: p.ang || 0 }) });
+  return p;
+}
 // hit fighters in the object's area; each target at most once per o.every ticks (or once ever)
 function areaHit(o, test, h) {
   if (!h.dmg) return 0;
@@ -286,11 +323,6 @@ function hurt(t, dmg, o) {
   }
   if (t.dmgTake) k *= t.dmgTake; if (t.buff.iron) k *= 0.75; if (t.buff.grow) k *= 0.8;
   dmg = Math.max(1, Math.round(dmg * k));
-  // fair fights: one Hell move can take at most so much from each foe
-  if (o.hell && src && src.fair) {
-    if (t.hellFrom !== src.hellId) { t.hellFrom = src.hellId; t.hellTaken = 0; }
-    dmg = Math.max(1, Math.min(dmg, (src.code === "H2" ? 190 : 150) - t.hellTaken)); t.hellTaken += dmg;
-  }
   // Narayanastra: only a fighter who lays down arms (holds Defend) is spared
   if (o.spareBlock && t.st === "block") { pop(t, "Spared", "#ffe9a8"); return false; }
   const facing = Math.sign((o.fromX != null ? o.fromX : src ? src.x : t.x) - t.x) === t.face || o.fromX == null;
@@ -298,13 +330,27 @@ function hurt(t, dmg, o) {
     const chip = Math.round(dmg * (o.hell ? 0.35 : 0.1));
     t.hp = Math.max(1, t.hp - chip); t.guard -= dmg * 0.6; t.vx = dir * 1.6; t.t = Math.max(t.t, 8);
     S.block(); sparks(t.x - dir * 6, t.y, t.z + 30, "#cfe8ff", 5);
+    if (src && src !== t && (t.x < 40 || t.x > AW - 40) && Math.abs(src.x - t.x) < 50 && grounded(src)) src.x = clamp(src.x - dir * 5, 12, AW - 12);
     t.mp = Math.min(500, t.mp + dmg * 0.2);
     if (t.guard <= 0) { t.guard = 70; setSt(t, "hurt", 50); pop(t, "Guard break", "#ffb0a0"); t.fx.stun = 50; }
     return false;
   }
-  if (t.fx.stopped) { t.stoppedDmg = (t.stoppedDmg || 0) + dmg; t.stoppedKnock = t.stoppedKnock || o.knock; sparks(t.x, t.y, t.z + 30, "#e8c05a", 4); S.hit(); if (src) src.combo++; return true; }
-  const shatter = t.fx.frozen > 0;
+  const shatter = t.fx.frozen > 0 && !t.fx.stopped;
   if (shatter) { dmg = Math.round(dmg * 1.15); t.fx.frozen = 0; burst(t.x, t.y, t.z + 26, "#bff2ff", 12); }
+  // Hell moves: the Awakened move takes exactly 40% of the target's health in all (see endMove for the
+  // top-up when it lands short) and adds no burn or poison on top; in a fair fight a Hell move takes at most 150
+  const live = src && src.st === "move" && src.mv && src.mv.hell ? src.uid + ":" + src.hellId : null;
+  const awaken = o.awaken != null ? o.awaken : !!(o.hell && src && src.code === "H2");
+  if (o.hell && src && (awaken || src.fair)) {
+    const key = o.hellKey || live || src.uid + ":" + src.hellId;
+    const by = t.hellBy || (t.hellBy = {}), taken = by[key] || 0;   // one count per Hell move, so two never mix
+    const cap = awaken ? Math.round(t.maxHp * AWAKEN_SHARE) : 150;
+    // a leftover of an Awakened move that lands after the move has ended completes the 40% at once
+    if (awaken && key !== live && taken < cap) dmg = cap - taken;
+    dmg = Math.max(0, Math.min(dmg, cap - taken)); by[key] = taken + dmg;
+    if (awaken && (o.eff === "burn" || o.eff === "poison")) o = Object.assign({}, o, { eff: null });
+  }
+  if (t.fx.stopped) { t.stoppedDmg = (t.stoppedDmg || 0) + dmg; t.stoppedKnock = t.stoppedKnock || o.knock; sparks(t.x, t.y, t.z + 30, "#e8c05a", 4); S.hit(); if (src) src.combo++; return true; }
   t.hp = Math.max(t.dummy ? 1 : 0, t.hp - dmg); t.lastHit = tick;   // a training dummy never goes down for good
   t.mp = Math.min(500, t.mp + dmg * 0.4);
   if (t.dummy && src && src.ctrl === "p0") { if (tick - train.last > 70) { train.hits = 0; train.dmg = 0; } train.hits++; train.dmg += dmg; train.last = tick; train.best = Math.max(train.best, train.dmg); }
@@ -312,12 +358,14 @@ function hurt(t, dmg, o) {
     src.mp = Math.min(500, src.mp + (o.hell ? 0 : dmg * 0.45)); src.combo++; src.comboT = 70; src.maxCombo = Math.max(src.maxCombo, src.combo);
     if (src.st === "move" && src.mv && !src.mv.hell) src.cancel = 22;   // a special that lands can cancel into a Hell move
     if (src.buff.charge && !o.hell) { o = Object.assign({}, o, { eff: "stun", dur: 26 }); if (--src.buff.chargeN <= 0) src.buff.charge = 0; }
-    if (src.buff.sun && !o.eff) o = Object.assign({}, o, { eff: "burn", dur: 90 });
+    if (src.buff.sun && !o.eff && !(o.hell && awaken)) o = Object.assign({}, o, { eff: "burn", dur: 90 });
   }
   hitstopAt(o.hell ? 3 : dmg > 40 ? 5 : 3);
   (dmg > 35 ? S.heavy : S.hit)();
   sparks(t.x - dir * 4, t.y, t.z + (o.hz || 30), o.spark || "#fff2c0", dmg > 35 ? 9 : 5);
   if (dmg >= 14) parts.push({ x: t.x - dir * 4, y: t.y, z: t.z + (o.hz || 30), vx: 0, vz: 0, life: 10, max: 10, col: o.spark || "#fff2c0", ring: dmg > 35 ? 14 : 9 });
+  parts.push({ x: t.x - dir * 6, y: t.y, z: t.z + (o.hz || 30), vx: 0, vz: 0, life: 14, max: 14, anim: "impact", sc: clamp(dmg / 70, 0.3, 0.75), rot: rand(-0.4, 0.4) });
+  if (o.hell && (o.knock || t.hp <= 0) && dmg >= 40 && !CALM) slowmo = Math.max(slowmo, 12);
   if (dmg >= 18) shake = Math.max(shake, Math.min(6, dmg / 12));
   t.flash = 6; if (dmg >= 35) stamp(t);
   if (o.eff) status(t, o.eff, o.dur || 60, src);
@@ -332,9 +380,10 @@ function hurt(t, dmg, o) {
   } else {
     // stagger: the fourth hit in a row that does not knock down does, so nobody can be pinned forever
     t.stag = (t.stagT > 0 ? t.stag : 0) + 1; t.stagT = 45;
-    if (t.stag >= 4) { knockdown(t, dir * 1.8, 3.2); pop(t, "Staggered", "#ffe0a0"); return true; }
+    const atWall = t.x < 40 || t.x > AW - 40;
+    if (t.stag >= (atWall ? 3 : 4)) { knockdown(t, dir * 1.8, 3.2); pop(t, "Staggered", "#ffe0a0"); return true; }
     setSt(t, "hurt", Math.round((o.stun || 16) * (chain > 4 ? 0.7 : 1))); t.vx = dir * (o.push || 1.4);
-    if (src && src !== t && (t.x < 24 || t.x > AW - 24) && Math.abs(src.x - t.x) < 50 && grounded(src)) src.x = clamp(src.x - dir * 6, 12, AW - 12);
+    if (src && src !== t && (t.x < 40 || t.x > AW - 40) && Math.abs(src.x - t.x) < 50 && grounded(src)) src.x = clamp(src.x - dir * 7, 12, AW - 12);
   }
   return true;
 }
@@ -345,6 +394,7 @@ function knockdown(t, vx, vz) {
 }
 const CONTROL = new Set(["freeze", "stun", "marma", "stop", "reverse", "blind"]);
 function status(t, eff, dur, src) {
+  if (t.opener && eff !== "mark") return;
   // a control effect cannot be put straight back on: after it wears off there is a short grace
   if (CONTROL.has(eff)) { if (tick < (t.immune[eff] || 0)) return; t.immune[eff] = tick + dur + 80; }
   if (eff === "freeze") { t.fx.frozen = dur; burst(t.x, t.y, t.z + 26, "#bff2ff", 8); }
@@ -357,6 +407,7 @@ function status(t, eff, dur, src) {
   else t.fx[eff] = Math.max(t.fx[eff] || 0, dur);   // burn, poison, slow
 }
 let hitstop = 0;
+const AWAKEN_SHARE = 0.4;   // an Awakened Hell move that lands takes 40% of the target's health
 function hitstopAt(n) { hitstop = Math.max(hitstop, n); }
 
 /* ---------- effects ---------- */

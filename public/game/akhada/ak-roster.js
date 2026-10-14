@@ -36,7 +36,7 @@ function columnDraw(colA, colB, w) {
 function boltDraw(z) {
   warnDraw(z); if (z.t < (z.delay || 24)) return;
   const k = 1 - (z.t - (z.delay || 24)) / (z.hold || 10);
-  fxDraw("bolt", z.x - cam, z.y - 105 * (z.sc || 1), { sc: z.sc || 1, a: Math.max(0, k) * 1.2 });
+  if (!animDraw("lightning", 0, z.x - cam, z.y - 105 * (z.sc || 1), { frame: Math.floor((z.t - (z.delay || 24)) / 2) + 2, sc: z.sc || 1, a: Math.max(0.3, k) * 1.2 })) fxDraw("bolt", z.x - cam, z.y - 105 * (z.sc || 1), { sc: z.sc || 1, a: Math.max(0, k) * 1.2 });
 }
 function riseDraw(name, sc, solid) {
   return (z) => {
@@ -104,15 +104,15 @@ const ROSTER = {
           if (t < 74 && t % 2 === 0) { const a = rand(0, 6.28); parts.push({ x: f.x + Math.cos(a) * 40, y: f.y, z: 80 + Math.sin(a) * 30, vx: -Math.cos(a) * 1.6, vz: -Math.sin(a) * 1.2, life: 22, max: 22, col: "#bfefff", r: 2, add: true }); }
           if (t === 74) {
             S.boom(); const p = shoot(f, { fx: "sphere", spd: 2.4, z: 40, sc: 0.75 + f.beats * 0.08, w: 26, h: 28, every: 5, dmg: 10, hell: true, life: 150, kx: 1, kz: 1, stun: 20 });
-            p.onDie = (p) => { zone(f, { x: p.x, y: p.y, life: 16, rx: 60, ry: 30, dmg: 60, knock: true, kz: 6, hell: true, draw: (z) => fxDraw("burst", z.x - cam, z.y - 30, { sc: 0.8, a: 1 - z.t / 16 }) }); shake = 8; S.boom(); };
+            p.onDie = (p) => { zone(f, { x: p.x, y: p.y, life: 16, rx: 60, ry: 30, dmg: 60, knock: true, kz: 6, hell: true, hellKey: p.hellKey, awaken: p.awaken, draw: (z) => fxDraw("burst", z.x - cam, z.y - 30, { sc: 0.8, a: 1 - z.t / 16 }) }); explode(p.x, p.y, p.z, 1.1); shake = 8; S.boom(); };
           }
         }, drawFx: (f, t) => { if (t < 74) fxDraw("sphere", f.x - cam, f.y - f.z - 78, { sc: 0.15 + t / 74 * (0.6 + f.beats * 0.08), rot: t * 0.1 }); } }
     } },
 
   kai: { name: "Kai", sheet: "kai", hp: 500, spd: 1.45, w: 10, h: 50, col: "#ffe45a", el: "Lightning", blurb: "Fastest feet in the city. Calls the storm.",
     moves: {
-      DFA: { name: "Bijli Bolt", mp: 50, len: 24, pose: "p2", ev: { 7: (f) => { S.zap(); shoot(f, { fx: "spark", spd: 6.5, dmg: 34, eff: "stun", dur: 28, trail: "#fff38a", power: 1 }); } } },
-      DDA: { name: "Thunder Call", mp: 80, len: 34, pose: "p3", ev: { 10: (f) => { const t = nearest(f); if (!t) return; strike(f, t.x, t.y, { delay: 22, hold: 8, rx: 12, dmg: 58, eff: "stun", dur: 30, knock: true, kz: 4, spark: "#fff38a", draw: boltDraw, onStrike: S.zap }); } } },
+      DFA: { name: "Bijli Bolt", mp: 50, len: 24, pose: "p2", ev: { 7: (f) => { S.zap(); shoot(f, { fx: "spark", spd: 6.8, dmg: 38, eff: "stun", dur: 28, trail: "#fff38a", power: 2 }); } } },
+      DDA: { name: "Thunder Call", mp: 80, len: 34, pose: "p3", ev: { 10: (f) => { const t = nearest(f); if (!t) return; strike(f, t.x, t.y, { delay: 20, hold: 8, rx: 13, dmg: 62, eff: "stun", dur: 30, knock: true, kz: 4, spark: "#fff38a", draw: boltDraw, onStrike: S.zap }); } } },
       DUA: { name: "Lightning Kick", mp: 60, len: 40, air: true, pose: "m11", ev: { 3: (f) => { f.vz = 5.6; S.zap(); } }, tick: (f, t) => { if (t < 22 && t % 2) sparks(f.x, f.y, f.z + 30, "#fff38a", 1); },
         hit: { from: 3, to: 22, every: 6, range: [0, 30], zr: [0, 64], dmg: 16, kz: 3.5, knock: true, spark: "#fff38a" } },
       DFJ: { name: "Flash Step", mp: 50, len: 16, pose: "p1", inv: [0, 12], ev: { 2: (f) => { const t = foeNear(f, 300); if (!t) return; S.zap(); blink(f, t.x - t.face * 24, t.y); faceTo(f, t); } } },
@@ -138,19 +138,19 @@ const ROSTER = {
 
   rook: { name: "Raghav", sheet: "rook", hp: 500, spd: 1.4, w: 10, h: 52, col: "#e8eef8", el: "Kalari blade", blurb: "Kalaripayattu master. Knows every marma point in the body.",
     moves: {
-      DFA: { name: "Urumi Lash", mp: 50, len: 30, pose: tl([0, "m4"], [8, "p2"]), hit: { from: 9, to: 14, range: [8, 86], zr: [10, 42], dmg: 35, knock: true, kx: 2.5, kz: 3, spark: "#e8eef8" },
+      DFA: { name: "Urumi Lash", mp: 50, len: 30, pose: tl([0, "m4"], [8, "p2"]), hit: { from: 9, to: 14, range: [8, 78], zr: [10, 42], dmg: 31, knock: true, kx: 2.5, kz: 3, spark: "#e8eef8" },
         drawFx: (f, t) => { if (t < 8 || t > 16) return; const x = f.x - cam, y = f.y - f.z - 30; g.save(); g.strokeStyle = "rgba(235,242,255,0.9)"; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x + f.face * 10, y); g.quadraticCurveTo(x + f.face * 50, y - 14 + (t - 8) * 3, x + f.face * 92, y + 4); g.stroke(); g.restore(); } },
       DDA: { name: "Marma Strike", mp: 70, len: 26, pose: "p5", vel: (f, t) => t < 10 ? 4 : 0, hit: { from: 3, to: 12, range: [0, 24], dmg: 24, eff: "marma", dur: 50 } },
       DUA: { name: "Leaping Tiger", mp: 50, len: 36, air: true, pose: "m8", ev: { 2: (f) => { f.vz = 5; } }, vel: (f, t) => t < 30 ? 3 : 0, hit: { from: 3, to: 26, range: [0, 28], zr: [0, 50], dmg: 40, knock: true } },
       DFJ: { name: "Tiger Pounce", mp: 40, len: 22, pose: "p5", vel: (f, t) => Math.max(0, 6 - t * 0.25), hit: { from: 2, to: 14, range: [0, 26], dmg: 30, knock: true, kx: 2.6 } },
       DDJ: { name: "Counter Stance", mp: 40, len: 46, pose: "p0",
-        counter: (f, a) => { f.inv = 24; blink(f, a.x - a.face * 22, a.y); faceTo(f, a); setSt(f, "idle"); hitT(f, a, 60, { knock: true, kx: 3, kz: 4, unblock: true }); pop(f, "Counter", "#e8eef8"); } },
+        counter: (f, a) => { f.inv = 24; blink(f, a.x - a.face * 22, a.y); faceTo(f, a); setSt(f, "idle"); hitT(f, a, 46, { knock: true, kx: 3, kz: 4, unblock: true }); pop(f, "Counter", "#e8eef8"); } },
       H1: { name: "Hundred Marma", hell: true, mp: 250, len: 100, beats: beatsAt(40, 56, 72),
         pose: (f, t) => t > 84 ? "p2" : ["m3", "m5", "p5", "m6"][Math.floor(t / 4) % 4],
         tick: (f, t) => {
           if (t >= 2 && t <= 24 && !f.lockT0) { const tg = foeNear(f, 320); if (tg && lock(f, tg, 96 - t)) { blink(f, tg.x - tg.face * 20, tg.y); faceTo(f, tg); } }
           const tg = f.lockT0;
-          if (tg && t >= 10 && t <= 80 && t % 4 === 2) { blink(f, tg.x + (t % 8 < 4 ? 1 : -1) * 20, tg.y); faceTo(f, tg); hitT(f, tg, 7, { hell: true, spark: "#e8eef8" }); }
+          if (tg && t >= 10 && t <= 80 && t % 4 === 2) { blink(f, tg.x + (t % 8 < 4 ? 1 : -1) * 20, tg.y); faceTo(f, tg); hitT(f, tg, 6, { hell: true, spark: "#e8eef8" }); }
           if (t === 88 && tg) { unlock(tg, f); hitT(f, tg, 40, { hell: true, knock: true, kx: 3, kz: 4, eff: "marma", dur: 45 }); }
         } },
       H2: { name: "Urumi Cyclone", hell: true, mp: 350, len: 110, armor: true, beats: beatsAt(40, 60, 80),
@@ -186,7 +186,7 @@ const ROSTER = {
     moves: {
       DFA: { name: "Boulder Toss", mp: 60, len: 40, pose: tl([0, "p3"], [20, "p2"]), drawFx: (f, t) => { if (t < 20) objDraw("boulder", f.x - cam, f.y - f.z - 52, { sc: 0.7 }); },
         ev: { 20: (f) => { S.swing(); shoot(f, { obj: "boulder", sc: 0.7, spd: 3.2, vz: 1.2, grav: 0.16, z: 40, dmg: 52, knock: true, kz: 4, w: 12, h: 12, spin: 0.2, power: 3,
-          onLand: (p) => { dust(p.x, p.y, 10); shake = 5; zone(p.owner, { x: p.x, y: p.y, life: 6, rx: 22, ry: 12, dmg: 20, knock: true, ground: true }); } }); } } },
+          onLand: (p) => { dust(p.x, p.y, 10); explode(p.x, p.y, 8, 0.45); shake = 5; zone(p.owner, { x: p.x, y: p.y, life: 6, rx: 22, ry: 12, dmg: 20, knock: true, ground: true }); } }); } } },
       DDA: { name: "Ground Slam", mp: 70, len: 40, pose: tl([0, "p3"], [12, "p4"]), ev: { 14: (f) => { shake = 6; S.heavy(); for (const d of [-1, 1]) { const z = zone(f, { x: f.x + d * 14, y: f.y, vx: d * 3.6, life: 50, dmg: 40, knock: true, kz: 3, draw: (z) => { objDraw("spire", z.x - cam, z.y + 2, { sc: 0.3 + 0.1 * Math.sin(z.t), a: 1 - z.t / 50 }); if (z.t % 3 === 0) dust(z.x, z.y, 1); } }); z.test = (t) => near(z, t, 10, 10) && t.z < 8; } } } },
       DUA: { name: "Rock Pillar", mp: 60, len: 36, pose: "p4", ev: { 12: (f) => strike(f, f.x + f.face * 44, f.y, { delay: 6, hold: 16, rx: 14, top: 22, dmg: 50, knock: true, kz: 6.5, draw: riseDraw("spire", 0.7, true), onStrike: () => S.heavy() }) } },
       DFJ: { name: "Bull Rush", mp: 50, len: 38, armor: true, pose: "m11", vel: (f, t) => t < 32 ? 4.6 : 0, tick: (f, t) => { if (t % 4 === 0 && t < 32) dust(f.x - f.face * 10, f.y, 2); }, hit: { from: 3, to: 32, range: [0, 30], dmg: 40, knock: true, kx: 3.5 } },
@@ -306,7 +306,7 @@ const ROSTER = {
     moves: {
       DFA: { name: "Ghungroo Ring", mp: 50, len: 24, pose: "p2", ev: { 8: (f) => { S.beat(); shoot(f, { fx: "soundwave", spd: 4.8, pierce: 3, dmg: 32, eff: "stun", dur: 18, sc: 1.2 }); } } },
       DDA: { name: "Chakkar Spin", mp: 60, len: 44, pose: "m11", spin: true, vel: (f, t) => t < 40 ? 2.6 : 0, tick: (f, t) => { if (t % 5 === 0) f.face = -f.face; },
-        hit: { from: 3, to: 40, every: 7, range: [-20, 26], dmg: 16, push: -0.6 }, ev: { 41: (f) => melee(f, { range: [-20, 28], dmg: 18, knock: true, kz: 4 }) } },
+        hit: { from: 3, to: 40, every: 7, range: [-20, 28], dmg: 18, push: -0.6 }, ev: { 41: (f) => melee(f, { range: [-20, 28], dmg: 18, knock: true, kz: 4 }) } },
       DUA: { name: "Tatkar Rise", mp: 50, len: 30, pose: "p4", ev: { 8: (f) => { shake = 3; ring(f, f.x, f.y, { max: 50, grow: 14, dmg: 40, knock: true, kz: 5.5, ground: true }); S.beat(); } } },
       DFJ: { name: "Spin Step", mp: 30, len: 14, pose: "m11", inv: [0, 12], ev: { 2: (f) => { const tg = nearest(f); blink(f, f.x + f.face * 56, tg ? lerp(f.y, tg.y, 0.5) : f.y); } } },
       DDJ: { name: "Rhythm", mp: 60, len: 30, pose: "p6", ev: { 15: (f) => { f.buff.rhythm = 360; pop(f, "In rhythm", "#c58aff"); S.beat(); } } },
@@ -368,7 +368,7 @@ const ROSTER = {
           if (t === 40) f.mark = { x: tg ? tg.x : f.x, y: tg ? tg.y : f.y };
           if (f.mark && t > 40 && t < 80 && tg) { f.mark.x = lerp(f.mark.x, tg.x, 0.06); f.mark.y = lerp(f.mark.y, tg.y, 0.06); }
           if (t === 96 && f.mark) {
-            S.boom(); shake = 14; flashA = 0.9; flashC = "#fff0d0";
+            S.boom(); shake = 14; flashA = 0.9; flashC = "#fff0d0"; explode(f.mark.x, f.mark.y, 20, 1.3);
             for (const o of foesOf(f)) if (Math.abs(o.x - f.mark.x) < 100 && Math.abs(o.y - f.mark.y) < 40) hitT(f, o, 230 + f.beats * 20, { hell: true, knock: true, kz: 8, kx: 3 * (Math.sign(o.x - f.mark.x) || 1), eff: "burn", dur: 120, fromX: f.mark.x });
             f.x = f.mark.x; f.y = f.mark.y; f.z = 0; f.vz = 0; f.hide = false; f.fx.sky = 0;
             for (let i = 0; i < 30; i++) flame(f.mark.x + rand(-60, 60), f.mark.y, 1);
@@ -391,7 +391,7 @@ const ROSTER = {
       DDA: { name: "Bhoo Kampan", mp: 70, len: 48, pose: tl([0, "x0"], [8, "x1"], [12, "x2"]), ev: { 14: (f) => { shake = 9; S.boom(); ring(f, f.x + f.face * 20, f.y, { max: 90, grow: 22, dmg: 46, knock: true, kz: 4.5, ground: true, draw: (z) => fxDraw("dustring", z.x - cam, z.y - 2, { sc: z.r / 60, sy: 0.5, a: z.fade }) }); rocks(f.x + f.face * 20, f.y, 6); } } },
       DUA: { name: "Rakshasa Leap", mp: 70, len: 60, air: true, pose: (f, t) => f.z > 2 ? "x5" : t > 10 ? "x2" : "x0",
         ev: { 2: (f) => { const tg = nearest(f); f.vz = 6.5; f.leapVx = tg ? clamp((tg.x - f.x) / 34, -4, 4) : f.face * 3; if (tg) faceTo(f, tg); } },
-        tick: (f, t) => { if (t > 2 && f.z > 0) f.x += f.leapVx; if (t > 10 && grounded(f) && !f.landed) { f.landed = true; shake = 10; S.boom(); dust(f.x, f.y, 14); rocks(f.x, f.y, 5); zone(f, { x: f.x + f.face * 16, y: f.y, life: 6, rx: 40, ry: 18, ground: true, dmg: 64, knock: true, kz: 5 }); } },
+        tick: (f, t) => { if (t > 2 && f.z > 0) f.x += f.leapVx; if (t > 10 && grounded(f) && !f.landed) { f.landed = true; shake = 10; S.boom(); dust(f.x, f.y, 14); explode(f.x + f.face * 16, f.y, 6, 0.7); rocks(f.x, f.y, 5); zone(f, { x: f.x + f.face * 16, y: f.y, life: 6, rx: 40, ry: 18, ground: true, dmg: 64, knock: true, kz: 5 }); } },
         end: (f) => { f.landed = false; } },
       DFJ: { name: "Maya Clones", mp: 70, len: 40, pose: "p3", ev: { 10: (f) => { S.power(); for (let i = -1; i <= 1; i++) shoot(f, { obj: i ? "demon1" : "demon2", sc: 0.85, spd: 4, vy: i * 0.6, z: 0, dx: -10, dmg: 24, knock: true, w: 14, h: 40, objDy: 0, a: 0.8, life: 120, pierce: 2, draw: ghostDraw }); } } },
       DDJ: { name: "Vishal Roop", mp: 120, len: 60, pose: "x4", end: (f) => { if (!f.buff.grow) f.sc = 1; }, tick: (f, t) => { f.sc = 1 + Math.min(1, t / 40) * 0.5; if (t % 4 === 0) shake = 2; }, ev: { 40: (f) => { f.buff.grow = 480; pop(f, "Giant", "#9a6bff"); S.boom(); } } },
@@ -401,7 +401,7 @@ const ROSTER = {
           if (t === 10) S.power();
           if (t >= 20 && t <= 90 && t % 7 === 6) { const tg = pick(foesOf(f)); if (tg) { const side = Math.random() < 0.5 ? -1 : 1; const p = shoot(f, { obj: pick(["demon1", "demon2"]), sc: 0.85, spd: 3.4, dir: -side, z: 30, vz: 3, grav: 0.1, dx: 0, dmg: 18, knock: t > 80, w: 14, h: 30, objDy: 0, hell: true, life: 90, draw: ghostDraw }); p.x = tg.x + side * 90; p.y = tg.y; p.onLand = (p) => { dust(p.x, p.y, 4); zone(f, { x: p.x, y: p.y, life: 4, rx: 16, ry: 12, ground: true, dmg: 14, hell: true }); }; } }
           if (t >= 94 && t < 130) { const tg = nearest(f); if (tg) { f.x += Math.sign(tg.x - f.x) * 3; f.y = lerp(f.y, tg.y, 0.08); } if (t % 3 === 0) f.face = -f.face; if (t % 6 === 0) for (const o of foesOf(f)) if (Math.hypot(o.x - f.x, (o.y - f.y) * 2.4) < 48) hitT(f, o, 16, { hell: true }); }
-          if (t === 132) { shake = 10; S.boom(); rocks(f.x + f.face * 30, f.y, 8); for (const o of foesOf(f)) if (Math.abs(o.x - (f.x + f.face * 30)) < 50 && Math.abs(o.y - f.y) < 20) hitT(f, o, 50, { hell: true, knock: true, kz: 6 }); }
+          if (t === 132) { shake = 10; S.boom(); rocks(f.x + f.face * 30, f.y, 8); explode(f.x + f.face * 30, f.y, 8, 0.8); for (const o of foesOf(f)) if (Math.abs(o.x - (f.x + f.face * 30)) < 50 && Math.abs(o.y - f.y) < 20) hitT(f, o, 50, { hell: true, knock: true, kz: 6 }); }
         }, drawFx: (f, t) => { if (t >= 6 && t < 96) fxDraw("vortex", f.x - cam - f.face * 20, f.y - 50, { sc: Math.min(1, (t - 6) / 20) * 0.8, rot: t * 0.05, a: 0.85 }); } },
       H2: { name: "Parvat Patan", hell: true, mp: 350, len: 200, armor: true, beats: beatsAt(40, 55, 70),
         pose: (f, t) => t < 70 ? "x4" : t < 150 ? "x6" : "x4",
@@ -410,7 +410,7 @@ const ROSTER = {
           if (t < 70) { f.sc = 1 + 2.3 * (t / 70) ** 1.5; shake = Math.max(shake, t / 14); if (t % 4 === 0) dust(f.x + rand(-30, 30), f.y, 2); if (t % 20 === 0) S.heavy(); }
           if (t >= 70 && t < 100) { f.rot = f.face * 1.45 * ((t - 70) / 30) ** 2; }
           if (t === 100) {
-            S.boom(); S.boom(); shake = 16; flashA = 0.9; flashC = "#fff";
+            S.boom(); S.boom(); shake = 16; flashA = 0.9; flashC = "#fff"; for (let i = 0; i < 4; i++) explode(f.x + f.face * (40 + i * 50), f.y, 10, 0.9);
             for (const o of foesOf(f)) { const dx = (o.x - f.x) * f.face; if (dx > -20 && dx < 70 * f.sc + 40) hitT(f, o, 270 + f.beats * 20, { hell: true, knock: true, kz: 8, kx: f.face * 3, unblock: true }); }
             for (let i = 0; i < 6; i++) rocks(f.x + f.face * i * 34, f.y + rand(-10, 10), 4);
             for (let i = 0; i < 40; i++) dust(f.x + f.face * rand(0, 220), rand(stage.y0, Y1), 1, "rgba(200,180,150,0.9)");
@@ -435,24 +435,54 @@ const ROSTER = {
           if (t === 24) { S.shot(); f.redUp = { z: 60 }; }
           if (f.redUp) f.redUp.z += 7;
           if (t === 40) { f.redUp = null; S.zap(); eachFoe(f, (o) => status(o, "mark", 600)); flashA = 0.3; flashC = "#ff5050"; }
-          if ([80, 95, 110, 125].includes(t)) { S.shot(); for (const o of foesOf(f).filter((o) => o.fx.mark)) arrowOf(f, "arrowBlue", { spd: 9, homing: 0.35, dmg: 32, hell: true, unblock: true, pierce: 1, z: 30, target: o }); }
+          if ([80, 95, 110, 125].includes(t)) {
+            S.shot();
+            // the final fight's opener: four arrows that always land, half of each foe's health in all
+            if (f.opener) for (const o of fighters.filter((o) => o.team !== f.team && alive(o))) { const each = Math.floor(o.maxHp / 8); sureArrow(f, o, t === 125 ? Math.round(o.maxHp / 2) - each * 3 : each, t === 125); }
+            else for (const o of foesOf(f).filter((o) => o.fx.mark)) arrowOf(f, "arrowBlue", { spd: 9, homing: 0.35, dmg: 32, hell: true, unblock: true, pierce: 1, z: 30, target: o });
+          }
+          if (f.opener) f.inv = Math.max(f.inv, 4);   // the opener's protection lasts exactly as long as the move
+          if (t === 140 && f.opener) f.opener = false;
         }, drawFx: (f, t) => { if (f.redUp) fxDraw("arrowRed", f.x - cam + f.face * 6, f.y - f.redUp.z, { sc: 0.6, rot: -Math.PI / 2 }); } },
-      H2: { name: "Teen Baan", hell: true, mp: 350, len: 210, beats: beatsAt(80, 110, 140),
-        pose: (f, t) => t < 34 ? "x5" : t < 50 ? "x4" : t < 84 ? (t < 66 ? "x1" : "x2") : t < 100 ? "x3" : t < 134 ? "x7" : t < 152 ? "x2" : "x3",
+      H2: { name: "Teen Baan", hell: true, mp: 350, len: 214, beats: beatsAt(80, 110, 140),
+        // the three arrows: red marks every foe, blue pins them, and the golden one he looses into the sky
+        // comes back down as all three braided together, one helix per marked foe
+        pose: (f, t) => t < 34 ? "x5" : t < 50 ? "x4" : t < 84 ? (t < 66 ? "x1" : "x2") : t < 100 ? "x3" : t < 140 ? (t % 16 < 8 ? "x7" : "x6") : t < 196 ? "x4" : "p7",
         tick: (f, t) => {
-          if (t === 1) tint = { col: "rgba(10,20,60,0.4)", t: 200 };
+          if (t === 1) tint = { col: "rgba(10,20,60,0.4)", t: 205 };
           if (t === 30) { S.shot(); f.redUp = { z: 30 }; }
           if (f.redUp) f.redUp.z += 8;
           if (t === 46) { f.redUp = null; S.zap(); eachFoe(f, (o) => status(o, "mark", 600)); flashA = 0.4; flashC = "#ff4040"; }
-          if (t === 84) { S.zap(); eachFoe(f, (o) => { if (o.fx.mark) { status(o, "stop", 90); hitT(f, o, 20, { hell: true, unblock: true }); } }); f.chains = 90; }
+          if (t === 84) { S.zap(); eachFoe(f, (o) => { if (o.fx.mark) { status(o, "stop", 110); hitT(f, o, 20, { hell: true, unblock: true }); } }); f.chains = 110; }
           if (f.chains) f.chains--;
-          if (t === 100) S.power();
-          if (t === 152) { S.boom(); const p = shoot(f, { fx: "arrowGold", spd: 10, sc: 1.4, z: 30, w: 30, h: 60, life: 80, dmg: 0, power: 9 });
-            p.update = (p) => { p.x += p.vx; for (const o of foesOf(f)) if (o.fx.mark && !p.hitAt.has(o) && Math.abs(o.x - p.x) < 20) { p.hitAt.set(o, tick); if (o.stoppedDmg) { o.hp = Math.max(0, o.hp - o.stoppedDmg); o.stoppedDmg = 0; } o.fx.stopped = 0; hitT(f, o, 250 + f.beats * 20, { hell: true, unblock: true, knock: true, kz: 8, kx: p.dir * 3, fromX: p.x - p.dir }); fxDraw("burst", o.x - cam, o.y - 30, { sc: 0.8 }); burst(o.x, o.y, 30, "#ffe9a8", 24); shake = 12; flashA = 0.6; flashC = "#fff6d0"; } if (p.x < -40 || p.x > AW + 40) p.life = 0; }; }
-        }, drawFx: (f, t) => {
+          // the blue horse rears and its spirit gallops the length of the arena
+          if (t === 100) { S.power(); f.horse = { x: f.x - f.face * 30, dir: f.face }; }
+          if (f.horse && t < 140) { f.horse.x += f.horse.dir * 7; if (t % 3 === 0) dust(f.horse.x - f.horse.dir * 14, f.y, 2, "rgba(150,200,255,0.7)"); if (t % 8 === 0) S.swing(); }
+          if (t === 140) f.horse = null;
+          // one arrow up, braided from all three
+          if (t === 144) { S.shot(); f.tri = { z: 40 }; }
+          if (f.tri && f.tri.z < 260) f.tri.z += 10;
+          if (t === 160) { f.tri = null; f.falls = foesOf(f).filter((o) => o.fx.mark).map((o) => ({ o, z: 210, hit: false })); }
+          if (f.falls) for (const d of f.falls) {
+            if (d.hit) continue;
+            d.z -= 8;
+            if (d.z <= d.o.z + 34) {
+              d.hit = true; const o = d.o;
+              if (o.stoppedDmg) { o.hp = Math.max(0, o.hp - o.stoppedDmg); o.stoppedDmg = 0; } o.fx.stopped = 0;
+              hitT(f, o, 250 + f.beats * 20, { hell: true, unblock: true, knock: true, kz: 8, kx: (Math.sign(o.x - f.x) || 1) * 2, fromX: o.x - (Math.sign(o.x - f.x) || 1) });
+              for (const [col, r, life] of [["#ff5050", 16, 22], ["#5aa8ff", 26, 28], ["#ffd36a", 36, 34]]) parts.push({ x: o.x, y: o.y, z: 4, vx: 0, vz: 0, life, max: life, col, ring: r });
+              explode(o.x, o.y, 26, 0.9); burst(o.x, o.y, 30, "#bfe0ff", 20); shake = 10; flashA = 0.35; flashC = "#7fb8ff"; S.boom();
+            }
+          }
+          if (t === 200) f.falls = null;
+        }, end: (f) => { f.horse = f.tri = f.falls = null; },
+        drawFx: (f, t) => {
           if (f.redUp) fxDraw("arrowRed", f.x - cam + f.face * 6, f.y - f.redUp.z, { sc: 0.7, rot: -Math.PI / 2 });
           if (f.chains) for (const o of foesOf(f)) if (o.fx.mark) { g.save(); g.globalCompositeOperation = "lighter"; g.strokeStyle = "rgba(110,190,255," + (0.4 + 0.4 * Math.sin(t * 0.5)) + ")"; g.lineWidth = 1.5; for (const dx of [-14, 0, 14]) { g.beginPath(); g.moveTo(o.x - cam + dx, 0); g.lineTo(o.x - cam, o.y - o.z - 30); g.stroke(); } g.restore(); }
-          if (t >= 100 && t < 140) fxDraw("ghostHorse", f.x - cam - f.face * 10, f.y - 44, { sc: 0.9, flip: f.face < 0, a: 0.75 });
+          if (f.horse) fxDraw("ghostHorse", f.horse.x - cam, f.y - 40 - Math.abs(Math.sin(t * 0.5)) * 4, { sc: 1, flip: f.horse.dir < 0, a: 0.85 });
+          const helix = (x, z, down) => { for (const [i, n] of [[0, "arrowRed"], [1, "arrowBlue"], [2, "arrowGold"]]) { const a = t * 0.45 + i * 2.09; fxDraw(n, x - cam + Math.cos(a) * 7, z - Math.sin(a) * 2, { sc: 0.42, rot: down ? Math.PI / 2 : -Math.PI / 2 }); } };
+          if (f.tri) helix(f.x + f.face * 6, f.y - f.tri.z, false);
+          if (f.falls) for (const d of f.falls) if (!d.hit) { helix(d.o.x, d.o.y - d.z, true); fxDraw("sigil", d.o.x - cam, d.o.y - 2, { sc: 0.3, sy: 0.4, rot: t * 0.1 }); }
         } }
     } }
 };
@@ -487,10 +517,10 @@ function webLine(f, tg) {
 }
 function meteor(f) {
   const tg = pick(foesOf(f)); if (!tg) return;
-  strike(f, tg.x + rand(-30, 30), clamp(tg.y + rand(-8, 8), stage.y0, Y1), { delay: 18, hold: 6, rx: 16, dmg: 26, knock: true, kz: 4, eff: "burn", dur: 90, hell: true, dir: f.face, draw: fallDraw("meteor", 0.5, 0), onStrike: (z) => { S.boom(); for (let i = 0; i < 6; i++) flame(z.x, z.y, 1); } });
+  strike(f, tg.x + rand(-30, 30), clamp(tg.y + rand(-8, 8), stage.y0, Y1), { delay: 18, hold: 6, rx: 16, dmg: 26, knock: true, kz: 4, eff: "burn", dur: 90, hell: true, dir: f.face, draw: fallDraw("meteor", 0.5, 0), onStrike: (z) => { S.boom(); explode(z.x, z.y, 10, 0.6); for (let i = 0; i < 6; i++) flame(z.x, z.y, 1); } });
 }
 function brahmastraBlast(f, x, y) {
-  S.boom(); shake = 14; flashA = 1; flashC = "#ffffff";
+  S.boom(); shake = 14; flashA = 1; flashC = "#ffffff"; explode(x, y, 30, 1.6);
   for (const o of foesOf(f)) if (Math.abs(o.x - x) < 140) hitT(f, o, 160 + f.beats * 15, { hell: true, knock: true, kz: 7, kx: 3 * (Math.sign(o.x - x) || 1), fromX: x });
   zone(f, { x, y, life: 30, rx: 0, dmg: 0, draw: (z) => fxDraw("burst", z.x - cam, z.y - 40, { sc: 1.6 + z.t * 0.03, a: 1 - z.t / 30 }) });
 }

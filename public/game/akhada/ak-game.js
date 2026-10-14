@@ -108,10 +108,13 @@ function handle(f, ev) {
   if (ev === "VH") doMove(f, up ? "H2" : "H1", side);
 }
 const ESCAPE = 100;
+const WALL = 40;   // this close to the arena's edge counts as cornered
+const cornered = (f, tg) => tg && ((f.x < WALL && tg.x > f.x) || (f.x > AW - WALL && tg.x < f.x)) && Math.abs(tg.x - f.x) < 60;
 function escape(f) {
   const tg = nearest(f), away = tg ? Math.sign(f.x - tg.x) || -f.face : -f.face;
   f.mp -= ESCAPE; stamp(f, 3); dust(f.x, f.y, 8);
-  f.x = clamp(f.x + away * 44, 12, AW - 12); f.inv = 30; f.stag = 0; f.fx.stun = 0;
+  // with a wall behind, the escape goes over the attacker instead of into the wall
+  f.x = clamp(cornered(f, tg) ? tg.x - away * 34 : f.x + away * 44, 12, AW - 12); f.inv = 30; f.stag = 0; f.fx.stun = 0;
   setSt(f, "idle"); faceTo(f, tg); pop(f, "Escape", "#9fd0ff"); S.jump();
 }
 function beatPress(f) {
@@ -119,6 +122,7 @@ function beatPress(f) {
   if (f.beatOpen && tick <= f.beatOpen) { f.beatOpen = 0; beatHit(f); }
 }
 function beatHit(f) {
+  if (f.opener) return;   // the opener takes exactly half, no more
   f.beats++; S.beat(); f.flash = 8;
   pop(f, f.beats > 1 ? "Super x" + f.beats : "Super", "#ffd36a", true);
   if (f.mv && f.mv.beat) f.mv.beat(f, f.beats);
@@ -127,14 +131,14 @@ function beatHit(f) {
 
 /* ---------- moves ---------- */
 const BASIC = [
-  { pose: "m3", len: 14, hit: { from: 4, to: 7, range: [4, 30], dmg: 15, stun: 14 } },
-  { pose: "m5", len: 16, hit: { from: 5, to: 8, range: [6, 34], dmg: 17, stun: 16 } },
-  { pose: "m6", len: 24, hit: { from: 6, to: 10, range: [4, 34], dmg: 24, knock: true, kx: 2.6, kz: 3.4 } }
+  { pose: tl([0, "m3"], [11, "m0"]), len: 14, hit: { from: 4, to: 7, range: [4, 30], dmg: 15, stun: 14 } },
+  { pose: tl([0, "m5"], [12, "m0"]), len: 16, hit: { from: 5, to: 8, range: [6, 34], dmg: 17, stun: 16 } },
+  { pose: tl([0, "m4"], [4, "m6"], [19, "m0"]), len: 24, hit: { from: 6, to: 10, range: [4, 34], dmg: 24, knock: true, kx: 2.6, kz: 3.4 } }
 ];
 const RUN_ATK = { pose: "p5", len: 24, vel: (f, t) => Math.max(0, 4.6 - t * 0.2), hit: { from: 2, to: 12, range: [0, 30], dmg: 26, knock: true, kx: 3, kz: 3 } };
 function basicFor(f, n) {
   if (f.d.atk) { const [pose, dmg, range] = f.d.atk[n]; const b = BASIC[n]; return Object.assign({}, b, { pose: n === 2 ? tl([0, "x0"], [6, pose]) : pose, len: b.len + (n === 2 ? 8 : 2), hit: Object.assign({}, b.hit, { dmg, range, from: b.hit.from + (n === 2 ? 6 : 1), to: b.hit.to + (n === 2 ? 6 : 1) }), ev: n === 2 ? { 12: () => { shake = 6; S.heavy(); dust(f.x + f.face * 30, f.y, 6); } } : null }); }
-  if (n === 2 && f.atkAlt) return Object.assign({}, BASIC[2], { pose: "m4", hit: Object.assign({}, BASIC[2].hit, { zr: [10, 60], kz: 4.6, kx: 1.4 }) });
+  if (n === 2 && f.atkAlt) return Object.assign({}, BASIC[2], { pose: tl([0, "m3"], [4, "m4"], [19, "m0"]), hit: Object.assign({}, BASIC[2].hit, { zr: [10, 60], kz: 4.6, kx: 1.4 }) });
   return BASIC[n];
 }
 function attack(f) {
@@ -167,13 +171,20 @@ function doMove(f, code, dir) {
   if (!grounded(f) && !m.air) return false;
   if (code === "H2" && !canAwaken(f)) { if (f.ctrl[0] === "p") pop(f, "Below 30% HP", "#ffb0a0"); S.no(); return false; }
   if (f.mp < m.mp) { if (f.ctrl[0] === "p") { pop(f, "Not enough chakra", "#9fd0ff"); f.mpFlash = 20; } S.no(); return false; }
-  f.mp -= m.mp; if (dir) f.face = dir; f.run = 0; f.cancel = 0;
+  f.mp = code === "H2" ? 0 : f.mp - m.mp; if (dir) f.face = dir; f.run = 0; f.cancel = 0;
   startMove(f, m, code);
   if (hell) { f.hellId++; f.hells++; f.inv = Math.max(f.inv, 18); cine = { f, t: 0, len: 54, name: m.name, sub: code === "H2" ? "Awakened" : "Hell move" }; S.hell(); }
   else pop(f, m.name, f.d.col);
   return true;
 }
 function endMove(f) {
+  if (f.code === "H2") {
+    const key = f.uid + ":" + f.hellId;
+    for (const t of fighters) if (t.team !== f.team && t.hellBy && t.hellBy[key] != null && alive(t)) {
+      const cap = Math.round(t.maxHp * AWAKEN_SHARE), left = cap - t.hellBy[key];
+      if (left > 0) { t.hellBy[key] = cap; t.hp = Math.max(t.dummy ? 1 : 0, t.hp - left); t.lastHit = tick; t.flash = 8; pop(t, "-" + left, "#ffd36a", true); burst(t.x, t.y, t.z + 30, "#ffd36a", 12); S.heavy(); if (t.hp <= 0 || !grounded(t)) knockdown(t, -t.face * 2, 4); }
+    }
+  }
   const wasA = f.code && f.code[0] === "A" && f.code !== "AR", q = f.qA;
   if (wasA) f.atkEnd = tick;
   setSt(f, grounded(f) ? "idle" : "air");
@@ -212,7 +223,7 @@ function updateFighter(f) {
     return;
   }
   if (f.fx.frozen > 0) { if (!grounded(f)) { f.z = Math.max(0, f.z + f.vz); f.vz -= GRAV; } return; }
-  if (f.fx.slow > 0 && tick % 2) return;
+  if (f.fx.slow > 0 && tick % 2 && !f.opener) return;
 
   if (f.ai && alive(f)) { aiThink(f); if (f.fx.reverse) { f.hold.mx = -f.hold.mx; f.hold.my = -f.hold.my; } }
   if (alive(f)) { const q = f.evq; f.evq = []; for (const ev of q) handle(f, ev); }
@@ -232,7 +243,7 @@ function updateFighter(f) {
     }
     case "run": {
       if (f.hold.mx && Math.sign(f.hold.mx) !== f.run || (!f.hold.mx && f.ctrl[0] === "c" && !f.ai.keepRun)) { setSt(f, "idle"); f.run = 0; break; }
-      f.vx = f.run * f.d.spd * 2.3 * spdK; f.x += f.vx; f.y += f.hold.my * 0.9; f.walkPh += 0.5;
+      f.vx = f.run * f.d.spd * 2.3 * spdK; f.x += f.vx; f.y += f.hold.my * 0.9; f.walkPh += 0.6; if (f.t++ % 6 === 0) stamp(f);
       if (tick % 6 === 0) dust(f.x - f.run * 8, f.y, 1);
       if (f.hold.D) { setSt(f, "block"); f.run = 0; }
       break;
@@ -279,7 +290,11 @@ function updateFighter(f) {
       break;
     }
     case "down": if (--f.t <= 0) { setSt(f, "getup", 14); } break;
-    case "getup": if (--f.t <= 0) { setSt(f, "idle"); f.inv = 26; } break;
+    case "getup": if (--f.t <= 0) {
+      const tg = nearest(f);
+      if (cornered(f, tg)) { stamp(f, 3); dust(f.x, f.y, 6); f.x = clamp(tg.x + Math.sign(tg.x - f.x) * 30, 12, AW - 12); faceTo(f, tg); pop(f, "Roll", "#cfe8ff"); }
+      setSt(f, "idle"); f.inv = 26;
+    } break;
     case "held": if (!f.lockBy) { if (f.z > 0) knockdown(f, 0, 1); else setSt(f, "idle"); } break;
     case "win": f.t++; break;
   }
@@ -389,7 +404,8 @@ function teamsFor(cfg) {
   if (cfg.mode === "team") {
     const t0 = [mk(cfg.p1, 0, "p0"), mk(cfg.p2, 0, cfg.players === 2 ? "p1" : "cpu")];
     const pool = regular().filter((i) => i !== cfg.p1 && i !== cfg.p2);
-    return t0.concat([mk(pick(pool), 1, "cpu"), mk(pick(pool), 1, "cpu")]);
+    const one = pick(pool), two = pick(pool.filter((i) => i !== one));
+    return t0.concat([mk(one, 1, "cpu"), mk(two, 1, "cpu")]);
   }
   return [mk(cfg.p1, 0, "p0"), mk(cfg.p2, 1, cfg.players === 2 ? "p1" : "cpu")];
 }
@@ -432,6 +448,15 @@ function endRound(winner) {
   roundWinner = winner;
 }
 let roundWinner = -1;
+// the final Arcade fight: Barbarik's first arrow never misses and takes half of everyone's health
+function bossOpener() {
+  if (!match || match.mode !== "arcade" || round !== 1) return;
+  const b = fighters.find((f) => f.id === "barbarik" && f.ai);
+  if (!b) return;
+  b.mp = Math.max(b.mp, b.d.moves.H1.mp); b.opener = true; faceTo(b, nearest(b));
+  if (doMove(b, "H1", b.face)) { b.inv = b.mv.len + 4; sayAt(b.x, 64, "The first arrow never misses", "#ff8080", true); }
+  else b.opener = false;
+}
 function afterRound() {
   if (wins[0] >= 2 || wins[1] >= 2 || round >= 5) return matchOver(wins[0] > wins[1] ? 0 : wins[1] > wins[0] ? 1 : -1);
   startRound();
@@ -449,7 +474,7 @@ function matchOver(w) {
     else if (humanWon) {
       title = "The akhada is yours";
       const first = !unlockedHidden; unlockedHidden = true; try { localStorage.setItem("akhada:legends", "1"); } catch (e) { /* ignore */ }
-      note = first ? "As the dust settles, two more warriors step out of the dawn: Ghatotkacha, son of Bhima, and his son Barbarik. They are yours to play." : "You beat " + ROSTER[m.ladder[m.ladder.length - 1]].name + " in the final fight.";
+      note = first ? "Barbarik lowers his bow. He and his father Ghatotkacha bow to you, and both are yours to play." : "You beat Barbarik in the final fight.";
       if (first) { buildGrids(); Arcade.toast("Ghatotkacha and Barbarik have joined the akhada"); }
       next = "Play again";
     } else { note = "Fight " + (m.step + 1) + " of " + m.ladder.length + ". The ladder waits."; next = "Try again"; }
@@ -481,7 +506,7 @@ function update() {
   if (paused) return;
   if (countdown > 0) { countdown--; return; }
   ambient();
-  if (state === "intro") { if (++introT >= 110) state = "fight"; tickWorld(true); return; }
+  if (state === "intro") { if (++introT >= 110) { state = "fight"; bossOpener(); } tickWorld(true); return; }
   if (cine) { if (++cine.t >= cine.len) { cine = null; for (const f of fighters) f.evq = []; } return; }
   if (hitstop > 0) { hitstop--; return; }
   if (slowmo > 0) { slowmo--; if (slowmo % 3) return; }
@@ -513,7 +538,7 @@ function tickWorld(frozen) {
   // ice walls stop shots
   for (const w of objs) if (w.kind === "wall") for (const p of objs) if (p.kind === "shot" && p.team !== w.team && p.life > 0 && Math.abs(p.x - w.x) < 10 && Math.abs(p.y - w.y) < 14) { p.life = 0; w.hp -= p.dmg || 20; burst(w.x, w.y, p.z, "#bff2ff", 6); if (w.hp <= 0) w.life = 0; }
   objs = objs.filter((o) => o.life > 0 && o.t < o.life + 1);
-  for (const p of parts) { p.x += p.vx || 0; p.z += p.vz || 0; if (p.g) p.vz -= p.g; p.life--; if (p.rot != null) p.rot += 0.2; }
+  for (const p of parts) { p.x += p.vx || 0; p.z += p.vz || 0; if (p.g) p.vz -= p.g; p.life--; if (p.obj && p.rot != null) p.rot += 0.2; }
   parts = parts.filter((p) => p.life > 0 && (p.z == null || p.z > -4));
   for (const t of texts) { t.life--; t.y -= 0.35; }
   texts = texts.filter((t) => t.life > 0);
@@ -564,7 +589,7 @@ function poseOf(f) {
   switch (f.st) {
     case "idle": p = "m0"; break;
     case "walk": p = "w"; break;
-    case "run": p = "p1"; break;
+    case "run": p = Math.floor(f.walkPh * 0.5) % 3 === 0 ? "p1" : "w"; break;
     case "air": p = f.airAtk ? "m8" : "m7"; break;
     case "block": p = "p0"; break;
     case "charge": p = "p6"; break;
@@ -598,6 +623,7 @@ function drawFighter(f) {
   const buff = Object.keys(BUFF_COL).find((k) => f.buff[k] > 0);
   const beat = f.beatOpen && tick <= f.beatOpen;
   if (hellOn || buff || beat) { const c = tinted(sheet, fr, beat ? "#ffffff" : f.st === "charge" ? "#5ab4ff" : hellOn ? "#ffd36a" : BUFF_COL[buff], "glow"); if (c) blitCanvas(c, fr, x, y, flip, sc, (hellOn || beat ? 0.55 : 0.3) + 0.2 * Math.sin(tick * 0.3)); }
+  if (f.st === "charge") animDraw("aura", 0, x, y - bodyH(f) * 0.5, { frame: Math.floor(tick / 4), sc: bodyH(f) / 70, a: 0.9 });
   const blink = (f.st === "getup" || f.inv > 0 && f.st !== "move") && tick % 4 < 2;
   blit(im, fr, x, y, flip, sc, blink ? 0.5 : 1);
   let over = null;
@@ -608,6 +634,7 @@ function drawFighter(f) {
   else if (f.fx.poison > 0 && tick % 14 < 5) over = ["#7fe07a", 0.45];
   if (over) { const c = tinted(sheet, fr, over[0], "solid"); if (c) blitCanvas(c, fr, x, y, flip, sc, over[1]); }
   g.restore();
+  swoosh(f, x, y);
   if (f.fx.mark > 0) fxDraw("sigil", x, y - bodyH(f) - 10, { sc: 0.18, rot: tick * 0.05, a: 0.9 });
   if (f.fx.marma > 0 || (f.fx.stun > 0 && f.st === "hurt")) for (let i = 0; i < 3; i++) { const a = tick * 0.12 + i * 2.1; g.fillStyle = f.fx.marma ? "#ffe9a8" : "#fff38a"; g.fillRect(x + Math.cos(a) * 8, y - bodyH(f) - 4 + Math.sin(a) * 2, 2, 2); }
   if (beat && f.ctrl[0] === "p") text("Attack!", x, y - bodyH(f) - 14, 8, "#ffd36a", "center", "IBM Plex Sans", true);
@@ -648,6 +675,18 @@ function motion(f) {
   if (sinceLand < 7 && (f.st === "idle" || f.st === "walk")) { const k = 1 - sinceLand / 7; m.sy *= 1 - 0.1 * k; m.sx *= 1 + 0.08 * k; }
   return m;
 }
+// a swing trail in front of a strike while its hit is live (basics, melee specials, the jump kick)
+const SWING = { A0: 0.35, A1: -0.05, A2: -0.45, AR: 0.15 };
+function swoosh(f, x, y) {
+  let k = -1, rot = 0, reach = 34;
+  if (f.st === "move" && f.mv && f.mv.hit && !f.mv.hell) {
+    const h = f.mv.hit, span = h.to - h.from + 7; k = (f.t - h.from + 1) / span;
+    rot = SWING[f.code] != null ? SWING[f.code] : 0.1; reach = (h.range ? h.range[1] : 34);
+  } else if (f.st === "air" && f.airAtk) { k = (18 - f.airAtk) / 18; rot = 0.5; }
+  if (k < 0 || k > 1) return;
+  const r = Math.min(reach, 60) * f.sc;
+  animDraw("swoosh", k, x + f.face * r * 0.55, y - bodyH(f) * 0.55, { sc: clamp(r / 60, 0.35, 0.8), flip: f.face < 0, rot: rot * f.face, a: 0.9 });
+}
 function drawShadow(f) {
   if (f.hide) return;
   const w = bodyW(f) * 1.5 * Math.max(0.5, 1 - f.z / 120);
@@ -661,6 +700,7 @@ function drawParts() {
   for (const p of parts) {
     const x = p.x - cam, y = p.y - p.z, a = p.life / p.max;
     if (p.obj) { objDraw(p.obj, x, y, { sc: p.sc, rot: p.rot, ay: 0.5, a: Math.min(1, a * 2) }); continue; }
+    if (p.anim) { if (!animDraw(p.anim, 1 - a, x, y, { sc: p.sc || 1, rot: p.rot || 0 })) fxDraw("burst", x, y, { sc: (p.sc || 1) * 0.3, a }); continue; }
     if (p.ring) { g.save(); g.globalCompositeOperation = "lighter"; g.globalAlpha = a; g.strokeStyle = p.col; g.lineWidth = 1 + a; g.beginPath(); g.ellipse(x, y, p.ring * (1.6 - a), p.ring * (1.6 - a) * 0.8, 0, 0, Math.PI * 2); g.stroke(); g.restore(); continue; }
     g.save(); g.globalAlpha = a; if (p.add) g.globalCompositeOperation = "lighter";
     if (p.line) { g.strokeStyle = p.col; g.lineWidth = 1; g.beginPath(); g.moveTo(x, y); g.lineTo(x - p.vx * 2, y + p.vz * 2); g.stroke(); }
@@ -678,11 +718,12 @@ function draw() {
   if (tint) { g.fillStyle = tint.col; g.fillRect(-10, -10, LW + 20, LH + 20); }
   if (cine) { g.fillStyle = "rgba(6,4,12," + Math.min(0.7, cine.t / 10) + ")"; g.fillRect(-10, -10, LW + 20, LH + 20); }
   // floor things first, then bodies and shots by depth, then what flies above
-  for (const o of objs) if (o.kind !== "shot" && o.draw && !o.sky) o.draw(o);
+  for (const o of objs) if (o.kind !== "shot" && o.kind !== "fx" && o.draw && !o.sky) o.draw(o);
   for (const f of fighters) drawShadow(f);
   const cast = fighters.concat(objs.filter((o) => o.kind === "shot" || o.kind === "wall"));
   cast.sort((a, b) => a.y - b.y);
   for (const c of cast) { if (c.d) drawFighter(c); else if (c.kind === "wall") c.draw(c); else c.draw(c); }
+  for (const o of objs) if (o.kind === "fx" && o.draw) o.draw(o);
   for (const f of fighters) if (f.st === "move" && f.mv && f.mv.drawFx) f.mv.drawFx(f, f.t);
   for (const f of fighters) if (f.zap && f.zap.t-- > 0) { g.save(); g.globalCompositeOperation = "lighter"; g.strokeStyle = "#fff38a"; g.lineWidth = 1; g.beginPath(); let px = f.zap.x1 - cam, py = f.zap.y - 30; g.moveTo(px, py); for (let i = 1; i <= 5; i++) { px = lerp(f.zap.x1, f.zap.x2, i / 5) - cam; g.lineTo(px, py + rand(-6, 6)); } g.stroke(); g.restore(); }
   drawParts();
@@ -826,11 +867,15 @@ function moveList() {
     row("D → J A", m.H1, "Hell move: ") + row("D ↑ J A", m.H2, "Awakened: ", anyHp ? " (any HP)" : " (below 30% HP)") + "</ul>";
   $("movename").textContent = d.name + "'s moves";
 }
+// Arcade: eight fights (regular fighters, then Ashwatthama, Jatayu and Ghatotkacha), then Barbarik
+const BOSS_STAGE = { ashwatthama: 3, jatayu: 1, ghatotkacha: 2, barbarik: 0 };
 function newLadder(c) {
-  const pool = regular().filter((i) => i !== c.p1 && i !== c.p2);
-  const four = []; while (four.length < 4 && pool.length) four.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-  const ladder = four.concat(["ashwatthama", "jatayu"].filter((i) => i !== c.p1));
-  return { ladder, stages: [0, 2, 1, 3, 3, 0].slice(0, ladder.length), step: 0 };
+  const p2 = c.players === 2 ? c.p2 : null;   // only a second player's pick is taken out of the ladder
+  const bosses = ["ashwatthama", "jatayu", "ghatotkacha"].filter((i) => i !== c.p1 && i !== p2);
+  const pool = regular().filter((i) => i !== c.p1 && i !== p2), first = [];
+  while (first.length < 8 - bosses.length && pool.length) first.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  const ladder = first.concat(bosses, ["barbarik"]);
+  return { ladder, stages: ladder.map((id, i) => BOSS_STAGE[id] != null ? BOSS_STAGE[id] : [0, 2, 1, 3][i % 4]), step: 0 };
 }
 $("start1").addEventListener("click", () => {
   if (TOUCH && !Arcade.isFullscreen()) Arcade.enterFullscreen();
