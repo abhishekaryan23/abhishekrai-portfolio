@@ -14,7 +14,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site.css?v=3">
   <link rel="stylesheet" href="/game/style.css?v=23">
-  <link rel="stylesheet" href="/game/akhada/akhada.css?v=2">
+  <link rel="stylesheet" href="/game/akhada/akhada.css?v=4">
 </head>
 <body>
 <header class="site-head">
@@ -56,63 +56,43 @@
     <div class="screen solo">
       <canvas id="game" width="768" height="432" aria-label="Game screen"></canvas>
       <button class="btn screen-start" type="button" data-start="start1" aria-label="Start fight">Fight</button>
-      <div class="overlay" id="overlay">
-        <div class="card card-wide ak-card" id="card-menu">
-          <div class="col">
-            <h2>Akhada</h2>
-            <div class="chips" id="modes" role="group" aria-label="Mode"></div>
-            <p class="ak-label">Your fighter</p>
-            <div class="chips ak-grid" id="p1grid" role="group" aria-label="Your fighter"></div>
-            <div id="p2wrap">
-              <p class="ak-label" id="p2label">Opponent (CPU)</p>
-              <div class="chips ak-grid" id="p2grid" role="group" aria-label="Opponent"></div>
+      <div class="overlay ak-overlay" id="overlay">
+        <div class="card ak-select" id="card-menu">
+          <div class="chips ak-modes" id="modes" role="group" aria-label="Mode"></div>
+          <div class="ak-vs">
+            <button class="ak-side ak-p1" id="side1" type="button" aria-label="Pick player 1's fighter">
+              <span class="ak-tag">1P</span><span class="ak-big" id="big1"></span><b id="name1"></b><small id="el1"></small>
+            </button>
+            <div class="ak-mid">
+              <span class="ak-vsmark" aria-hidden="true">VS</span>
+              <div class="ak-grid" id="grid" role="group" aria-label="Fighters"></div>
+              <p class="ak-hint" id="selhint"></p>
             </div>
+            <button class="ak-side ak-p2" id="side2" type="button" aria-label="Pick the other fighter">
+              <span class="ak-tag" id="tag2">CPU</span><span class="ak-big" id="big2"></span><b id="name2"></b><small id="el2"></small>
+            </button>
           </div>
-          <div class="col">
+          <div class="ak-opts">
             <div class="chips" id="players" role="group" aria-label="Players" data-keyboard>
               <button class="chip" type="button" data-players="1" aria-pressed="true">1 player</button>
               <button class="chip" type="button" data-players="2" aria-pressed="false">2 players</button>
             </div>
-            <p class="ak-label">CPU level</p>
-            <div class="chips" id="levels" role="group" aria-label="CPU level"></div>
-            <div id="stagewrap">
-              <p class="ak-label">Stage</p>
-              <div class="chips" id="stages" role="group" aria-label="Stage"></div>
+            <div id="levelwrap"><span class="ak-label">CPU</span><div class="chips" id="levels" role="group" aria-label="CPU level"></div></div>
+            <div id="rulewrap"><span class="ak-label">Rules</span><div class="chips" id="rules" role="group" aria-label="Rules"></div></div>
+            <div id="trainwrap" hidden><span class="ak-label">Dummy</span><div class="chips" id="dummy" role="group" aria-label="Dummy"></div><div class="chips" id="chakra" role="group" aria-label="Chakra"></div></div>
+            <div id="musicwrap"><span class="ak-label">Music</span><div class="chips" id="music" role="group" aria-label="Music"></div></div>
+            <div id="stagewrap"><span class="ak-label">Stage</span><div class="chips" id="stages" role="group" aria-label="Stage"></div></div>
+            <div id="onlinewrap" hidden>
+              <span class="ak-label">Online <em class="ak-beta">beta</em></span>
+              <button class="chip" type="button" id="net-create">Create a room</button>
+              <span id="net-joinrow"><input id="net-code" maxlength="8" placeholder="Room code" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="chip" type="button" id="net-join">Join</button></span>
+              <button class="chip" type="button" id="net-leave" hidden>Leave room</button>
+              <p class="ak-note" id="net-status">Create a room and send the code to a friend, or join theirs. Each of you picks your own fighter. Online fights use Fair fight rules.</p>
+              <p class="ak-note" id="net-opp"></p>
             </div>
-            <div id="trainwrap" hidden>
-              <p class="ak-label">Dummy</p>
-              <div class="chips" id="dummy" role="group" aria-label="Dummy"></div>
-              <div class="chips" id="chakra" role="group" aria-label="Chakra"></div>
-            </div>
-            <div id="rulewrap">
-              <p class="ak-label">Rules</p>
-              <div class="chips" id="rules" role="group" aria-label="Rules"></div>
-              <p class="small muted" id="rulenote" style="margin:-6px 0 8px"></p>
-            </div>
-            <div class="btn-row"><button class="btn" id="start1" type="button">Fight</button></div>
-            <details class="moves" open>
-              <summary id="movename">Moves</summary>
-              <div id="movelist"></div>
-            </details>
-            <details class="moves">
-              <summary>How to fight</summary>
-              <ul>
-                <li><b>Chakra:</b> the blue bar (500). Every special costs a share of it. It barely refills by itself: hold <b>J, K and L together</b> (Player 2: 1, 2, 3) to charge it, which leaves you open, or earn it by landing and taking hits.</li>
-                <li><b>Specials:</b> tap Defend, then a direction, then Attack or Jump.</li>
-                <li><b>Hell moves:</b> Defend, Forward, Jump, Attack once the bar turns gold (400). The Awakened Hell move is Defend, Up, Jump, Attack, below 30% HP: it empties the whole bar, and when it lands it takes 40% of the foe's health.</li>
-                <li><b>Escape:</b> tap Defend while you are being hit to break free (100 chakra). Four hits in a row that do not knock you down will, and nobody can hit you while you are down or getting up.</li>
-                <li><b>Super combos:</b> land a special, then go straight into a Hell move. During a Hell move, tap Attack when your fighter flashes for extra hits.</li>
-                <li><b>Basics:</b> Attack three times for a combo. Double-tap a direction to run, then Attack or Jump. Hold Defend to block. Move up and down to step out of a shot's path.</li>
-                <li><b>On a touch screen:</b> Special, Power and Hell buttons use the stick's direction, so no sequences are needed. Hold Charge to fill chakra.</li>
-                <li><b>Training:</b> try every move on a dummy that never goes down. Press P for the menu.</li>
-              </ul>
-            </details>
-            <ul class="keys">
-              <li>Player 1: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>J</kbd> attack, <kbd>K</kbd> jump, <kbd>L</kbd> defend, hold <kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> to charge</li>
-              <li>Player 2: arrows, <kbd>1</kbd> attack, <kbd>2</kbd> jump, <kbd>3</kbd> defend, hold <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> to charge (or <kbd>,</kbd> <kbd>.</kbd> <kbd>/</kbd>)</li>
-              <li><kbd>P</kbd> pause</li>
-            </ul>
           </div>
+          <p class="ak-note" id="rulenote"></p>
+          <div class="ak-go"><button class="btn ak-fight" id="start1" type="button">Fight</button></div>
         </div>
         <div class="card" id="card-end" hidden>
           <h2 id="end-title">Victory</h2>
@@ -126,13 +106,39 @@
     <div class="pad">
       <div class="stick" data-codes="KeyW,KeyS,KeyA,KeyD" data-dash="StickDash" role="presentation"><span></span></div>
       <div class="grp act six">
-        <button tabindex="-1" data-code="VSpecial" class="ak-sp">Special</button><button tabindex="-1" data-code="VPower" class="ak-sp">Power</button><button tabindex="-1" data-code="VHell" class="ak-hell">Hell</button><button tabindex="-1" data-code="VCharge" class="ak-charge">Charge</button>
-        <button tabindex="-1" data-code="KeyL">Defend</button><button tabindex="-1" data-code="KeyK">Jump</button><button tabindex="-1" data-code="KeyJ">Attack</button>
+        <button tabindex="-1" data-code="KeyL" class="ak-def">Defend</button><button tabindex="-1" data-code="VCharge" class="ak-charge">Charge</button>
+        <button tabindex="-1" data-code="KeyK">Jump</button><button tabindex="-1" data-code="KeyJ">Attack</button>
       </div>
       <button class="pause-btn" tabindex="-1" data-code="KeyP">Pause</button>
     </div>
     <button class="fs-exit" id="fs-exit" type="button">Exit full screen</button>
     </div>
+
+    <section class="ak-info" aria-label="Moves and controls">
+      <details class="moves" open>
+        <summary id="movename">Moves</summary>
+        <div id="movelist"></div>
+      </details>
+      <details class="moves">
+        <summary>How to fight</summary>
+        <ul>
+          <li><b>Chakra:</b> the blue bar (500). Every special costs a share of it. It barely refills by itself: hold <b>J, K and L together</b> (Player 2: 1, 2, 3) to charge it, which leaves you open, or earn it by landing and taking hits.</li>
+          <li><b>Specials:</b> tap Defend, then a direction, then Attack or Jump.</li>
+          <li><b>Hell moves:</b> Defend, Forward, Jump, Attack once the bar turns gold (400). The Awakened Hell move is Defend, Up, Jump, Attack, below 30% HP: it empties the whole bar, and when it lands it takes 40% of the foe's health (20% if they block it all).</li>
+          <li><b>Super combos:</b> land a special, then go straight into a Hell move. During a Hell move, tap Attack when your fighter flashes for extra hits.</li>
+          <li><b>Escape:</b> tap Defend while you are being hit to break free (100 chakra). With your back to the wall it takes you over your attacker. Nobody can hit you while you are down or getting up.</li>
+          <li><b>Basics:</b> Attack three times for a combo. Double-tap a direction to run, then Attack or Jump. Hold Defend to block. Move up and down to step out of a shot's path.</li>
+          <li><b>On a touch screen:</b> the same sequences as the keyboard: tap Defend, push the stick, then tap Attack or Jump. The sequence you are entering shows above your fighter. Hold Charge to fill chakra.</li>
+          <li><b>Online (beta):</b> one of you creates a room and sends the code; the other joins with it. A fast, steady connection works best.</li>
+        </ul>
+      </details>
+      <ul class="keys">
+        <li>Select: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrows to move, <kbd>J</kbd> or <kbd>Enter</kbd> to pick (Player 2: arrows and <kbd>1</kbd>)</li>
+        <li>Player 1: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>J</kbd> attack, <kbd>K</kbd> jump, <kbd>L</kbd> defend, hold <kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> to charge</li>
+        <li>Player 2: arrows, <kbd>1</kbd> attack, <kbd>2</kbd> jump, <kbd>3</kbd> defend, hold <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> to charge (or <kbd>,</kbd> <kbd>.</kbd> <kbd>/</kbd>)</li>
+        <li><kbd>P</kbd> pause</li>
+      </ul>
+    </section>
   </div>
 </main>
 
@@ -157,8 +163,10 @@
 <script src="/game/arcade.js?v=13"></script>
 <script src="/game/street/fighters.js?v=9"></script>
 <script src="/game/akhada/ak-frames.js?v=2"></script>
-<script src="/game/akhada/ak-core.js?v=5"></script>
-<script src="/game/akhada/ak-roster.js?v=5"></script>
-<script src="/game/akhada/ak-game.js?v=5"></script>
+<script src="/game/akhada/ak-core.js?v=7"></script>
+<script src="/game/akhada/ak-roster.js?v=7"></script>
+<script src="/game/akhada/ak-game.js?v=12"></script>
+<script src="/game/akhada/ak-net.js?v=5"></script>
+<script src="/game/akhada/ak-music.js?v=3"></script>
 </body>
 </html>

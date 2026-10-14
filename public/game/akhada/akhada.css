@@ -9,17 +9,88 @@
 .ak-card #movelist b { display: inline-block; min-width: 4.6em; font: 500 0.78rem var(--mono); color: var(--accent); }
 #p2wrap[hidden], #stagewrap[hidden], #rulewrap[hidden], #trainwrap[hidden], #players[hidden] { display: none; }
 
-/* the touch pad (.six is the old name): Special, Power, Hell, Charge on top; Defend, Jump, Attack below */
-.pad .act.six { grid-template-columns: repeat(4, 52px); grid-template-rows: repeat(2, 50px); }
+/* the touch pad (.six is the old name): Defend and Charge on top, Jump and Attack below */
+.pad .act.six { grid-template-columns: repeat(2, 60px); grid-template-rows: repeat(2, 54px); }
+.pad button.ak-def { border-color: #5aa8ff; color: #2a7fd8; }
+.stage-wrap.fs .pad button.ak-def { border-color: #9fd0ff; color: #9fd0ff; }
 .pad button.ak-charge { border-color: #4aa3ff; color: #2a7fd8; }
 .stage-wrap.fs .pad button.ak-charge { border-color: #7fc4ff; color: #7fc4ff; }
 .pad button.ak-sp { border-color: var(--accent); color: var(--accent); }
 .pad button.ak-hell { border-color: #c99a2e; color: #b07d10; font-weight: 700; }
-.stage-wrap.fs .pad .act.six { grid-template-columns: repeat(4, 58px); grid-template-rows: repeat(2, 58px); }
+.stage-wrap.fs .pad .act.six { grid-template-columns: repeat(2, 66px); grid-template-rows: repeat(2, 66px); }
 .stage-wrap.fs .pad button.ak-sp { border-color: #f07ab8; color: #f07ab8; }
 .stage-wrap.fs .pad button.ak-hell { border-color: #ffd36a; color: #ffd36a; }
-@media (max-width: 420px) { .pad .act.six { grid-template-columns: repeat(4, 46px); grid-template-rows: repeat(2, 46px); gap: 6px; } .pad .act.six button { font-size: 0.72rem; } }
+@media (max-width: 420px) { .pad .act.six { grid-template-columns: repeat(2, 56px); grid-template-rows: repeat(2, 52px); gap: 8px; } }
 @media (any-pointer: coarse) and (min-width: 700px) {
-  .stage-wrap.fs .pad .act.six { grid-template-columns: repeat(4, clamp(58px, 9vmin, 84px)); grid-template-rows: repeat(2, clamp(58px, 9vmin, 84px)); gap: 10px; }
+  .stage-wrap.fs .pad .act.six { grid-template-columns: repeat(2, clamp(66px, 11vmin, 96px)); grid-template-rows: repeat(2, clamp(66px, 11vmin, 96px)); gap: 12px; }
 }
 @media (any-pointer: coarse) { .ak-grid .chip, .ak-card .chips .chip { min-height: 38px; } }
+
+/* ---------- the character select: an arcade screen, dark in either site theme ---------- */
+.ak-overlay { background: radial-gradient(ellipse at 50% 35%, rgba(60, 14, 34, 0.35), rgba(8, 5, 12, 0.82)); }
+.screen.solo .overlay.ak-overlay > .card.ak-select,
+.stage-wrap .screen.solo .overlay.ak-overlay > .card.ak-select {
+  max-width: 780px; width: 100%; color: #f4ead8; border-radius: 6px; padding: 10px 14px 12px;
+  background: linear-gradient(180deg, rgba(22, 12, 28, 0.94), rgba(10, 6, 14, 0.96));
+  border: 1px solid #8a6220; box-shadow: inset 0 0 0 1px #2a1808, 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+.ak-select p { color: #c9b896; }
+.ak-select .chips { margin: 0; gap: 4px; }
+.ak-select .chip { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 214, 120, 0.28); color: #e8dcc8; padding: 4px 9px; font-size: 0.8rem; }
+.ak-select .chip:hover { border-color: #ffd36a; }
+.ak-select .chip[aria-pressed="true"] { background: linear-gradient(#c8333f, #8a1a28); border-color: #ffd36a; color: #fff; }
+.ak-modes { justify-content: center; margin-bottom: 8px !important; }
+.ak-vs { display: grid; grid-template-columns: 132px minmax(0, 1fr) 132px; gap: 10px; align-items: center; }
+.ak-side { appearance: none; font: inherit; color: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 6px; border-radius: 6px; background: rgba(0, 0, 0, 0.35); border: 2px solid; transition: box-shadow 0.15s; }
+.ak-side[hidden] { display: none; }
+.ak-p1 { border-color: #ff4d6d; } .ak-p2 { border-color: #4aa3ff; }
+.ak-p1.active { box-shadow: 0 0 18px rgba(255, 77, 109, 0.55); } .ak-p2.active { box-shadow: 0 0 18px rgba(74, 163, 255, 0.55); }
+.ak-tag { font: 700 0.72rem var(--mono); padding: 1px 8px; border-radius: 3px; color: #fff; letter-spacing: 0.06em; }
+.ak-p1 .ak-tag { background: #d8284a; } .ak-p2 .ak-tag { background: #2a7fd8; }
+.ak-big { display: grid; place-items: center; width: 112px; height: 112px; border-radius: 4px; background: #1b1222 url("/game/akhada/sprites/portraits.png?v=2") no-repeat; background-size: 1400% 100%; image-rendering: pixelated; font: 700 2.4rem var(--serif); color: #ffd36a; }
+.ak-p2 .ak-big { transform: scaleX(-1); }
+.ak-side b { font: 600 1.12rem var(--serif); line-height: 1.1; text-align: center; }
+.ak-side small { color: #c9b896; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; text-align: center; }
+.ak-mid { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+.ak-vsmark { font: italic 700 1.9rem/1 var(--serif); color: #ffd36a; text-shadow: 2px 2px 0 #8a1a28, 0 0 14px rgba(255, 180, 60, 0.55); margin-bottom: 6px; letter-spacing: 0.04em; }
+.ak-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; width: 100%; max-width: 420px; }
+.ak-tile { appearance: none; position: relative; aspect-ratio: 1; padding: 0; cursor: pointer; border-radius: 4px; border: 2px solid rgba(255, 214, 120, 0.18); background: #1b1222 url("/game/akhada/sprites/portraits.png?v=2") no-repeat; background-size: 1400% 100%; image-rendering: pixelated; transition: transform 0.1s; }
+.ak-tile:hover { border-color: #ffd36a; transform: translateY(-1px); }
+.ak-tile.random { font: 700 1.3rem var(--serif); color: #ffd36a; background-image: none; }
+.ak-tile.p1 { border-color: #ff4d6d; }
+.ak-tile.p2 { border-color: #4aa3ff; }
+.ak-tile.p1.p2 { border-color: #c38bff; }
+.ak-tile.cur1 { box-shadow: 0 0 0 2px #ff4d6d, 0 0 12px rgba(255, 77, 109, 0.7); z-index: 1; }
+.ak-tile.cur2 { box-shadow: 0 0 0 2px #4aa3ff, 0 0 12px rgba(74, 163, 255, 0.7); z-index: 1; }
+.ak-tile.cur1.cur2 { box-shadow: 0 0 0 2px #ff4d6d, 0 0 0 4px #4aa3ff; }
+.ak-tile.cur1::after, .ak-tile.cur2::before { position: absolute; top: -9px; font: 700 8px/12px var(--mono); padding: 0 3px; border-radius: 2px; color: #fff; pointer-events: none; }
+.ak-tile.cur1::after { content: "1P"; left: -3px; background: #d8284a; }
+.ak-tile.cur2::before { content: attr(data-t2); right: -3px; background: #2a7fd8; }
+.ak-hint { font-size: 0.72rem; text-align: center; margin: 7px 0 0; color: #c9b896; }
+.ak-opts { display: flex; flex-wrap: wrap; gap: 6px 16px; justify-content: center; align-items: center; margin-top: 10px; }
+.ak-opts > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ak-opts > div[hidden] { display: none; }
+.ak-select .ak-label { margin: 0; font: 600 0.64rem var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: #ffd36a; }
+.ak-note { text-align: center; font-size: 0.74rem; margin: 6px 0 0 !important; color: #c9b896 !important; flex-basis: 100%; }
+.ak-note:empty { display: none; }
+.ak-go { display: flex; justify-content: center; margin-top: 8px; }
+.ak-fight { font: italic 700 1.3rem var(--serif); padding: 7px 44px; border: 0; color: #2a1404; letter-spacing: 0.04em; background: linear-gradient(#ffe08a, #e09a1c); box-shadow: 0 3px 0 #8a5a10, 0 0 18px rgba(255, 190, 60, 0.4); }
+.ak-fight:hover { filter: brightness(1.06); }
+.ak-fight:disabled { opacity: 0.55; cursor: default; filter: none; }
+#onlinewrap { justify-content: center; }
+#net-joinrow { display: inline-flex; gap: 4px; }
+#net-joinrow[hidden] { display: none; }
+#net-code { width: 7.5em; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(255, 214, 120, 0.35); background: rgba(0, 0, 0, 0.35); color: #fff; font: 600 0.85rem var(--mono); letter-spacing: 0.18em; text-transform: uppercase; }
+.ak-beta { font: 600 0.58rem var(--mono); font-style: normal; background: #2a7fd8; color: #fff; padding: 0 4px; border-radius: 2px; vertical-align: 1px; }
+.ak-info { margin-top: 14px; }
+.ak-info details { margin-bottom: 8px; }
+.ak-info #movelist ul { margin: 6px 0 0; padding-left: 0; list-style: none; }
+.ak-info #movelist li { margin: 2px 0; }
+.ak-info #movelist b { display: inline-block; min-width: 5.2em; font: 500 0.8rem var(--mono); color: var(--accent); }
+/* narrow: the two picks side by side on top, the grid below */
+@container (max-width: 560px) {
+  .ak-vs { grid-template-columns: 1fr 1fr; }
+  .ak-mid { grid-column: 1 / -1; order: 3; }
+  .ak-big { width: 76px; height: 76px; font-size: 1.8rem; }
+  .ak-vsmark { display: none; }
+}

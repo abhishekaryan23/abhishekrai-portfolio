@@ -10,13 +10,25 @@
 const LW = 384, LH = 216, SCALE = 2, TICK = 1000 / 60, AW = 504, Y1 = 206, GRAV = 0.34;
 const canvas = document.getElementById("game"), g = canvas.getContext("2d");
 const $ = (id) => document.getElementById(id);
-const rand = (a, b) => a + Math.random() * (b - a);
+/* gameplay randomness comes from a seeded generator, so two browsers playing online roll the same
+   numbers; anything drawn (shake, sparkle) uses Math.random while `drawing` is set */
+let rngState = 1, drawing = 0, NETON = false;
+function seedRng(s) { rngState = (s >>> 0) || 1; }
+function rng() {
+  rngState = (rngState + 0x6D2B79F5) | 0;
+  let t = Math.imul(rngState ^ (rngState >>> 15), 1 | rngState);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+const rnd = () => (drawing ? Math.random() : rng());
+const rand = (a, b) => a + rnd() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const pick = (a) => a[Math.floor(Math.random() * a.length)];
+const pick = (a) => a[Math.floor(rnd() * a.length)];
 const lerp = (a, b, k) => a + (b - a) * k;
 
 let tick = 0, shake = 0, flashA = 0, flashC = "#fff", tint = null, slowmo = 0;
 const CALM = matchMedia("(prefers-reduced-motion: reduce)").matches;   // calmer flashes and shake when asked for
+const calmSim = () => CALM && !NETON;   // in online play game timing must match on both screens
 let fighters = [], objs = [], parts = [], texts = [], stage = null, cam = 0, cine = null;
 const train = { hits: 0, dmg: 0, best: 0, last: -999 };   // training mode: the current and best combo on the dummy
 
@@ -201,7 +213,7 @@ function sureArrow(f, t, dmg, last) {
       if (d < 9) {
         p.life = 0; t.hp = Math.max(1, t.hp - dmg); t.lastHit = tick; t.flash = 8; pop(t, "-" + dmg, "#7fc4ff", true);
         sparks(t.x, t.y, tz, "#bfe6ff", 10); burst(t.x, t.y, tz, "#7fc4ff", 8); shake = Math.max(shake, 5); S.heavy();
-        if (last) { knockdown(t, p.dir * 2.4, 4.5); if (!CALM) slowmo = Math.max(slowmo, 14); }
+        if (last) { knockdown(t, p.dir * 2.4, 4.5); if (!calmSim()) slowmo = Math.max(slowmo, 14); }
         else if (alive(t) && !t.lockBy && !["fall", "down", "getup"].includes(t.st)) {
           if (grounded(t) && !t.fx.sky && !t.hide) { setSt(t, "hurt", 16); t.vx = p.dir * 1.2; } else knockdown(t, p.dir * 1.2, 1);
         }
@@ -323,11 +335,20 @@ function hurt(t, dmg, o) {
   }
   if (t.dmgTake) k *= t.dmgTake; if (t.buff.iron) k *= 0.75; if (t.buff.grow) k *= 0.8;
   dmg = Math.max(1, Math.round(dmg * k));
-  // Narayanastra: only a fighter who lays down arms (holds Defend) is spared
-  if (o.spareBlock && t.st === "block") { pop(t, "Spared", "#ffe9a8"); return false; }
+  // which Hell move this is, so its damage can be counted per target (see the caps below)
+  const live = src && src.st === "move" && src.mv && src.mv.hell ? src.uid + ":" + src.hellId : null;
+  const awaken = o.awaken != null ? o.awaken : !!(o.hell && src && src.code === "H2");
+  const key = o.hell && src ? o.hellKey || live || src.uid + ":" + src.hellId : null;
   const facing = Math.sign((o.fromX != null ? o.fromX : src ? src.x : t.x) - t.x) === t.face || o.fromX == null;
   if (t.st === "block" && facing && !o.unblock && grounded(t)) {
-    const chip = Math.round(dmg * (o.hell ? 0.35 : 0.1));
+    // blocking softens every hit but never cancels a Hell move: it still chips, and an Awakened move
+    // that is blocked all the way through still takes half its share (20% of the health)
+    let chip = Math.round(dmg * (o.hell ? (awaken ? 0.5 : 0.35) : 0.1));
+    if (awaken) {
+      const by = t.hellBy || (t.hellBy = {}), taken = by[key] || 0, cap = Math.round(t.maxHp * AWAKEN_SHARE * (t.hellClean && t.hellClean[key] ? 1 : 0.5));
+      if (key !== live && taken < cap) chip = cap - taken;
+      chip = Math.max(0, Math.min(chip, cap - taken)); by[key] = taken + chip;
+    }
     t.hp = Math.max(1, t.hp - chip); t.guard -= dmg * 0.6; t.vx = dir * 1.6; t.t = Math.max(t.t, 8);
     S.block(); sparks(t.x - dir * 6, t.y, t.z + 30, "#cfe8ff", 5);
     if (src && src !== t && (t.x < 40 || t.x > AW - 40) && Math.abs(src.x - t.x) < 50 && grounded(src)) src.x = clamp(src.x - dir * 5, 12, AW - 12);
@@ -339,14 +360,12 @@ function hurt(t, dmg, o) {
   if (shatter) { dmg = Math.round(dmg * 1.15); t.fx.frozen = 0; burst(t.x, t.y, t.z + 26, "#bff2ff", 12); }
   // Hell moves: the Awakened move takes exactly 40% of the target's health in all (see endMove for the
   // top-up when it lands short) and adds no burn or poison on top; in a fair fight a Hell move takes at most 150
-  const live = src && src.st === "move" && src.mv && src.mv.hell ? src.uid + ":" + src.hellId : null;
-  const awaken = o.awaken != null ? o.awaken : !!(o.hell && src && src.code === "H2");
   if (o.hell && src && (awaken || src.fair)) {
-    const key = o.hellKey || live || src.uid + ":" + src.hellId;
+    if (awaken) (t.hellClean || (t.hellClean = {}))[key] = true;
     const by = t.hellBy || (t.hellBy = {}), taken = by[key] || 0;   // one count per Hell move, so two never mix
     const cap = awaken ? Math.round(t.maxHp * AWAKEN_SHARE) : 150;
     // a leftover of an Awakened move that lands after the move has ended completes the 40% at once
-    if (awaken && key !== live && taken < cap) dmg = cap - taken;
+    if (awaken && key !== live && taken < cap) dmg = cap - taken;   // (a clean hit lifts the share back to 40%)
     dmg = Math.max(0, Math.min(dmg, cap - taken)); by[key] = taken + dmg;
     if (awaken && (o.eff === "burn" || o.eff === "poison")) o = Object.assign({}, o, { eff: null });
   }
@@ -365,7 +384,7 @@ function hurt(t, dmg, o) {
   sparks(t.x - dir * 4, t.y, t.z + (o.hz || 30), o.spark || "#fff2c0", dmg > 35 ? 9 : 5);
   if (dmg >= 14) parts.push({ x: t.x - dir * 4, y: t.y, z: t.z + (o.hz || 30), vx: 0, vz: 0, life: 10, max: 10, col: o.spark || "#fff2c0", ring: dmg > 35 ? 14 : 9 });
   parts.push({ x: t.x - dir * 6, y: t.y, z: t.z + (o.hz || 30), vx: 0, vz: 0, life: 14, max: 14, anim: "impact", sc: clamp(dmg / 70, 0.3, 0.75), rot: rand(-0.4, 0.4) });
-  if (o.hell && (o.knock || t.hp <= 0) && dmg >= 40 && !CALM) slowmo = Math.max(slowmo, 12);
+  if (o.hell && (o.knock || t.hp <= 0) && dmg >= 40 && !calmSim()) slowmo = Math.max(slowmo, 12);
   if (dmg >= 18) shake = Math.max(shake, Math.min(6, dmg / 12));
   t.flash = 6; if (dmg >= 35) stamp(t);
   if (o.eff) status(t, o.eff, o.dur || 60, src);

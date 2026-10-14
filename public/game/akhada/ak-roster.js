@@ -297,7 +297,7 @@ const ROSTER = {
         } },
       H2: { name: "Hundred Hoods", hell: true, mp: 350, len: 120, beats: beatsAt(40, 60, 80), pose: "p7",
         tick: (f, t) => {
-          if (t >= 10 && t <= 96 && t % 4 === 2) { const tg = pick(foesOf(f)); if (tg) strike(f, tg.x + rand(-40, 40), clamp(tg.y + rand(-10, 10), stage.y0, Y1), { delay: 14, hold: 8, rx: 10, top: 20, dmg: 16, eff: "poison", dur: 100, hell: true, draw: riseDraw("cobraBig", 0.42, true), flip: Math.random() < 0.5, warnCol: "rgba(120,255,120,0.8)" }); }
+          if (t >= 10 && t <= 96 && t % 4 === 2) { const tg = pick(foesOf(f)); if (tg) strike(f, tg.x + rand(-40, 40), clamp(tg.y + rand(-10, 10), stage.y0, Y1), { delay: 14, hold: 8, rx: 10, top: 20, dmg: 16, eff: "poison", dur: 100, hell: true, draw: riseDraw("cobraBig", 0.42, true), flip: rnd() < 0.5, warnCol: "rgba(120,255,120,0.8)" }); }
           if (t === 104) { const tg = nearest(f); if (tg) strike(f, tg.x, tg.y, { delay: 6, hold: 14, rx: 18, top: 40, dmg: 50, knock: true, kz: 6, hell: true, draw: riseDraw("cobraBig", 0.9, true) }); }
         } }
     } },
@@ -336,8 +336,8 @@ const ROSTER = {
         }, drawFx: (f, t) => { if (t < 60) fxDraw("burst", f.x - cam + f.face * 24, f.y - f.z - 34, { sc: 0.1 + t / 60 * 0.25 }); } },
       H2: { name: "Narayanastra", hell: true, mp: 350, len: 140, beats: beatsAt(40, 70, 100), pose: "p3",
         tick: (f, t) => {
-          if (t === 2) { tint = { col: "rgba(60,40,0,0.35)", t: 130 }; sayAt(f.x, 70, "Lay down your arms", "#ffe9a8", true); }
-          if (t >= 20 && t <= 128 && t % 3 === 0) { const tg = pick(foesOf(f)); if (tg) { const w = pick(["chakra", "spear", "gada"]); strike(f, tg.x + rand(-30, 30), clamp(tg.y + rand(-8, 8), stage.y0, Y1), { delay: 14, hold: 3, rx: 8, dmg: 12, spareBlock: true, hell: true, draw: fallDraw(w, w === "chakra" ? 0.9 : 0.8, 0) }); } }
+          if (t === 2) { tint = { col: "rgba(60,40,0,0.35)", t: 130 }; sayAt(f.x, 70, "Narayanastra", "#ffe9a8", true); }
+          if (t >= 20 && t <= 128 && t % 3 === 0) { const tg = pick(foesOf(f)); if (tg) { const w = pick(["chakra", "spear", "gada"]); strike(f, tg.x + rand(-30, 30), clamp(tg.y + rand(-8, 8), stage.y0, Y1), { delay: 14, hold: 3, rx: 8, dmg: 12, hell: true, draw: fallDraw(w, w === "chakra" ? 0.9 : 0.8, 0) }); } }
         } }
     } },
 
@@ -399,7 +399,7 @@ const ROSTER = {
         pose: (f, t) => t < 20 ? "p7" : t < 94 ? "p3" : t < 130 ? (t % 8 < 4 ? "x3" : "x1") : "x2",
         tick: (f, t) => {
           if (t === 10) S.power();
-          if (t >= 20 && t <= 90 && t % 7 === 6) { const tg = pick(foesOf(f)); if (tg) { const side = Math.random() < 0.5 ? -1 : 1; const p = shoot(f, { obj: pick(["demon1", "demon2"]), sc: 0.85, spd: 3.4, dir: -side, z: 30, vz: 3, grav: 0.1, dx: 0, dmg: 18, knock: t > 80, w: 14, h: 30, objDy: 0, hell: true, life: 90, draw: ghostDraw }); p.x = tg.x + side * 90; p.y = tg.y; p.onLand = (p) => { dust(p.x, p.y, 4); zone(f, { x: p.x, y: p.y, life: 4, rx: 16, ry: 12, ground: true, dmg: 14, hell: true }); }; } }
+          if (t >= 20 && t <= 90 && t % 7 === 6) { const tg = pick(foesOf(f)); if (tg) { const side = rnd() < 0.5 ? -1 : 1; const p = shoot(f, { obj: pick(["demon1", "demon2"]), sc: 0.85, spd: 3.4, dir: -side, z: 30, vz: 3, grav: 0.1, dx: 0, dmg: 18, knock: t > 80, w: 14, h: 30, objDy: 0, hell: true, life: 90, draw: ghostDraw }); p.x = tg.x + side * 90; p.y = tg.y; p.onLand = (p) => { dust(p.x, p.y, 4); zone(f, { x: p.x, y: p.y, life: 4, rx: 16, ry: 12, ground: true, dmg: 14, hell: true }); }; } }
           if (t >= 94 && t < 130) { const tg = nearest(f); if (tg) { f.x += Math.sign(tg.x - f.x) * 3; f.y = lerp(f.y, tg.y, 0.08); } if (t % 3 === 0) f.face = -f.face; if (t % 6 === 0) for (const o of foesOf(f)) if (Math.hypot(o.x - f.x, (o.y - f.y) * 2.4) < 48) hitT(f, o, 16, { hell: true }); }
           if (t === 132) { shake = 10; S.boom(); rocks(f.x + f.face * 30, f.y, 8); explode(f.x + f.face * 30, f.y, 8, 0.8); for (const o of foesOf(f)) if (Math.abs(o.x - (f.x + f.face * 30)) < 50 && Math.abs(o.y - f.y) < 20) hitT(f, o, 50, { hell: true, knock: true, kz: 6 }); }
         }, drawFx: (f, t) => { if (t >= 6 && t < 96) fxDraw("vortex", f.x - cam - f.face * 20, f.y - 50, { sc: Math.min(1, (t - 6) / 20) * 0.8, rot: t * 0.05, a: 0.85 }); } },

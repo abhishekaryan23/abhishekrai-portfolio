@@ -2,6 +2,19 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
+    // Akhada online (beta): each player opens a WebSocket to /api/akhada/room/CODE and one
+    // Durable Object per room code relays their button presses to each other. Returned
+    // as-is: a WebSocket upgrade response cannot be rebuilt with new headers.
+    const room = url.pathname.match(/^\/api\/akhada\/room\/([A-Z0-9]{4,8})$/);
+    if (room) {
+      const origin = request.headers.get("Origin");
+      let host = null;
+      try { host = origin ? new URL(origin).host : url.host; } catch (e) { /* malformed Origin */ }
+      if (host !== url.host) return new Response("Forbidden", { status: 403 });
+      if ((request.headers.get("Upgrade") || "").toLowerCase() !== "websocket" || !env.AKHADA_ROOMS) return new Response("Expected a WebSocket", { status: 426 });
+      return env.AKHADA_ROOMS.get(env.AKHADA_ROOMS.idFromName(room[1])).fetch(request);
+    }
+
     // Fetch static asset or API route response
     let response;
     if (url.pathname === "/functions/submit-contact" && request.method === "POST") {
@@ -351,4 +364,41 @@ async function handleGhostPost(request, env) {
     console.error("Ghost submit error:", err.message);
     return jsonResponse({ stored: false, reason: "server-error" }, 500);
   }
+}
+
+/* Akhada online room: two players at most. The first is the host (side 0); a second "join"
+   gets side 1. Messages are small JSON strings passed straight to the other player. Uses the
+   WebSocket hibernation API, so an idle room costs nothing. A connection that is turned away
+   is never added to the room, so it cannot disturb the two players. Each socket may send at
+   most 150 messages a second (a fair game sends about 30); faster than that is closed. */
+export class AkhadaRoom {
+  constructor(ctx, env) { this.ctx = ctx; this.rate = new Map(); }
+  async fetch(request) {
+    const role = new URL(request.url).searchParams.get("role");
+    const open = this.ctx.getWebSockets();
+    const [client, server] = Object.values(new WebSocketPair());
+    let reject = 0;
+    if (open.length >= 2 || (role === "create" && open.length > 0)) reject = 4409;
+    else if (role === "join" && open.length === 0) reject = 4404;
+    if (reject) {
+      server.accept(); server.close(reject, reject === 4404 ? "no such room" : "room full");
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    this.ctx.acceptWebSocket(server);
+    const side = open.length === 0 ? 0 : 1 - ((open[0].deserializeAttachment() || {}).side || 0);
+    server.serializeAttachment({ side });
+    server.send(JSON.stringify({ type: "hello", side }));
+    if (open.length === 1) { open[0].send(JSON.stringify({ type: "peer" })); server.send(JSON.stringify({ type: "peer" })); }
+    return new Response(null, { status: 101, webSocket: client });
+  }
+  webSocketMessage(ws, msg) {
+    if (typeof msg !== "string" || msg.length > 4096) return;
+    const now = Date.now(), r = this.rate.get(ws);
+    if (!r || now - r.at >= 1000) this.rate.set(ws, { at: now, n: 1 });
+    else if (++r.n > 150) { this.rate.delete(ws); try { ws.close(4429, "too many messages"); } catch (e) { /* gone */ } return; }
+    for (const o of this.ctx.getWebSockets()) if (o !== ws) try { o.send(msg); } catch (e) { /* gone */ }
+  }
+  webSocketClose(ws) { this.leave(ws); try { ws.close(1000, "bye"); } catch (e) { /* already closed */ } }
+  webSocketError(ws) { this.leave(ws); }
+  leave(ws) { this.rate.delete(ws); for (const o of this.ctx.getWebSockets()) if (o !== ws) try { o.send(JSON.stringify({ type: "left" })); } catch (e) { /* gone */ } }
 }

@@ -17,3 +17,13 @@ not_found_handling = "404-page"
 # binding = "PORTFOLIO_KV"
 # id = "<your-namespace-id>"
 # (If PORTFOLIO_KV is already bound in the Cloudflare dashboard, no change needed.)
+
+# --- Akhada online versus (beta): one Durable Object per room code relays two players ---
+# SQLite-backed Durable Objects are available on the Workers Free plan.
+[[durable_objects.bindings]]
+name = "AKHADA_ROOMS"
+class_name = "AkhadaRoom"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["AkhadaRoom"]

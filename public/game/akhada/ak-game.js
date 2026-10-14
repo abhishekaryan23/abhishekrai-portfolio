@@ -22,17 +22,21 @@ const canAwaken = (f) => f.train || ((f.d.legend || f.d.hidden) && !f.fair) || f
 
 /* ---------- input ---------- */
 const BIND = [
-  { up: ["KeyW"], down: ["KeyS"], left: ["KeyA"], right: ["KeyD"], A: ["KeyJ"], J: ["KeyK"], D: ["KeyL"], run: ["StickDash"], VS: ["VSpecial"], VP: ["VPower"], VH: ["VHell"], charge: ["VCharge"] },
-  { up: ["ArrowUp"], down: ["ArrowDown"], left: ["ArrowLeft"], right: ["ArrowRight"], A: ["Digit1", "Numpad1", "Comma"], J: ["Digit2", "Numpad2", "Period"], D: ["Digit3", "Numpad3", "Slash"], run: [], VS: [], VP: [], VH: [], charge: [] }
+  { up: ["KeyW"], down: ["KeyS"], left: ["KeyA"], right: ["KeyD"], A: ["KeyJ"], J: ["KeyK"], D: ["KeyL"], run: ["StickDash"], charge: ["VCharge"] },
+  { up: ["ArrowUp"], down: ["ArrowDown"], left: ["ArrowLeft"], right: ["ArrowRight"], A: ["Digit1", "Numpad1", "Comma"], J: ["Digit2", "Numpad2", "Period"], D: ["Digit3", "Numpad3", "Slash"], run: [], charge: [] }
 ];
 const keysDown = new Set();
 function keyOf(code) { for (let i = 0; i < 2; i++) for (const [a, list] of Object.entries(BIND[i])) if (list.includes(code)) return [i, a]; return null; }
 const heldK = (i, a) => BIND[i][a].some((c) => keysDown.has(c));
 const human = (i) => fighters.find((f) => f.ctrl === "p" + i);
 function onDown(code) {
-  if (code === "KeyP" || code === "Escape") { if (["fight", "intro", "ko"].includes(state)) togglePause(); return; }
+  if (code === "KeyP" || code === "Escape") {
+    if (state === "loading" && match && match.online && code === "Escape" && typeof netLost === "function") { netSend({ k: "abort" }); netLost("You left before the fight started."); return; }
+    if (["fight", "intro", "ko"].includes(state) && !NETON) togglePause(); return;
+  }
   const k = keyOf(code); if (!k) return;
   keysDown.add(code);
+  if (NETON) { netPress(k[1]); return; }   // online: the press travels with this tick's input
   const f = human(k[0]); if (f && !paused && !cine && countdown <= 0) f.evq.push(k[1]);
 }
 function onUp(code) { keysDown.delete(code); }
@@ -42,7 +46,7 @@ addEventListener("keydown", (e) => {
   onDown(e.code);
 });
 addEventListener("keyup", (e) => onUp(e.code));
-const autoPause = () => { keysDown.clear(); if (["fight", "intro", "ko"].includes(state) && !paused) togglePause(); };
+const autoPause = () => { keysDown.clear(); if (["fight", "intro", "ko"].includes(state) && !paused && !NETON) togglePause(); };
 addEventListener("blur", autoPause); addEventListener("pagehide", autoPause);
 document.addEventListener("visibilitychange", () => { if (document.hidden) autoPause(); });
 Arcade.bindPad(onDown, onUp);
@@ -65,10 +69,21 @@ function togglePause() {
 
 // the last few presses, for Defend + direction + Attack/Jump sequences
 function pushSeq(f, k, dir) { f.seq.push({ k, dir, t: tick }); if (f.seq.length > 6) f.seq.shift(); }
+const SEQ_GAP = 30;   // ticks allowed between the presses of a sequence
 function seqTail(f) {
-  const s = f.seq, n = s.length; if (n < 2) return null;
-  const a = s[n - 2], b = s[n - 1];
-  if (a.k !== "D" || !["H", "U", "N"].includes(b.k) || b.t - a.t > 26 || tick - b.t > 26) return null;
+  const s = f.seq, n = s.length; if (!n) return null;
+  const last = s[n - 1];
+  // on a touch screen, Defend then a direction already held on the stick counts too
+  if (last.k === "D" && f.touchInput && tick - last.t <= SEQ_GAP) {
+    const h = f.hold, dir = Math.sign(h.mx);
+    if (h.my < 0) return { k: "U", dir: 0, t: tick };
+    if (h.my > 0) return { k: "N", dir: 0, t: tick };
+    if (dir) return { k: "H", dir, t: tick };
+    return null;
+  }
+  if (n < 2) return null;
+  const a = s[n - 2], b = last;
+  if (a.k !== "D" || !["H", "U", "N"].includes(b.k) || b.t - a.t > SEQ_GAP || tick - b.t > SEQ_GAP) return null;
   return b;
 }
 function handle(f, ev) {
@@ -89,7 +104,7 @@ function handle(f, ev) {
     return;
   }
   if (ev === "A" || ev === "J") {
-    if (f.ctrl[0] === "p" && heldK(+f.ctrl[1], "A") && heldK(+f.ctrl[1], "J") && heldK(+f.ctrl[1], "D")) { f.pend = null; f.seq = []; return; }
+    if (f.ctrl[0] === "p" && f.hold.chord) { f.pend = null; f.seq = []; return; }
     if (f.pend && ev === "A") { const p = f.pend; f.pend = null; f.seq = []; doMove(f, p.code === "DFJ" ? "H1" : "H2", p.dir); return; }
     const b = seqTail(f);
     if (b) {
@@ -101,11 +116,6 @@ function handle(f, ev) {
     if (ev === "A") attack(f); else jump(f);
     return;
   }
-  // touch shortcuts: Special / Power / Hell + the stick's direction
-  const up = f.hold.my < 0, dn = f.hold.my > 0, side = Math.sign(f.hold.mx) || 0;
-  if (ev === "VS") doMove(f, up ? "DUA" : dn ? "DDA" : "DFA", side);
-  if (ev === "VP") doMove(f, dn ? "DDJ" : "DFJ", side);
-  if (ev === "VH") doMove(f, up ? "H2" : "H1", side);
 }
 const ESCAPE = 100;
 const WALL = 40;   // this close to the arena's edge counts as cornered
@@ -181,7 +191,7 @@ function endMove(f) {
   if (f.code === "H2") {
     const key = f.uid + ":" + f.hellId;
     for (const t of fighters) if (t.team !== f.team && t.hellBy && t.hellBy[key] != null && alive(t)) {
-      const cap = Math.round(t.maxHp * AWAKEN_SHARE), left = cap - t.hellBy[key];
+      const cap = Math.round(t.maxHp * AWAKEN_SHARE * (t.hellClean && t.hellClean[key] ? 1 : 0.5)), left = cap - t.hellBy[key];   // blocked all the way: half
       if (left > 0) { t.hellBy[key] = cap; t.hp = Math.max(t.dummy ? 1 : 0, t.hp - left); t.lastHit = tick; t.flash = 8; pop(t, "-" + left, "#ffd36a", true); burst(t.x, t.y, t.z + 30, "#ffd36a", 12); S.heavy(); if (t.hp <= 0 || !grounded(t)) knockdown(t, -t.face * 2, 4); }
     }
   }
@@ -316,21 +326,21 @@ function aiThink(f) {
   const A = f.ai, P0 = AIP[A.lvl], P = f.fx.blind ? Object.assign({}, P0, { react: P0.react * 3, block: P0.block * 0.5, dodge: P0.dodge * 0.5 }) : P0, tg = nearest(f);
   f.hold.mx = 0; f.hold.my = 0;
   if (!tg) { f.hold.D = false; return; }
-  if (f.st === "move" && f.mv && f.mv.hell) { if (f.beatOpen && tick <= f.beatOpen && Math.random() < P.beat / 3) f.evq.push("A"); return; }
+  if (f.st === "move" && f.mv && f.mv.hell) { if (f.beatOpen && tick <= f.beatOpen && rnd() < P.beat / 3) f.evq.push("A"); return; }
   if (A.blockT > 0) { A.blockT--; f.hold.D = true; return; }
   f.hold.D = false; f.hold.charge = false;
   if (A.dodgeT > 0) { A.dodgeT--; f.hold.my = A.dodgeDir; if (f.st === "idle" || f.st === "walk") return; }
   const dx = tg.x - f.x, adx = Math.abs(dx), dy = tg.y - f.y, ady = Math.abs(dy), dir = Math.sign(dx) || f.face;
-  if (f.st === "hurt" && f.stag >= 2 && f.mp >= ESCAPE + 60 && Math.random() < P.escape) { f.evq.push("D"); return; }
+  if (f.st === "hurt" && f.stag >= 2 && f.mp >= ESCAPE + 60 && rnd() < P.escape) { f.evq.push("D"); return; }
   if (f.st === "charge") { const safe = adx > 110 && !objs.some((p) => p.kind === "shot" && p.team !== f.team && Math.abs(p.x - f.x) < 140); f.hold.charge = safe && A.chargeT-- > 0; return; }
-  if (f.st === "air") { if (!f.airAtk && adx < 36 && ady < 12 && Math.random() < 0.35) f.evq.push("A"); return; }
+  if (f.st === "air") { if (!f.airAtk && adx < 36 && ady < 12 && rnd() < 0.35) f.evq.push("A"); return; }
   if (f.st === "move" && f.code && f.code[0] === "A") {   // keep a basic string going, then cancel into a special
-    if (f.hitSet.size && f.t >= f.mv.hit.to) { if (f.atkN < 2) f.evq.push("A"); else if (f.mp >= 160 && (f.mp < 220 || f.mp >= f.d.moves.H1.mp + 110) && Math.random() < P.aggr * 0.5) doMove(f, pick(["DFA", "DDA", "DUA"]), dir); }
+    if (f.hitSet.size && f.t >= f.mv.hit.to) { if (f.atkN < 2) f.evq.push("A"); else if (f.mp >= 160 && (f.mp < 220 || f.mp >= f.d.moves.H1.mp + 110) && rnd() < P.aggr * 0.5) doMove(f, pick(["DFA", "DDA", "DUA"]), dir); }
     return;
   }
-  if (f.st === "move" && f.cancel > 0 && f.mp >= f.d.moves.H1.mp && Math.random() < P.aggr * 0.5) { doMove(f, f.mp >= f.d.moves.H2.mp && canAwaken(f) ? "H2" : "H1", dir); return; }
+  if (f.st === "move" && f.cancel > 0 && f.mp >= f.d.moves.H1.mp && rnd() < P.aggr * 0.5) { doMove(f, f.mp >= f.d.moves.H2.mp && canAwaken(f) ? "H2" : "H1", dir); return; }
   if (!canAct(f)) return;
-  if (Math.random() < P.pause) { A.idle = 20; }
+  if (rnd() < P.pause) { A.idle = 20; }
   if (A.idle > 0) { A.idle--; return; }
 
   // defence: incoming shots
@@ -340,11 +350,11 @@ function aiThink(f) {
     if (!toward || dist > 120 || Math.abs(p.y - f.y) > 14 || p.z > f.z + bodyH(f) + 10) continue;
     if (!A.seen.has(p)) A.seen.set(p, tick);
     if (tick - A.seen.get(p) === P.react) {
-      const r = Math.random();
+      const r = rnd();
       if (r < P.dodge * 0.5) { A.dodgeT = 16; A.dodgeDir = f.y < (stage.y0 + Y1) / 2 ? 1 : -1; f.hold.my = A.dodgeDir; return; }
       if (r < P.dodge) { f.evq.push("J"); return; }
       if (r < P.dodge + (1 - P.dodge) * P.block) { A.blockT = 22; f.hold.D = true; f.evq.push("D"); return; }
-      if (f.mp >= f.d.moves.DFA.mp + 60 && Math.random() < 0.5) { doMove(f, "DFA", -Math.sign(p.vx)); return; }
+      if (f.mp >= f.d.moves.DFA.mp + 60 && rnd() < 0.5) { doMove(f, "DFA", -Math.sign(p.vx)); return; }
     }
   }
   if (A.seen.size > 40) A.seen.clear();
@@ -352,37 +362,36 @@ function aiThink(f) {
   if (tg.st === "move" && tg.mvStart !== A.seenMove && tick - tg.mvStart >= P.react) {
     A.seenMove = tg.mvStart;
     const hell = tg.mv && tg.mv.hell;
-    if (hell && tg.code === "H2" && tg.id === "ashwatthama") { A.blockT = 140; f.hold.D = true; f.evq.push("D"); return; }
-    if ((hell || (adx < 80 && ady < 16)) && Math.random() < P.block) { A.blockT = hell ? 60 : 20; f.hold.D = true; f.evq.push("D"); return; }
+    if ((hell || (adx < 80 && ady < 16)) && rnd() < P.block) { A.blockT = hell ? 60 : 20; f.hold.D = true; f.evq.push("D"); return; }
   }
   // offence
   const saving = A.lvl >= 1 && f.mp >= 220 && f.mp < f.d.moves.H1.mp;   // close to a Hell move: keep the chakra
   const h1 = f.mp >= f.d.moves.H1.mp, h2 = f.mp >= f.d.moves.H2.mp && canAwaken(f), opening = tg.st === "hurt" || tg.fx.stun || tg.fx.marma || tg.fx.frozen || tg.fx.stopped;
-  if ((h2 || h1) && (opening || adx < 150) && !["down", "getup", "fall"].includes(tg.st) && Math.random() < P.hell * (opening ? 6 : 1)) { faceTo(f, tg); if (doMove(f, h2 ? "H2" : "H1", dir)) return; }
-  if (tg.z > 18 && adx < 54 && ady < 14 && Math.random() < 0.25 * P.aggr) { if (f.mp >= f.d.moves.DUA.mp + 100 && doMove(f, "DUA", dir)) return; f.evq.push("J"); return; }
+  if ((h2 || h1) && (opening || adx < 150) && !["down", "getup", "fall"].includes(tg.st) && rnd() < P.hell * (opening ? 6 : 1)) { faceTo(f, tg); if (doMove(f, h2 ? "H2" : "H1", dir)) return; }
+  if (tg.z > 18 && adx < 54 && ady < 14 && rnd() < 0.25 * P.aggr) { if (f.mp >= f.d.moves.DUA.mp + 100 && doMove(f, "DUA", dir)) return; f.evq.push("J"); return; }
   // charge chakra when the foe is far away or down, and stop when they come close
   const tgDown = ["down", "getup", "fall"].includes(tg.st) || tg.st === "charge";
-  if (!h1 && (adx > 120 || (tgDown && adx > 60)) && Math.random() < P.charge * (saving ? 3 : 1)) { A.chargeT = Math.floor(rand(50, 120)); f.hold.charge = true; return; }
+  if (!h1 && (adx > 120 || (tgDown && adx > 60)) && rnd() < P.charge * (saving ? 3 : 1)) { A.chargeT = Math.floor(rand(50, 120)); f.hold.charge = true; return; }
   const lowHp = f.hp < f.maxHp * 0.25 && tg.mp >= 250 && A.lvl === 2;
   if (adx > 110) {
-    if (!saving && ady < 10 && f.mp >= f.d.moves.DFA.mp + 80 && Math.random() < P.spec * 2) { if (doMove(f, "DFA", dir)) return; }
-    if (!Object.keys(f.buff).some((k) => f.buff[k] > 0) && f.mp > 320 && Math.random() < P.spec * 0.3) { if (doMove(f, "DDJ", dir)) return; }
-    if (adx > 200 && f.st !== "run" && Math.random() < 0.03 * P.aggr) { startRun(f, dir); A.keepRun = true; return; }
-    if (f.st === "run") { if (adx < 70 || ady > 30) { setSt(f, "idle"); f.run = 0; A.keepRun = false; } else { f.hold.mx = dir; f.hold.my = Math.sign(dy) * (ady > 4 ? 1 : 0); if (adx < 90 && Math.random() < 0.15) f.evq.push(Math.random() < 0.5 ? "A" : "J"); return; } }
+    if (!saving && ady < 10 && f.mp >= f.d.moves.DFA.mp + 80 && rnd() < P.spec * 2) { if (doMove(f, "DFA", dir)) return; }
+    if (!Object.keys(f.buff).some((k) => f.buff[k] > 0) && f.mp > 320 && rnd() < P.spec * 0.3) { if (doMove(f, "DDJ", dir)) return; }
+    if (adx > 200 && f.st !== "run" && rnd() < 0.03 * P.aggr) { startRun(f, dir); A.keepRun = true; return; }
+    if (f.st === "run") { if (adx < 70 || ady > 30) { setSt(f, "idle"); f.run = 0; A.keepRun = false; } else { f.hold.mx = dir; f.hold.my = Math.sign(dy) * (ady > 4 ? 1 : 0); if (adx < 90 && rnd() < 0.15) f.evq.push(rnd() < 0.5 ? "A" : "J"); return; } }
     f.hold.mx = lowHp ? 0 : dir; f.hold.my = ady > 3 ? Math.sign(dy) : 0; return;
   }
   if (adx > 38) {
-    if (!saving && ady < 12 && f.mp >= 220 && Math.random() < P.spec) { if (doMove(f, pick(["DFJ", "DDA", "DFA"]), dir)) return; }
-    if (Math.random() < 0.012 * P.aggr && ady < 10) { f.hold.mx = dir; jump(f); return; }
-    f.hold.mx = lowHp && Math.random() < 0.5 ? -dir : dir; f.hold.my = ady > 3 ? Math.sign(dy) : 0; return;
+    if (!saving && ady < 12 && f.mp >= 220 && rnd() < P.spec) { if (doMove(f, pick(["DFJ", "DDA", "DFA"]), dir)) return; }
+    if (rnd() < 0.012 * P.aggr && ady < 10) { f.hold.mx = dir; jump(f); return; }
+    f.hold.mx = lowHp && rnd() < 0.5 ? -dir : dir; f.hold.my = ady > 3 ? Math.sign(dy) : 0; return;
   }
   // close
   faceTo(f, tg);
   if (ady > 5) { f.hold.my = Math.sign(dy); return; }
   if (adx < 14) { f.hold.mx = -dir; return; }
   const punish = tg.st === "move" && tg.mv && tg.mv.len && tg.t > tg.mv.len - 14;
-  if (tg.st === "block" && A.lvl >= 1 && Math.random() < 0.06) { if (f.mp >= 240 && doMove(f, pick(["DDA", "DUA"]), dir)) return; }
-  if (punish || tick >= A.nextA) { A.nextA = tick + (A.lvl === 2 ? 8 : 14) + Math.floor(rand(0, 8)); if (Math.random() < P.aggr) f.evq.push("A"); }
+  if (tg.st === "block" && A.lvl >= 1 && rnd() < 0.06) { if (f.mp >= 240 && doMove(f, pick(["DDA", "DUA"]), dir)) return; }
+  if (punish || tick >= A.nextA) { A.nextA = tick + (A.lvl === 2 ? 8 : 14) + Math.floor(rand(0, 8)); if (rnd() < P.aggr) f.evq.push("A"); }
 }
 
 /* ---------- match flow ---------- */
@@ -426,6 +435,7 @@ function startRound() {
     const f = makeFighter(s.id, s.team, s.ctrl, AW / 2 + (s.team === 0 ? -80 - k * 14 : 80 + k * 14), y);
     if (s.hpK) { f.hp = f.maxHp = f.lag = Math.round(f.d.hp * s.hpK); }
     if (match.mode === "training") { f.train = true; f.dummy = true; f.mp = 500; }
+    if (match.online) f.net = true;   // every round of an online match is driven by the exchanged inputs
     f.fair = !!match.fair;
     if (f.fair) {   // fair fight: the same health for everyone; a bigger body is easier to hit, so it takes a little less
       f.hp = f.maxHp = f.lag = 500;
@@ -442,6 +452,7 @@ function startRound() {
 }
 const stats = { t0: 0 };
 function teamAlive(team) { return fighters.some((f) => f.team === team && alive(f)); }
+function roundOver(w) { if (NETON) netRoundOver(w); else endRound(w); }
 function endRound(winner) {
   state = "ko"; koT = 0; slowmo = 50;
   if (winner >= 0) wins[winner]++;
@@ -479,6 +490,7 @@ function matchOver(w) {
       next = "Play again";
     } else { note = "Fight " + (m.step + 1) + " of " + m.ladder.length + ". The ladder waits."; next = "Try again"; }
   } else next = "Rematch";
+  if (m.online) { netMatchOver(w); return; }
   $("end-title").textContent = title;
   $("end-result").textContent = fighters.filter((f) => f.team === 0).map((f) => f.d.name).join(" and ") + " vs " + fighters.filter((f) => f.team === 1).map((f) => f.d.name).join(" and ");
   $("end-note").textContent = (note ? note + " " : "") + "Best combo " + best + " hits" + (hells ? ", " + hells + " Hell move" + (hells > 1 ? "s" : "") : "") + ".";
@@ -486,6 +498,7 @@ function matchOver(w) {
   $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
 }
 $("continue").addEventListener("click", () => {
+  if ($("continue").dataset.online) { if (typeof netStart === "function" && NET.peer && NET.side === 0) { $("card-end").hidden = true; netStart(); } return; }
   if ($("continue").dataset.resume) { delete $("continue").dataset.resume; if (paused) togglePause(); return; }
   const m = match;
   if (m.mode === "arcade") {
@@ -493,19 +506,20 @@ $("continue").addEventListener("click", () => {
   }
   $("card-end").hidden = true; startMatch(m);
 });
-$("again").addEventListener("click", () => { delete $("continue").dataset.resume; paused = false; $("card-end").hidden = true; $("card-menu").hidden = false; state = "menu"; demo(); const b = document.querySelector(".pad .pause-btn"); if (b) b.textContent = "Pause"; });
+$("again").addEventListener("click", () => { delete $("continue").dataset.resume; delete $("continue").dataset.online; $("continue").disabled = false; $("again").textContent = "Back to select"; NETON = false; if (typeof NET !== "undefined") NET.started = false; paused = false; $("card-end").hidden = true; $("card-menu").hidden = false; state = "menu"; demo(); const b = document.querySelector(".pad .pause-btn"); if (b) b.textContent = "Pause"; });
 
 function update() {
   tick++;
   if (state === "loading") {
     loadT++;
+    if (match.online) { netLoading(); return; }
     if ((artReady(match.list.map((s) => s.id)) && (IMG["st_" + stage.id] || failed.has("st_" + stage.id))) || loadT > 600) startRound();
     return;
   }
   if (state === "menu" || state === "over") { ambient(); for (const f of fighters) { f.walkPh += 0.02; } return; }
   if (paused) return;
   if (countdown > 0) { countdown--; return; }
-  ambient();
+  drawing++; ambient(); drawing--;
   if (state === "intro") { if (++introT >= 110) { state = "fight"; bossOpener(); } tickWorld(true); return; }
   if (cine) { if (++cine.t >= cine.len) { cine = null; for (const f of fighters) f.evq = []; } return; }
   if (hitstop > 0) { hitstop--; return; }
@@ -513,12 +527,12 @@ function update() {
   tickWorld(false);
   if (state === "fight" && match.mode === "training") return;
   if (state === "fight") {
-    if (++fightTicks % 60 === 0 && --timer <= 0) {
+    if (++fightTicks % 60 === 0 && timer > 0 && --timer <= 0) {
       const pct = (t) => fighters.filter((f) => f.team === t).reduce((a, f) => a + f.hp / f.maxHp, 0);
-      endRound(pct(0) > pct(1) ? 0 : pct(1) > pct(0) ? 1 : -1); sayAt(cam + LW / 2, 90, "Time", "#fff", true); return;
+      roundOver(pct(0) > pct(1) ? 0 : pct(1) > pct(0) ? 1 : -1); if (!NETON) sayAt(cam + LW / 2, 90, "Time", "#fff", true); return;
     }
     const a0 = teamAlive(0), a1 = teamAlive(1);
-    if (!a0 || !a1) endRound(a0 ? 0 : a1 ? 1 : -1);
+    if (!a0 || !a1) roundOver(a0 ? 0 : a1 ? 1 : -1);
   } else if (state === "ko") {
     if (++koT === 90) for (const f of fighters) if (alive(f) && f.team === roundWinner && grounded(f) && !busy(f)) setSt(f, "win");
     if (koT > 200) afterRound();
@@ -550,11 +564,14 @@ function tickWorld(frozen) {
   if (live.length) { const lo = Math.min(...live.map((f) => f.x)), hi = Math.max(...live.map((f) => f.x)); cam = lerp(cam, clamp((lo + hi) / 2 - LW / 2, 0, AW - LW), 0.12); }
 }
 function readHuman(f) {
+  if (f.net) return netApply(f);   // online: both fighters are driven by the exchanged inputs
   const i = +f.ctrl[1], rev = f.fx.reverse ? -1 : 1;
   f.hold.mx = ((heldK(i, "right") ? 1 : 0) - (heldK(i, "left") ? 1 : 0)) * rev;
   f.hold.my = ((heldK(i, "down") ? 1 : 0) - (heldK(i, "up") ? 1 : 0)) * rev;
   f.hold.D = heldK(i, "D");
-  f.hold.charge = heldK(i, "charge") || (heldK(i, "A") && heldK(i, "J") && f.hold.D);
+  f.touchInput = TOUCH && !document.documentElement.classList.contains("kbd");
+  f.hold.chord = heldK(i, "A") && heldK(i, "J") && f.hold.D;
+  f.hold.charge = heldK(i, "charge") || f.hold.chord;
   if (heldK(i, "run") && f.st === "walk" && f.hold.mx) startRun(f, Math.sign(f.hold.mx));
 }
 
@@ -638,6 +655,17 @@ function drawFighter(f) {
   if (f.fx.mark > 0) fxDraw("sigil", x, y - bodyH(f) - 10, { sc: 0.18, rot: tick * 0.05, a: 0.9 });
   if (f.fx.marma > 0 || (f.fx.stun > 0 && f.st === "hurt")) for (let i = 0; i < 3; i++) { const a = tick * 0.12 + i * 2.1; g.fillStyle = f.fx.marma ? "#ffe9a8" : "#fff38a"; g.fillRect(x + Math.cos(a) * 8, y - bodyH(f) - 4 + Math.sin(a) * 2, 2, 2); }
   if (beat && f.ctrl[0] === "p") text("Attack!", x, y - bodyH(f) - 14, 8, "#ffd36a", "center", "IBM Plex Sans", true);
+  else if (f.ctrl[0] === "p" && alive(f)) comboTrail(f, x, y - bodyH(f) - 14);
+}
+// what the player has entered so far: D → A, D ↑ J …, fading out if they stop
+function comboTrail(f, x, y) {
+  const recent = f.seq.filter((s) => tick - s.t < 30), i = recent.map((s) => s.k).lastIndexOf("D");
+  if (i < 0 && !f.pend) return;
+  const parts = i < 0 ? [] : recent.slice(i).map((s) => s.k === "D" ? "D" : s.k === "U" ? "↑" : s.k === "N" ? "↓" : s.dir === f.face ? "→" : "←");
+  if (f.pend) parts.push("J");
+  if (!parts.length) return;
+  const age = i < 0 ? 0 : tick - recent[recent.length - 1].t;
+  g.save(); g.globalAlpha = Math.max(0.2, 1 - age / 30); text(parts.join(" ") + (parts.length < 3 ? " …" : ""), x, y, 7, "#bfe0ff", "center", "IBM Plex Mono", true); g.restore();
 }
 /* procedural life on top of the sprite frames. rot is a lean in radians toward the facing
    direction, dx a forward shift in game px, sx/sy a squash or stretch about the feet. */
@@ -708,7 +736,8 @@ function drawParts() {
     g.restore();
   }
 }
-function draw() {
+function draw() { drawing++; try { drawFrame(); } finally { drawing--; } }
+function drawFrame() {
   g.setTransform(SCALE, 0, 0, SCALE, 0, 0); g.imageSmoothingEnabled = false;
   g.fillStyle = "#14121a"; g.fillRect(0, 0, LW, LH);
   if (!stage) stage = STAGES[0];
@@ -734,7 +763,8 @@ function draw() {
   drawGrade();
   if (state !== "menu" && state !== "loading") drawHud();
   if (cine) drawCine();
-  if (state === "loading") { g.fillStyle = "rgba(10,8,14,0.6)"; g.fillRect(0, 0, LW, LH); text("Loading", LW / 2, LH / 2, 9, "#f7f4ee"); }
+  if (state === "loading") { g.fillStyle = "rgba(10,8,14,0.6)"; g.fillRect(0, 0, LW, LH); text(match && match.online ? "Loading, waiting for your opponent" : "Loading", LW / 2, LH / 2, 9, "#f7f4ee"); }
+  if (NETON) netDraw();
   if (state === "intro") {
     const k = introT;
     if (k < 70) text(match && match.mode === "training" ? "Training" : "Round " + round, LW / 2, LH / 2 - 10, 18, "#f7f4ee", "center", "Newsreader", true);
@@ -772,7 +802,7 @@ function drawHud() {
       const face = FACE_FR[f.id], fim = IMG.faces;
       g.fillStyle = "rgba(10,8,14,0.6)"; g.fillRect(left ? x0 : x0 - 18, y0, 18, 18);
       if (fim && face) { g.save(); g.imageSmoothingEnabled = true; if (!left) { g.translate(x0 - 18 + 18, y0); g.scale(-1, 1); g.drawImage(fim, face[0], face[1], face[2], face[3], 0, 0, 18, 18); } else g.drawImage(fim, face[0], face[1], face[2], face[3], x0, y0, 18, 18); g.restore(); }
-      text(f.d.name + (f.ctrl === "p0" ? "  P1" : f.ctrl === "p1" ? "  P2" : ""), left ? bx : bx + w, y0 + 2, 6.5, "#f7f4ee", left ? "left" : "right", "IBM Plex Sans", true);
+      text(f.d.name + (f.net ? (f.team === NET.side ? "  You" : "") : f.ctrl === "p0" ? "  P1" : f.ctrl === "p1" ? "  P2" : ""), left ? bx : bx + w, y0 + 2, 6.5, "#f7f4ee", left ? "left" : "right", "IBM Plex Sans", true);
       // HP with a lagging trail, then energy with the Hell marks
       g.fillStyle = "rgba(10,8,14,0.7)"; g.fillRect(bx - 1, y0 + 6, w + 2, 7);
       const hp = f.hp / f.maxHp, lag = f.lag / f.maxHp;
@@ -816,7 +846,7 @@ try { Object.assign(cfg, JSON.parse(localStorage.getItem("akhada:cfg") || "{}"))
 // settings saved by another version of the page are checked before use
 cfg.lvl = [0, 1, 2].includes(cfg.lvl) ? cfg.lvl : 2;
 cfg.stage = Number.isInteger(cfg.stage) && cfg.stage >= -1 && cfg.stage < STAGES.length ? cfg.stage : -1;
-if (!["arcade", "versus", "team", "training"].includes(cfg.mode)) cfg.mode = "arcade";
+if (!["arcade", "versus", "team", "training", "online"].includes(cfg.mode)) cfg.mode = "arcade";
 if (!["stand", "block", "cpu"].includes(cfg.dummy)) cfg.dummy = "stand";
 if (![1, 2].includes(cfg.players)) cfg.players = 1;
 cfg.fair = cfg.fair !== false; cfg.infinite = cfg.infinite !== false;
@@ -834,28 +864,111 @@ function chips(el, items, cur, onPick) {
     el.appendChild(b);
   }
 }
+/* the character select: a portrait grid with a 1P cursor and a 2P / CPU cursor, the two picks
+   large on either side. Mouse or touch: tap a portrait (tap a side panel to choose which side
+   you are picking). Keyboard: WASD or arrows move, J or Enter picks, L goes back; with two
+   players on the keyboard, player 2 uses the arrows and 1. */
+const SEL = { side: 1, cur: [-1, -1], locked: [false, false] };
+const online = () => cfg.mode === "online";
+const needsP2 = () => !online() && (cfg.mode !== "arcade" || cfg.players === 2);
+const twoKeys = () => cfg.players === 2 && ["versus", "team", "arcade"].includes(cfg.mode);
+const selPool = () => online() ? roster().filter((id) => !ROSTER[id].hidden) : roster();
+const selTiles = () => selPool().concat(needsP2() ? ["random"] : []);
+function side2Tag() { return online() ? "Friend" : cfg.mode === "training" ? "Dummy" : cfg.players === 2 ? "2P" : cfg.mode === "team" ? "Partner" : "CPU"; }
+function bigPortrait(el, id, flip) {
+  if (!id || id === "random" || !FACE_FR[id]) { el.style.backgroundImage = "none"; el.textContent = id === "random" ? "?" : ""; return; }
+  el.textContent = ""; el.style.backgroundImage = "";
+  el.style.backgroundPosition = (FACE_FR[id][0] / 64) / (ORDER.length - 1) * 100 + "% 0";
+}
+function sideInfo(n, id) {
+  bigPortrait($("big" + n), id);
+  const d = ROSTER[id];
+  $("name" + n).textContent = id === "random" ? "Random" : d ? d.name : "";
+  $("el" + n).textContent = id === "random" ? "Anyone" : d ? d.el + (d.legend ? " · Legend" : d.hidden ? " · Overkill" : "") : "";
+}
 function buildGrids() {
-  if (!roster().includes(cfg.p1)) cfg.p1 = "rai";
+  if (!roster().includes(cfg.p1) || (online() && ROSTER[cfg.p1].hidden)) cfg.p1 = "rai";
   if (cfg.p2 !== "random" && !roster().includes(cfg.p2)) cfg.p2 = "jatayu";
-  chips($("modes"), [["arcade", "Arcade"], ["versus", "Versus"], ["team", "Team battle"], ["training", "Training"]], cfg.mode, (v) => { cfg.mode = v; refresh(); });
+  chips($("modes"), [["arcade", "Arcade"], ["versus", "Versus"], ["team", "Team battle"], ["training", "Training"], ["online", "Online β"]], cfg.mode, (v) => { if (v !== "online" && typeof netClose === "function") netClose(); cfg.mode = v; SEL.side = 1; SEL.locked = [false, false]; SEL.cur = [-1, -1]; refresh(); });
   const training = cfg.mode === "training";
   chips($("dummy"), [["stand", "Stands still"], ["block", "Always blocks"], ["cpu", "Fights back"]], cfg.dummy, (v) => { cfg.dummy = v; refresh(); });
   chips($("chakra"), [[true, "Infinite chakra"], [false, "Charge it yourself"]], cfg.infinite, (v) => { cfg.infinite = v; refresh(); });
-  $("trainwrap").hidden = !training; $("players").hidden = training;
-  chips($("p1grid"), roster().map((id) => [id, ROSTER[id].name, id]), cfg.p1, (v) => { cfg.p1 = v; refresh(); });
-  chips($("p2grid"), roster().map((id) => [id, ROSTER[id].name, id]).concat([["random", "Random"]]), cfg.p2, (v) => { cfg.p2 = v; refresh(); });
+  $("trainwrap").hidden = !training; $("players").hidden = training || online();
   chips($("levels"), LEVELS.map((n, i) => [i, n]), cfg.lvl, (v) => { cfg.lvl = v; refresh(); });
   chips($("stages"), [[-1, "Random"]].concat(STAGES.map((s, i) => [i, s.name])), cfg.stage, (v) => { cfg.stage = v; refresh(); });
   chips($("rules"), [[true, "Fair fight"], [false, "Full power"]], cfg.fair, (v) => { cfg.fair = v; refresh(); });
-  $("rulewrap").hidden = cfg.mode === "arcade";
-  $("rulenote").textContent = cfg.fair ? "Everyone has the same health and power. Awakened moves wait for low health, and one Hell move can only do so much." : (unlockedHidden ? "Legends and the two who joined at the end" : "Legends") + " keep their extra health, power and Awakened moves at any health.";
+  if (typeof MUSIC !== "undefined") chips($("music"), [[true, "On"], [false, "Off"]], MUSIC.on, (v) => { setMusic(v); buildGrids(); });
+  $("levelwrap").hidden = online() || training && cfg.dummy !== "cpu" || (cfg.players === 2 && cfg.mode === "versus");
+  $("rulewrap").hidden = cfg.mode === "arcade" || online();
+  $("rulenote").textContent = online() ? "" : cfg.mode === "arcade" ? "Eight fights, then the last one. The final bosses fight at full power." : cfg.fair ? "Fair fight: everyone has the same health and power, Awakened moves wait for low health, and one Hell move can only do so much." : (unlockedHidden ? "Full power: Legends and the two who joined at the end" : "Full power: Legends") + " keep their extra health, power and Awakened moves at any health.";
   for (const b of document.querySelectorAll("#players [data-players]")) b.setAttribute("aria-pressed", String(+b.dataset.players === cfg.players));
-  $("p2label").textContent = training ? "Training dummy" : cfg.mode === "team" ? (cfg.players === 2 ? "Player 2" : "Your partner (CPU)") : cfg.players === 2 ? "Player 2" : "Opponent (CPU)";
-  $("p2wrap").hidden = cfg.mode === "arcade" && cfg.players === 1;
-  if (cfg.mode === "arcade" && cfg.players === 2) $("p2label").textContent = "Player 2";
   $("stagewrap").hidden = cfg.mode === "arcade";
+  // the grid
+  const tiles = selTiles(), grid = $("grid"); grid.innerHTML = "";
+  if (!needsP2()) SEL.side = 1;
+  // the cursors start on the current picks
+  if (SEL.cur[0] < 0 || SEL.cur[0] >= tiles.length) SEL.cur[0] = Math.max(0, tiles.indexOf(cfg.p1));
+  if (SEL.cur[1] < 0 || SEL.cur[1] >= tiles.length) SEL.cur[1] = Math.max(0, tiles.indexOf(cfg.p2));
+  tiles.forEach((id, i) => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "ak-tile" + (id === "random" ? " random" : "");
+    if (id !== "random") b.style.backgroundPosition = (FACE_FR[id][0] / 64) / (ORDER.length - 1) * 100 + "% 0"; else b.textContent = "?";
+    b.setAttribute("aria-label", id === "random" ? "Random" : ROSTER[id].name);
+    if (id === cfg.p1) b.classList.add("p1");
+    if (needsP2() && id === cfg.p2) b.classList.add("p2");
+    if (SEL.cur[0] === i && (SEL.side === 1 || twoKeys())) b.classList.add("cur1");
+    if (needsP2() && SEL.cur[1] === i && (SEL.side === 2 || twoKeys())) { b.classList.add("cur2"); b.dataset.t2 = side2Tag(); }
+    b.addEventListener("click", () => pickTile(i));
+    grid.appendChild(b);
+  });
+  sideInfo(1, cfg.p1);
+  const opp = online() ? (typeof NET !== "undefined" && NET.picks[1 - NET.side]) || null : cfg.p2;
+  sideInfo(2, opp || "random");
+  const mystery = (name, el) => { $("name2").textContent = name; $("el2").textContent = el; $("big2").textContent = "?"; $("big2").style.backgroundImage = "none"; };
+  if (online() && !opp) mystery("Your friend", "Picks on their screen");
+  if (cfg.mode === "arcade" && cfg.players === 1) mystery("9 challengers", "The Arcade ladder");
+  $("tag2").textContent = side2Tag();
+  $("side1").classList.toggle("active", SEL.side === 1 || twoKeys()); $("side2").classList.toggle("active", SEL.side === 2 || twoKeys());
+  $("selhint").textContent = online() ? "Pick your fighter. Your friend picks theirs." : twoKeys() ? "Player 1: WASD and J. Player 2: arrows and 1. Then Fight." : needsP2() ? (SEL.side === 1 ? "Pick your fighter (J or Enter), then the " + ({ CPU: "CPU fighter", Dummy: "dummy", Partner: "partner" }[side2Tag()] || "other fighter") + "." : "Now pick the " + (cfg.mode === "training" ? "dummy" : side2Tag() === "CPU" ? "CPU fighter" : side2Tag().toLowerCase()) + ". L goes back.") : "Pick your fighter, then Fight.";
+  $("start1").textContent = "Fight"; $("start1").disabled = false;
+  if (typeof netUi === "function") netUi();
   moveList();
 }
+function pickTile(i) {
+  const id = selTiles()[i]; if (!id) return;
+  if (SEL.side === 2 && needsP2()) { cfg.p2 = id; SEL.cur[1] = i; SEL.locked[1] = true; }
+  else if (id !== "random") {
+    cfg.p1 = id; SEL.cur[0] = i; SEL.locked[0] = true;
+    if (needsP2() && !twoKeys()) { SEL.side = 2; SEL.cur[1] = Math.max(0, selTiles().indexOf(cfg.p2)); }
+    if (online() && typeof netSend === "function") netSend({ k: "pick", id });
+  }
+  refresh();
+}
+$("side1").addEventListener("click", () => { SEL.side = 1; refresh(); });
+$("side2").addEventListener("click", () => { if (needsP2()) { SEL.side = 2; refresh(); } });
+// keyboard on the select screen (only while it is on screen, so arrow keys still scroll the page otherwise)
+function selVisible() { const r = $("card-menu").getBoundingClientRect(); return state === "menu" && !$("overlay").hidden && !$("card-menu").hidden && r.top < innerHeight * 0.75 && r.bottom > innerHeight * 0.25; }
+addEventListener("keydown", (e) => {
+  if (!selVisible() || /INPUT|TEXTAREA|SELECT/.test((document.activeElement || {}).tagName || "")) return;
+  const n = selTiles().length, cols = 7, mv = { KeyW: -cols, KeyS: cols, KeyA: -1, KeyD: 1, ArrowUp: -cols, ArrowDown: cols, ArrowLeft: -1, ArrowRight: 1 };
+  const wasd = /^Key[WASD]$/.test(e.code), arrows = /^Arrow/.test(e.code);
+  if (mv[e.code] != null) {
+    const s = twoKeys() ? (arrows ? 2 : 1) : SEL.side, k = s - 1;
+    if (twoKeys() || wasd || arrows) { SEL.cur[k] = (SEL.cur[k] + mv[e.code] + n) % n; e.preventDefault(); buildGrids(); }
+    return;
+  }
+  const ok1 = e.code === "KeyJ" || (e.code === "Enter" && !["BUTTON", "A", "SUMMARY"].includes((document.activeElement || {}).tagName));
+  const ok2 = twoKeys() && (e.code === "Digit1" || e.code === "Numpad1" || e.code === "Comma");
+  if (ok2) { e.preventDefault(); const sv = SEL.side; SEL.side = 2; pickTile(SEL.cur[1]); SEL.side = sv; return; }
+  if (ok1) {
+    e.preventDefault();
+    if (online()) { pickTile(SEL.cur[0]); if (!$("start1").disabled && e.code === "Enter") $("start1").click(); return; }
+    const done = needsP2() ? (twoKeys() ? SEL.locked[0] && SEL.locked[1] : SEL.side === 2 && SEL.locked[1] && selTiles()[SEL.cur[1]] === cfg.p2) : SEL.locked[0] && selTiles()[SEL.cur[0]] === cfg.p1;
+    if (done) { $("start1").click(); return; }
+    if (twoKeys()) { const sv = SEL.side; SEL.side = 1; pickTile(SEL.cur[0]); SEL.side = sv; } else pickTile(SEL.cur[SEL.side - 1]);
+    return;
+  }
+  if (e.code === "KeyL" || e.code === "Backspace") { if (SEL.side === 2 && !twoKeys()) { SEL.side = 1; SEL.locked[1] = false; buildGrids(); e.preventDefault(); } }
+});
 function refresh() { saveCfg(); buildGrids(); demo(); }
 for (const b of document.querySelectorAll("#players [data-players]")) b.addEventListener("click", () => { cfg.players = +b.dataset.players; refresh(); });
 function moveList() {
@@ -878,6 +991,7 @@ function newLadder(c) {
   return { ladder, stages: ladder.map((id, i) => BOSS_STAGE[id] != null ? BOSS_STAGE[id] : [0, 2, 1, 3][i % 4]), step: 0 };
 }
 $("start1").addEventListener("click", () => {
+  if (online()) { if (typeof netStart === "function") netStart(); return; }
   if (TOUCH && !Arcade.isFullscreen()) Arcade.enterFullscreen();
   const c = Object.assign({}, cfg);
   if (c.p2 === "random") c.p2 = pick(roster().filter((i) => i !== c.p1 && !ROSTER[i].hidden));
@@ -891,9 +1005,7 @@ $("start1").addEventListener("click", () => {
   startMatch(c);
 });
 addEventListener("keydown", (e) => {
-  if (e.code !== "Enter" || state !== "menu" || $("overlay").hidden || $("card-menu").hidden) return;
-  if (["BUTTON", "A", "INPUT", "SUMMARY"].includes((document.activeElement || {}).tagName)) return;
-  e.preventDefault(); $("start1").click();
+  if (e.code === "Enter" && state === "over" && !$("card-end").hidden && !$("continue").disabled && (document.activeElement || {}).tagName !== "BUTTON") { e.preventDefault(); $("continue").click(); }
 });
 // menu backdrop: the chosen stage with both fighters squaring up
 function demo() {
@@ -909,12 +1021,13 @@ let last = performance.now(), acc = 0;
 function loop(now) {
   acc += Math.min(100, now - last); last = now;
   try {
-    while (acc >= TICK) { update(); acc -= TICK; }
+    while (acc >= TICK) { if (NETON && !netStep()) { acc = Math.min(acc, TICK); break; } else if (!NETON) update(); acc -= TICK; }
     draw();
   } catch (e) { acc = 0; console.error(e); }
   requestAnimationFrame(loop);
 }
 Arcade.setupFullscreen((on) => {
+  if (NETON) return;   // an online fight runs in lockstep with the other player: no local pause
   if (!on && ["fight", "intro"].includes(state) && !paused) togglePause();
   if (on && ["fight", "intro"].includes(state) && !paused) countdown = 120;
 });
