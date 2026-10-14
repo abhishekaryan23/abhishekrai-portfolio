@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>try{var t=localStorage.getItem("site-theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}</script>
+  <title>Akhada: a 2.5D power fighter | AbhishekrAI.dev</title>
+  <meta name="description" content="Akhada: a 2.5D power fighter set across India. Twelve fighters from Indian streets and legend, NTSD-style combo specials, chakra charging and Hell move super combos. One player against a very hard CPU, two on one keyboard, or a training mode.">
+  <link rel="canonical" href="https://abhishekrai.dev/game/akhada/">
+  <meta name="theme-color" content="#a8186a">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 6L92 48L50 90L8 48Z' fill='none' stroke='%23a8186a' stroke-width='9'/%3E%3Cpath d='M50 30L68 48L50 66L32 48Z' fill='%23a8186a'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/assets/site.css?v=3">
+  <link rel="stylesheet" href="/game/style.css?v=23">
+  <link rel="stylesheet" href="/game/akhada/akhada.css?v=1">
+</head>
+<body>
+<header class="site-head">
+  <div class="wrap">
+    <a class="brand" href="/" aria-label="AbhishekrAI.dev, home">
+      <svg viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6L92 48L50 90L8 48Z" fill="none" stroke="currentColor" stroke-width="9"/><path d="M50 30L68 48L50 66L32 48Z" fill="currentColor"/></svg>
+      <span class="wordmark">Abhishekr<b>AI</b><i>.dev</i></span>
+    </a>
+    <button class="icon-btn menu-btn" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+    <nav class="nav" id="nav" aria-label="Main">
+      <a href="/#work">Work</a>
+      <a href="/learn/">Learn</a>
+      <a href="/#projects">Projects</a>
+      <a href="/game/" aria-current="page">Games</a>
+      <a href="/#contact">Contact</a>
+      <button class="icon-btn" type="button" id="mute-btn">Sound on</button>
+      <button class="icon-btn" type="button" id="theme-btn" aria-label="Switch colour theme">Dark</button>
+    </nav>
+  </div>
+</header>
+
+<main class="arcade" id="main">
+  <div class="wrap">
+    <div class="arcade-head">
+      <div>
+        <nav aria-label="Breadcrumb"><ol class="crumbs"><li><a href="/">Home</a></li><li><a href="/game/">Games</a></li><li><span aria-current="page">Akhada</span></li></ol></nav>
+        <h1>Akhada</h1>
+        <p>A 2.5D power fighter across India, from the Varanasi ghats to a Himalayan monastery. Street fighters, wanderers and legends of the epics, each with five specials and two Hell moves. Fight a very hard CPU, a friend on the same keyboard, or practise on a training dummy.</p>
+      </div>
+      <nav class="game-tabs" aria-label="Games">
+        <a href="/game/">Ghost Deploy</a>
+        <a href="/game/street/">Rollback Street</a>
+        <a href="/game/akhada/" aria-current="page">Akhada</a>
+      </nav>
+    </div>
+
+    <div class="play-bar"><button class="btn ghost" id="fs-btn" type="button">Full screen</button></div>
+    <div class="stage-wrap" id="stage-wrap">
+    <div class="screen solo">
+      <canvas id="game" width="768" height="432" aria-label="Game screen"></canvas>
+      <button class="btn screen-start" type="button" data-start="start1" aria-label="Start fight">Fight</button>
+      <div class="overlay" id="overlay">
+        <div class="card card-wide ak-card" id="card-menu">
+          <div class="col">
+            <h2>Akhada</h2>
+            <div class="chips" id="modes" role="group" aria-label="Mode"></div>
+            <p class="ak-label">Your fighter</p>
+            <div class="chips ak-grid" id="p1grid" role="group" aria-label="Your fighter"></div>
+            <div id="p2wrap">
+              <p class="ak-label" id="p2label">Opponent (CPU)</p>
+              <div class="chips ak-grid" id="p2grid" role="group" aria-label="Opponent"></div>
+            </div>
+          </div>
+          <div class="col">
+            <div class="chips" id="players" role="group" aria-label="Players" data-keyboard>
+              <button class="chip" type="button" data-players="1" aria-pressed="true">1 player</button>
+              <button class="chip" type="button" data-players="2" aria-pressed="false">2 players</button>
+            </div>
+            <p class="ak-label">CPU level</p>
+            <div class="chips" id="levels" role="group" aria-label="CPU level"></div>
+            <div id="stagewrap">
+              <p class="ak-label">Stage</p>
+              <div class="chips" id="stages" role="group" aria-label="Stage"></div>
+            </div>
+            <div id="trainwrap" hidden>
+              <p class="ak-label">Dummy</p>
+              <div class="chips" id="dummy" role="group" aria-label="Dummy"></div>
+              <div class="chips" id="chakra" role="group" aria-label="Chakra"></div>
+            </div>
+            <div id="rulewrap">
+              <p class="ak-label">Rules</p>
+              <div class="chips" id="rules" role="group" aria-label="Rules"></div>
+              <p class="small muted" id="rulenote" style="margin:-6px 0 8px"></p>
+            </div>
+            <div class="btn-row"><button class="btn" id="start1" type="button">Fight</button></div>
+            <details class="moves" open>
+              <summary id="movename">Moves</summary>
+              <div id="movelist"></div>
+            </details>
+            <details class="moves">
+              <summary>How to fight</summary>
+              <ul>
+                <li><b>Chakra:</b> the blue bar (500). Every special costs a share of it. It barely refills by itself: hold <b>J, K and L together</b> (Player 2: 1, 2, 3) to charge it, which leaves you open, or earn it by landing and taking hits.</li>
+                <li><b>Specials:</b> tap Defend, then a direction, then Attack or Jump.</li>
+                <li><b>Hell moves:</b> Defend, Forward, Jump, Attack once the bar turns gold (400). The Awakened Hell move is Defend, Up, Jump, Attack and takes the full bar, below 30% HP.</li>
+                <li><b>Escape:</b> tap Defend while you are being hit to break free (100 chakra). Four hits in a row that do not knock you down will, and nobody can hit you while you are down or getting up.</li>
+                <li><b>Super combos:</b> land a special, then go straight into a Hell move. During a Hell move, tap Attack when your fighter flashes for extra hits.</li>
+                <li><b>Basics:</b> Attack three times for a combo. Double-tap a direction to run, then Attack or Jump. Hold Defend to block. Move up and down to step out of a shot's path.</li>
+                <li><b>On a touch screen:</b> Special, Power and Hell buttons use the stick's direction, so no sequences are needed. Hold Charge to fill chakra.</li>
+                <li><b>Training:</b> try every move on a dummy that never goes down. Press P for the menu.</li>
+              </ul>
+            </details>
+            <ul class="keys">
+              <li>Player 1: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move, <kbd>J</kbd> attack, <kbd>K</kbd> jump, <kbd>L</kbd> defend, hold <kbd>J</kbd><kbd>K</kbd><kbd>L</kbd> to charge</li>
+              <li>Player 2: arrows, <kbd>1</kbd> attack, <kbd>2</kbd> jump, <kbd>3</kbd> defend, hold <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> to charge (or <kbd>,</kbd> <kbd>.</kbd> <kbd>/</kbd>)</li>
+              <li><kbd>P</kbd> pause</li>
+            </ul>
+          </div>
+        </div>
+        <div class="card" id="card-end" hidden>
+          <h2 id="end-title">Victory</h2>
+          <p class="result" id="end-result"></p>
+          <p id="end-note"></p>
+          <div class="btn-row"><button class="btn" id="continue" type="button">Next fight</button><button class="btn ghost" id="again" type="button">Back to select</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pad">
+      <div class="stick" data-codes="KeyW,KeyS,KeyA,KeyD" data-dash="StickDash" role="presentation"><span></span></div>
+      <div class="grp act six">
+        <button tabindex="-1" data-code="VSpecial" class="ak-sp">Special</button><button tabindex="-1" data-code="VPower" class="ak-sp">Power</button><button tabindex="-1" data-code="VHell" class="ak-hell">Hell</button><button tabindex="-1" data-code="VCharge" class="ak-charge">Charge</button>
+        <button tabindex="-1" data-code="KeyL">Defend</button><button tabindex="-1" data-code="KeyK">Jump</button><button tabindex="-1" data-code="KeyJ">Attack</button>
+      </div>
+      <button class="pause-btn" tabindex="-1" data-code="KeyP">Pause</button>
+    </div>
+    <button class="fs-exit" id="fs-exit" type="button">Exit full screen</button>
+    </div>
+  </div>
+</main>
+
+<footer class="site-foot">
+  <div class="wrap">
+    <div>© 2026 Abhishek Rai · AbhishekrAI.dev</div>
+    <nav aria-label="Footer">
+      <a href="/">Home</a>
+      <a href="/learn/">Learn</a>
+      <a href="/learn/devops/">DevOps course</a>
+      <a href="/learn/vcf-automation/">VCF Automation course</a>
+      <a href="/game/">Ghost Deploy</a>
+      <a href="/game/street/">Rollback Street</a>
+      <a href="/game/akhada/">Akhada</a>
+      <a href="https://github.com/abhishekaryan23" target="_blank" rel="noopener">GitHub</a>
+      <a href="mailto:abhishek@abhishekrai.dev">Email</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="/assets/nav.js" defer></script>
+<script src="/game/arcade.js?v=13"></script>
+<script src="/game/street/fighters.js?v=9"></script>
+<script src="/game/akhada/ak-frames.js?v=1"></script>
+<script src="/game/akhada/ak-core.js?v=1"></script>
+<script src="/game/akhada/ak-roster.js?v=1"></script>
+<script src="/game/akhada/ak-game.js?v=1"></script>
+</body>
+</html>
