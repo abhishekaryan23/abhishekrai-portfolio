@@ -130,6 +130,16 @@ function netDraw() {
 
 /* ---------- the room ---------- */
 function netStatus(msg) { const el = $("net-status"); if (el) el.textContent = msg; }
+// the invite: a link that opens the game and joins the room by itself
+const netLink = (code) => location.origin + "/game/akhada/?room=" + code;
+function netShare(code) {
+  const box = $("net-share"); if (!box) return;
+  box.hidden = !code; if (!code) return;
+  const link = netLink(code), msg = "Fight me in Akhada, a 16-bit power fighter from India! Tap to join my room: " + link;
+  $("net-link").value = link;
+  $("net-wa").href = "https://wa.me/?text=" + encodeURIComponent(msg);
+  $("net-native").hidden = !navigator.share;
+}
 function netCode() { const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", b = new Uint8Array(5); crypto.getRandomValues(b); return [...b].map((x) => a[x % a.length]).join(""); }
 function netOpen(code, role) {
   netClose();
@@ -140,7 +150,7 @@ function netOpen(code, role) {
   ws.onclose = (e) => {
     if (NET.ws !== ws) return;
     NET.ws = null; NET.peer = false;
-    if (e.code === 4404) netStatus("No room with that code. Check it with your friend, or create a room.");
+    if (e.code === 4404) netStatus("That room is closed or the link has expired. Ask your friend for a new invite link, or create your own.");
     else if (e.code === 4409) netStatus(role === "join" ? "That room already has two players." : "That code is taken, try again.");
     else netStatus("Disconnected from the room.");
     netLost();
@@ -161,8 +171,8 @@ function netLost(why) {
   }
 }
 function netMsg(m) {
-  if (m.type === "hello") { NET.side = m.side; netStatus(NET.side === 0 ? "Room " + NET.code + ": send this code to a friend. Waiting for them to join…" : "Joined room " + NET.code + "."); netUi(); netSend({ k: "pick", id: cfg.p1 }); return; }
-  if (m.type === "peer") { NET.peer = true; netStatus(NET.side === 0 ? "Your friend joined room " + NET.code + ". Pick fighters, then Start." : "In room " + NET.code + " with your friend. The host starts the fight."); netSend({ k: "pick", id: cfg.p1 }); netUi(); return; }
+  if (m.type === "hello") { NET.side = m.side; netShare(NET.side === 0 ? NET.code : null); netStatus(NET.side === 0 ? "Your room is ready. Send the invite link to a friend (room code " + NET.code + "). Waiting for them to join…" : "Joined your friend's room."); netUi(); netSend({ k: "pick", id: cfg.p1 }); return; }
+  if (m.type === "peer") { NET.peer = true; netShare(null); netStatus(NET.side === 0 ? "Your friend joined. Pick fighters, then Start." : "You're in your friend's room. They start the fight."); netSend({ k: "pick", id: cfg.p1 }); netUi(); return; }
   if (m.type === "left") { NET.peer = false; netStatus("Your friend left room " + NET.code + "."); netLost(); netUi(); return; }
   switch (m.k) {
     case "i":
@@ -240,10 +250,11 @@ function netUi() {
   if (!on) return;
   const inRoom = !!NET.ws;
   $("net-create").hidden = inRoom; $("net-joinrow").hidden = inRoom; $("net-leave").hidden = !inRoom;
+  if (!inRoom) netShare(null);
   $("stagewrap").hidden = !(inRoom && NET.side === 0);
   NET.picks[NET.side] = cfg.p1;
   const b = $("start1");
-  b.textContent = !inRoom ? "Create or join a room" : NET.side === 0 ? (NET.peer ? "Start online fight" : "Waiting for your friend") : "The host starts the fight";
+  b.textContent = !inRoom ? "Create an invite link first" : NET.side === 0 ? (NET.peer ? "Start online fight" : "Waiting for your friend") : "The host starts the fight";
   b.disabled = !(inRoom && NET.side === 0 && NET.peer);
   const op = NET.picks[1 - NET.side];
   $("net-opp").textContent = NET.peer ? "Your friend picked " + (op ? ROSTER[op].name : "…") + "." : "";
@@ -251,5 +262,27 @@ function netUi() {
 $("net-create").addEventListener("click", () => netOpen(netCode(), "create"));
 $("net-join").addEventListener("click", () => { const c = $("net-code").value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""); if (c.length >= 4) netOpen(c, "join"); else netStatus("Type the code your friend sent you."); });
 $("net-code").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); $("net-join").click(); } });
-$("net-leave").addEventListener("click", () => { netClose(); netStatus("Create a room and send the code to a friend, or join theirs."); netUi(); });
+$("net-leave").addEventListener("click", () => { netClose(); netStatus("Create an invite link and send it to a friend, or open the link they sent you."); netUi(); });
+$("net-copy").addEventListener("click", async () => {
+  const link = $("net-link").value; let ok = false;
+  try { await navigator.clipboard.writeText(link); ok = true; } catch (e) { const i = $("net-link"); i.focus(); i.select(); try { ok = document.execCommand("copy"); } catch (x) { /* select it for the player */ } }
+  $("net-copy").textContent = ok ? "Copied!" : "Select and copy"; setTimeout(() => { $("net-copy").textContent = "Copy link"; }, 1800);
+});
+$("net-native").addEventListener("click", () => { navigator.share({ title: "Akhada", text: "Fight me in Akhada, a 16-bit power fighter from India!", url: $("net-link").value }).catch(() => {}); });
+$("net-link").addEventListener("focus", (e) => e.target.select());
+// opened from an invite link: switch to Online and join that room
+(function joinFromLink() {
+  let code = null;
+  try { code = (new URLSearchParams(location.search).get("room") || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); } catch (e) { /* no query */ }
+  if (!code || code.length < 4 || code.length > 8) return;
+  try { history.replaceState(null, "", location.pathname); } catch (e) { /* keep the url */ }
+  const go = () => {
+    const chip = document.querySelector('#modes [data-val="online"]');
+    if (chip && cfg.mode !== "online") chip.click();
+    netStatus("Joining your friend's room…");
+    netOpen(code, "join"); netUi();
+    const sel = $("card-menu"); if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: "center" });
+  };
+  if (document.readyState === "complete") setTimeout(go, 0); else addEventListener("load", go, { once: true });
+})();
 if (cfg.mode === "online") buildGrids();

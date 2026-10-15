@@ -98,3 +98,14 @@
   .ak-big { width: 76px; height: 76px; font-size: 1.8rem; }
   .ak-vsmark { display: none; }
 }
+
+/* online invite: the link, then the ways to send it */
+.ak-select .ak-share { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; width: 100%; margin: 4px 0; }
+.ak-select .ak-share input { flex: 1 1 220px; min-width: 0; font: 500 0.8rem "IBM Plex Mono", monospace; padding: 7px 9px; border-radius: 6px;
+  border: 1px solid rgba(255, 211, 106, 0.55); background: rgba(0, 0, 0, 0.35); color: #ffe7a8; }
+.ak-select .ak-sharebtns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ak-select .chip.ak-wa { background: #1fa855; border-color: #1fa855; color: #fff; text-decoration: none; font-weight: 600; }
+.ak-select .chip.ak-wa:hover { background: #178f47; }
+.ak-select .chip.ak-invite { border-color: #ffd36a; color: #ffd36a; font-weight: 600; }
+.ak-select #net-joinrow { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ak-select #net-joinrow[hidden], .ak-select .ak-share[hidden] { display: none; }

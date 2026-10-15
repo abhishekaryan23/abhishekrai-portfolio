@@ -7,6 +7,17 @@
   <title>Akhada: a 2.5D power fighter | AbhishekrAI.dev</title>
   <meta name="description" content="Akhada: a 2.5D power fighter set across India. Twelve fighters from Indian streets and legend, NTSD-style combo specials, chakra charging and Hell move super combos. One player against a very hard CPU, two on one keyboard, or a training mode.">
   <link rel="canonical" href="https://abhishekrai.dev/game/akhada/">
+  <meta name="author" content="Abhishek Rai">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="AbhishekrAI.dev">
+  <meta property="og:title" content="Akhada: a 16-bit power fighter from India">
+  <meta property="og:description" content="Jatayu, Ashwatthama, Barbarik and more. NTSD-style Hell move combos, free in your browser: fight the CPU, a friend on one keyboard, or online.">
+  <meta property="og:url" content="https://abhishekrai.dev/game/akhada/">
+  <meta property="og:image" content="https://abhishekrai.dev/game/akhada/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Jatayu, the vulture king, spreads his wings over the Akhada title">
+  <meta name="twitter:card" content="summary_large_image">
   <meta name="theme-color" content="#a8186a">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M50 6L92 48L50 90L8 48Z' fill='none' stroke='%23a8186a' stroke-width='9'/%3E%3Cpath d='M50 30L68 48L50 66L32 48Z' fill='%23a8186a'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -14,7 +25,7 @@
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/site.css?v=3">
   <link rel="stylesheet" href="/game/style.css?v=23">
-  <link rel="stylesheet" href="/game/akhada/akhada.css?v=7">
+  <link rel="stylesheet" href="/game/akhada/akhada.css?v=9">
 </head>
 <body>
 <header class="site-head">
@@ -84,10 +95,18 @@
             <div id="stagewrap"><span class="ak-label">Stage</span><div class="chips" id="stages" role="group" aria-label="Stage"></div></div>
             <div id="onlinewrap" hidden>
               <span class="ak-label">Online <em class="ak-beta">beta</em></span>
-              <button class="chip" type="button" id="net-create">Create a room</button>
-              <span id="net-joinrow"><input id="net-code" maxlength="8" placeholder="Room code" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="chip" type="button" id="net-join">Join</button></span>
+              <button class="chip ak-invite" type="button" id="net-create">Create an invite link</button>
+              <div class="ak-share" id="net-share" hidden>
+                <input id="net-link" readonly aria-label="Invite link" spellcheck="false">
+                <span class="ak-sharebtns">
+                  <a class="chip ak-wa" id="net-wa" href="#" target="_blank" rel="noopener">Share on WhatsApp</a>
+                  <button class="chip" type="button" id="net-copy">Copy link</button>
+                  <button class="chip" type="button" id="net-native" hidden>Share…</button>
+                </span>
+              </div>
+              <span id="net-joinrow"><span class="ak-label">Got a code?</span><input id="net-code" maxlength="8" placeholder="Room code" autocomplete="off" spellcheck="false" aria-label="Room code"><button class="chip" type="button" id="net-join">Join</button></span>
               <button class="chip" type="button" id="net-leave" hidden>Leave room</button>
-              <p class="ak-note" id="net-status">Create a room and send the code to a friend, or join theirs. Each of you picks your own fighter. Online fights use Fair fight rules.</p>
+              <p class="ak-note" id="net-status">Create an invite link and send it to a friend on WhatsApp. When they open it they join your room straight away. Each of you picks your own fighter. Online fights use Fair fight rules.</p>
               <p class="ak-note" id="net-opp"></p>
             </div>
           </div>
@@ -170,7 +189,7 @@
 <script src="/game/akhada/ak-core.js?v=9"></script>
 <script src="/game/akhada/ak-roster.js?v=9"></script>
 <script src="/game/akhada/ak-game.js?v=17"></script>
-<script src="/game/akhada/ak-net.js?v=8"></script>
+<script src="/game/akhada/ak-net.js?v=9"></script>
 <script src="/game/akhada/ak-music.js?v=3"></script>
 </body>
 </html>
