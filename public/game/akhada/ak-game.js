@@ -553,7 +553,12 @@ function matchOver(w) {
   $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
 }
 $("continue").addEventListener("click", () => {
-  if ($("continue").dataset.online) { if (typeof netStart === "function" && NET.peer && NET.side === 0) { $("card-end").hidden = true; netStart(); } return; }
+  if ($("continue").dataset.online) {
+    if (typeof NET === "undefined" || !NET.peer) return;
+    if (NET.side === 1) { netSetReady(!NET.meSet); return; }   // the friend: Ready for a rematch
+    if (NET.peerSet) { $("card-end").hidden = true; netStart(); }
+    return;
+  }
   if ($("continue").dataset.resume) { delete $("continue").dataset.resume; if (paused) togglePause(); return; }
   const m = match;
   if (m.mode === "arcade") {
@@ -561,7 +566,7 @@ $("continue").addEventListener("click", () => {
   }
   $("card-end").hidden = true; startMatch(m);
 });
-$("again").addEventListener("click", () => { delete $("continue").dataset.resume; delete $("continue").dataset.online; $("continue").disabled = false; $("again").textContent = "Back to select"; NETON = false; if (typeof NET !== "undefined") NET.started = false; paused = false; $("card-end").hidden = true; $("card-menu").hidden = false; state = "menu"; demo(); const b = document.querySelector(".pad .pause-btn"); if (b) b.textContent = "Pause"; });
+$("again").addEventListener("click", () => { delete $("continue").dataset.resume; delete $("continue").dataset.online; $("continue").disabled = false; $("again").textContent = "Back to select"; NETON = false; if (typeof NET !== "undefined") NET.started = false; paused = false; $("card-end").hidden = true; $("card-menu").hidden = false; state = "menu"; demo(); if (typeof netUi === "function") netUi(); const b = document.querySelector(".pad .pause-btn"); if (b) b.textContent = "Pause"; });
 
 function update() {
   tick++;
@@ -998,7 +1003,7 @@ function pickTile(i) {
   else if (id !== "random") {
     cfg.p1 = id; SEL.cur[0] = i; SEL.locked[0] = true;
     if (needsP2() && !twoKeys()) { SEL.side = 2; SEL.cur[1] = Math.max(0, selTiles().indexOf(cfg.p2)); }
-    if (online() && typeof netSend === "function") netSend({ k: "pick", id });
+    if (online() && typeof netSend === "function") { netSend({ k: "pick", id }); if (NET.side === 1) NET.meSet = false; }   // a new pick: press Ready again
   }
   refresh();
 }
@@ -1051,7 +1056,7 @@ function newLadder(c) {
   return { ladder, stages: ladder.map((id, i) => BOSS_STAGE[id] != null ? BOSS_STAGE[id] : [0, 2, 1, 3][i % 4]), step: 0 };
 }
 $("start1").addEventListener("click", () => {
-  if (online()) { if (typeof netStart === "function") netStart(); return; }
+  if (online()) { if (typeof NET !== "undefined" && NET.ws && NET.side === 1) netSetReady(!NET.meSet); else if (typeof netStart === "function") netStart(); return; }
   if (TOUCH && !Arcade.isFullscreen()) Arcade.enterFullscreen();
   const c = Object.assign({}, cfg);
   if (c.p2 === "random") c.p2 = pick(roster().filter((i) => i !== c.p1 && !ROSTER[i].hidden));

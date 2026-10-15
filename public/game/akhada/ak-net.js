@@ -10,7 +10,7 @@
 
 const NET = {
   ws: null, side: 0, code: "", peer: false, started: false, D: 6, t: 0,
-  inp: [new Map(), new Map()], out: [], press: 0, ev: [], endAt: -1, snaps: new Map(), later: new Map(), strikes: 0,
+  inp: [new Map(), new Map()], out: [], press: 0, ev: [], endAt: -1, snaps: new Map(), later: new Map(), strikes: 0, meSet: false, peerSet: false,
   picks: [null, null], ready: [false, false], rtt: 0, stall: 0, seed: 1, stage: 0, lastPing: 0
 };
 const NBIT = { up: 1, down: 2, left: 4, right: 8, A: 16, J: 32, D: 64, run: 128, charge: 256, touch: 512, chord: 1024, hell: 2048 };
@@ -90,11 +90,24 @@ function netMatchOver(w) {
   const won = w === NET.side;
   $("end-title").textContent = w < 0 ? "Draw" : won ? "You win" : "You lose";
   $("end-result").textContent = fighters.map((f) => f.d.name + (f.team === NET.side ? " (you)" : "")).join(" vs ");
-  $("end-note").textContent = NET.side === 0 ? "Rematch with the same fighters, or go back to pick again." : "Waiting for the host to start a rematch.";
-  $("continue").textContent = "Rematch"; $("continue").disabled = NET.side !== 0; $("continue").dataset.online = "1";
-  $("again").textContent = "Back to the room";
+  $("continue").dataset.online = "1"; $("again").textContent = "Back to the room";
+  netEndUi();
   $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
 }
+// the online result card: the friend says Ready, then the host can start the rematch
+function netEndUi() {
+  const c = $("continue"); if (!c.dataset.online || state !== "over") return;
+  if (!NET.peer) { c.disabled = true; return; }
+  if (NET.side === 0) {
+    c.textContent = "Rematch"; c.disabled = !NET.peerSet;
+    $("end-note").textContent = NET.peerSet ? "Your friend is ready. Start the rematch, or go back to the room to pick again." : "Waiting for your friend to press Ready…";
+  } else {
+    c.textContent = NET.meSet ? "Ready \u2713 (tap to cancel)" : "Ready for a rematch"; c.disabled = false;
+    $("end-note").textContent = NET.meSet ? "Waiting for your friend to start the rematch." : "Press Ready when you want a rematch.";
+  }
+}
+// the friend (side 1) tells the host they are ready to fight
+function netSetReady(on) { NET.meSet = !!on; netSend({ k: "set", on: NET.meSet }); netUi(); netEndUi(); }
 /* anti-cheat. Each browser runs the whole fight, so editing your own copy only changes your own
    screen. What could still decide a result is the host's refereeing, so the guest checks every
    correction and round call against its own fight, and both sides reject impossible inputs.
@@ -118,7 +131,7 @@ function netVoid(local) {
   $("end-title").textContent = "No contest";
   $("end-result").textContent = "";
   $("end-note").textContent = local ? "The two games disagreed about this fight, so it does not count. (Online is in beta.)" : "Your opponent's game reported a problem with this fight, so it does not count. (Online is in beta.)";
-  $("continue").textContent = "Rematch"; $("continue").disabled = NET.side !== 0; $("continue").dataset.online = "1"; $("again").textContent = "Back to the room";
+  $("continue").dataset.online = "1"; $("again").textContent = "Back to the room"; netEndUi();
   $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
 }
 function netDraw() {
@@ -168,12 +181,19 @@ function netLost(why) {
     $("end-title").textContent = why ? "Fight stopped" : "Your opponent left"; $("end-result").textContent = ""; $("end-note").textContent = why || "The fight could not continue.";
     $("continue").textContent = "Rematch"; $("continue").disabled = !(NET.peer && NET.side === 0); $("continue").dataset.online = "1"; $("again").textContent = "Back to the room";
     state = "over"; $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
+    NET.meSet = NET.peerSet = false; if (NET.peer) netEndUi();
   }
 }
 function netMsg(m) {
   if (m.type === "hello") { NET.side = m.side; netShare(NET.side === 0 ? NET.code : null); netStatus(NET.side === 0 ? "Your room is ready. Send the invite link to a friend (room code " + NET.code + "). Waiting for them to join…" : "Joined your friend's room."); netUi(); netSend({ k: "pick", id: cfg.p1 }); return; }
-  if (m.type === "peer") { NET.peer = true; netShare(null); netStatus(NET.side === 0 ? "Your friend joined. Pick fighters, then Start." : "You're in your friend's room. They start the fight."); netSend({ k: "pick", id: cfg.p1 }); netUi(); return; }
-  if (m.type === "left") { NET.peer = false; netStatus("Your friend left room " + NET.code + "."); netLost(); netUi(); return; }
+  if (m.type === "peer") { NET.peer = true; NET.meSet = NET.peerSet = false; netShare(null); netStatus(NET.side === 0 ? "Your friend joined. Pick fighters; you can start once they press Ready." : "You're in your friend's room. Pick your fighter, then press I'm ready."); netSend({ k: "pick", id: cfg.p1 }); netUi(); return; }
+  if (m.type === "left") {
+    NET.peer = false; NET.meSet = NET.peerSet = false;
+    // the room is still open: the host can send the same invite link again
+    if (NET.side === 0) { netShare(NET.code); netStatus("Your friend left. Send the invite link again to play someone else."); }
+    else netStatus("Your friend left the room.");
+    netLost(); netUi(); return;
+  }
   switch (m.k) {
     case "i":
       if (!Array.isArray(m.i) || m.i.length > 40) { netStrike("inputs"); break; }
@@ -187,7 +207,8 @@ function netMsg(m) {
     case "ev": if (NET.side === 1 && m.e && m.e.kind === "end" && Number.isInteger(m.e.at) && [-1, 0, 1].includes(m.e.w) && m.e.at > NET.t - 2) NET.ev.push(m.e); else netStrike("event"); break;
     case "void": netVoid(false); break;
     case "fix": netFix(m); break;
-    case "pick": if (typeof m.id === "string" && ROSTER[m.id] && !ROSTER[m.id].hidden) { NET.picks[1 - NET.side] = m.id; netUi(); } break;
+    case "pick": if (typeof m.id === "string" && ROSTER[m.id] && !ROSTER[m.id].hidden) { NET.picks[1 - NET.side] = m.id; if (NET.side === 0) NET.peerSet = false; netUi(); } break;   // a new pick means Ready again
+    case "set": if (NET.side === 0) { NET.peerSet = m.on === true; netUi(); netEndUi(); } break;
     case "start": if (NET.side === 1 && !NET.started) netBegin(m); break;
     case "abort": NET.ready = [false, false]; if (state === "loading" || NET.started) netLost("Your opponent left before the fight started."); break;
     case "ready": NET.ready[1 - NET.side] = true; break;
@@ -226,14 +247,15 @@ function netFix(m) {
 function netBegin(m) {
   const okPick = (id) => ROSTER[id] && !ROSTER[id].hidden;
   if (!okPick(m.p0) || !okPick(m.p1) || !Number.isInteger(m.stage) || !STAGES[m.stage]) { netStrike("start"); return; }
-  NET.started = false; NETON = false; NET.strikes = 0; NET.fixStrikeAt = -999;
+  NET.started = false; NETON = false; NET.strikes = 0; NET.fixStrikeAt = -999; NET.meSet = NET.peerSet = false;
   NET.stage = m.stage;
   const c = { mode: "versus", players: 2, lvl: 2, fair: true, online: true, p1: m.p0, p2: m.p1, stage: m.stage };
   NET.ready = [false, false];
   startMatch(c);
 }
 function netStart() {
-  if (NET.side !== 0 || !NET.peer) return;
+  if (NET.side !== 0 || !NET.peer || !NET.peerSet) return;   // the friend has to be ready first
+  NET.peerSet = false;
   const ok = (id) => id && ROSTER[id] && !ROSTER[id].hidden;
   const p0 = ok(NET.picks[0]) ? NET.picks[0] : ok(cfg.p1) ? cfg.p1 : "rai", p1 = ok(NET.picks[1]) ? NET.picks[1] : "kai";
   const stg = cfg.stage < 0 ? Math.floor(Math.random() * STAGES.length) : cfg.stage;
@@ -254,10 +276,13 @@ function netUi() {
   $("stagewrap").hidden = !(inRoom && NET.side === 0);
   NET.picks[NET.side] = cfg.p1;
   const b = $("start1");
-  b.textContent = !inRoom ? "Create an invite link first" : NET.side === 0 ? (NET.peer ? "Start online fight" : "Waiting for your friend") : "The host starts the fight";
-  b.disabled = !(inRoom && NET.side === 0 && NET.peer);
+  b.textContent = !inRoom ? "Create an invite link first" : NET.side === 0
+    ? (!NET.peer ? "Waiting for your friend" : NET.peerSet ? "Start online fight" : "Waiting for your friend to be ready")
+    : (!NET.peer ? "Waiting for the room" : NET.meSet ? "Ready \u2713 (tap to cancel)" : "I'm ready");
+  b.disabled = !inRoom || !NET.peer || (NET.side === 0 && !NET.peerSet);
+  b.classList.toggle("ak-ready", inRoom && NET.side === 1 && NET.meSet);
   const op = NET.picks[1 - NET.side];
-  $("net-opp").textContent = NET.peer ? "Your friend picked " + (op ? ROSTER[op].name : "…") + "." : "";
+  $("net-opp").textContent = NET.peer ? "Your friend picked " + (op ? ROSTER[op].name : "…") + (NET.side === 0 && NET.peerSet ? " and is ready." : ".") : "";
 }
 $("net-create").addEventListener("click", () => netOpen(netCode(), "create"));
 $("net-join").addEventListener("click", () => { const c = $("net-code").value.trim().toUpperCase().replace(/[^A-Z0-9]/g, ""); if (c.length >= 4) netOpen(c, "join"); else netStatus("Type the code your friend sent you."); });
@@ -283,6 +308,6 @@ $("net-link").addEventListener("focus", (e) => e.target.select());
     netOpen(code, "join"); netUi();
     const sel = $("card-menu"); if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: "center" });
   };
-  if (document.readyState === "complete") setTimeout(go, 0); else addEventListener("load", go, { once: true });
+  if (document.readyState !== "loading") setTimeout(go, 0); else addEventListener("DOMContentLoaded", go, { once: true });
 })();
 if (cfg.mode === "online") buildGrids();

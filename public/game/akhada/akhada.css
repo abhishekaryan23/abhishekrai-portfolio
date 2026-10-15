@@ -109,3 +109,4 @@
 .ak-select .chip.ak-invite { border-color: #ffd36a; color: #ffd36a; font-weight: 600; }
 .ak-select #net-joinrow { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .ak-select #net-joinrow[hidden], .ak-select .ak-share[hidden] { display: none; }
+.ak-select .ak-fight.ak-ready { background: #1fa855; border-color: #1fa855; color: #fff; }
