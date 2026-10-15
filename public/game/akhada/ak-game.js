@@ -59,7 +59,7 @@ function togglePause() {
     if (paused) {
       $("end-title").textContent = "Training";
       $("end-result").textContent = train.best ? "Best combo on the dummy: " + train.best + " damage." : "Try a combo on the dummy.";
-      $("end-note").textContent = "Specials: Defend, a direction, then Attack or Jump. Hell moves: Defend, Forward (or Up), then Hell (I), or Jump then Attack. Quick moves: Jump + Attack, or Attack + Defend, together. Defend while running vanishes. Hold J, K and L together to charge chakra.";
+      $("end-note").textContent = "Specials: Defend, a direction, then Attack or Jump. Hell moves: press Hell (I), or Defend, Forward (or Up), Jump, Attack. Quick moves: Jump + Attack, or Attack + Defend, together. Defend while running vanishes. Hold J, K and L together to charge chakra.";
       $("continue").textContent = "Resume"; $("continue").dataset.resume = "1";
       $("card-menu").hidden = true; $("card-end").hidden = false; $("overlay").hidden = false;
     } else { $("overlay").hidden = true; $("card-end").hidden = true; }
@@ -107,14 +107,13 @@ function handle(f, ev) {
     if (canAct(f) && grounded(f) && f.st !== "block") { setSt(f, "block", 0); f.run = 0; }
     return;
   }
-  // the Hell key (I, Player 2 ' or 4, the touch pad's Hell button) finishes a Hell move in place of
-  // Jump then Attack: Defend, Forward (Hell move) or Up (Awakened), then Hell. Every player has it, on
-  // keys and on touch, so nobody gets an easier Hell move than their opponent; the NTSD input
-  // (Defend, direction, Jump, Attack) works as well. Same chakra, same rules either way
+  // the Hell key (I, Player 2 ' or 4, the touch pad's Hell button): one press fires the Hell move, or
+  // the Awakened move when it is ready (below 30% HP with a full bar). Every player has it, on keys and
+  // on touch, so nobody gets an easier Hell move than their opponent; the NTSD inputs work as well
   if (ev === "hell") {
-    const b = seqTail(f); f.pend = null;
-    if (b && (b.k === "H" || b.k === "U")) { f.seq = []; doMove(f, b.k === "H" ? "H1" : "H2", b.dir); }
-    else if (f.ctrl[0] === "p") pop(f, "Defend + stick, then Hell", "#ffd36a");
+    f.pend = null; f.seq = [];
+    const awaken = f.mp >= f.d.moves.H2.mp && canAwaken(f);
+    doMove(f, awaken ? "H2" : "H1", f.face);
     return;
   }
   if (ev === "A" || ev === "J") {
@@ -1037,7 +1036,7 @@ function moveList() {
   const anyHp = cfg.mode === "training";
   el.innerHTML = "<p class='small muted' style='margin:0 0 6px'>" + d.blurb + " The number is the chakra each move costs (the bar holds 500).</p><ul>" +
     row("D → A", m.DFA) + row("D ↓ A", m.DDA) + row("D ↑ A", m.DUA) + row("D → J", m.DFJ) + row("D ↓ J", m.DDJ) +
-    row("D → Hell / D → J A", m.H1, "Hell move: ") + row("D ↑ Hell / D ↑ J A", m.H2, "Awakened: ", anyHp ? " (any HP)" : " (below 30% HP)") +
+    row("Hell / D → J A", m.H1, "Hell move: ") + row("Hell (low HP) / D ↑ J A", m.H2, "Awakened: ", anyHp ? " (any HP)" : " (below 30% HP)") +
     (d.small ? row("J + A", d.small.QJ, "Quick: ") + row("A + D", d.small.QD, "Quick: ") : "") + row("Run, then D", { name: "Vanish", mp: VANISH_MP }) + "</ul>";
   $("movename").textContent = d.name + "'s moves";
 }
