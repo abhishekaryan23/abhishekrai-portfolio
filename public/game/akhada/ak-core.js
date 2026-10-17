@@ -192,9 +192,12 @@ function leaveMove(f) {
   const v = f.lockT0; f.lockT0 = null;
   if (v && v.lockBy === f) { v.lockBy = null; v.lockT = 0; if (v.st === "held") { if (alive(v)) knockdown(v, f.face * 1.5, 2); else knockdown(v, 0, 2); } }
   f.rot = 0; f.bob = 0; f.hide = false; f.fx.sky = 0; f.beatOpen = 0; f.landed = false;
-  if (!f.buff.grow) f.sc = 1;
+  // size eases back to the resting size in updateFighter (a giant stays a giant), so nothing snaps here
   f.beam = f.naag = f.redUp = f.mark = null; f.chains = 0; f.opener = false;
 }
+// a fighter's resting size: Ghatotkacha's Vishal Roop makes him a giant (1.5x) for a while
+const GIANT = 1.5;
+const restSize = (f) => (f.buff.grow > 0 ? GIANT : 1);
 function stamp(f, n = 1) { for (let i = 0; i < n; i++) f.after.push({ x: f.x, y: f.y, z: f.z, face: f.face, ref: poseOf(f), a: 0.5 }); }
 
 /* ---------- objects: projectiles, zones, summons ---------- */

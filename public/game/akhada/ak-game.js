@@ -257,7 +257,10 @@ function updateFighter(f) {
   if (f.mpFlash > 0) f.mpFlash--; if (f.stagT > 0) f.stagT--;
   // Training has no rounds to reset Jatayu's clipped wings, so they grow back after 20 seconds
   if (f.wounded && f.train && ++f.woundT > 1200) { f.wounded = false; f.woundT = 0; pop(f, "Wings restored", "#ffcf4a"); }
-  for (const k in f.buff) if (f.buff[k] > 0 && k !== "chargeN") { f.buff[k]--; if (f.buff[k] === 0 && k === "grow" && !(f.st === "move" && f.code === "H2")) f.sc = 1; }
+  for (const k in f.buff) if (f.buff[k] > 0 && k !== "chargeN") f.buff[k]--;
+  // size: unless a move is changing it (Vishal Roop, Parvat Patan), it eases to the resting size, so a
+  // giant stays a giant through every move and grows or shrinks smoothly instead of snapping
+  if (!(f.st === "move" && f.mv && f.mv.sizes)) { const rest = restSize(f); if (f.sc !== rest) f.sc = Math.abs(rest - f.sc) < 0.01 ? rest : f.sc + (rest - f.sc) * 0.15; }
   const bmax = f.buffMax || (f.buffMax = {});
   for (const k in BUFF_INFO) {
     const v = f.buff[k] || 0;

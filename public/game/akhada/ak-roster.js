@@ -508,7 +508,7 @@ const ROSTER = {
         tick: (f, t) => { if (t > 2 && f.z > 0) f.x += f.leapVx; if (t > 10 && grounded(f) && !f.landed) { f.landed = true; shake = 10; S.boom(); dust(f.x, f.y, 14); explode(f.x + f.face * 16, f.y, 6, 0.7); rocks(f.x, f.y, 5); zone(f, { x: f.x + f.face * 16, y: f.y, life: 6, rx: 40, ry: 18, ground: true, dmg: 64, knock: true, kz: 5 }); } },
         end: (f) => { f.landed = false; } },
       DFJ: { name: "Maya Clones", mp: 70, len: 40, pose: "p3", ev: { 10: (f) => { S.power(); for (let i = -1; i <= 1; i++) shoot(f, { obj: i ? "demon1" : "demon2", sc: 0.85, spd: 4, vy: i * 0.6, z: 0, dx: -10, dmg: 24, knock: true, w: 14, h: 40, objDy: 0, a: 0.8, life: 120, pierce: 2, draw: ghostDraw }); } } },
-      DDJ: { name: "Vishal Roop", mp: 120, len: 60, pose: "x4", end: (f) => { if (!f.buff.grow) f.sc = 1; }, tick: (f, t) => { f.sc = 1 + Math.min(1, t / 40) * 0.5; if (t % 4 === 0) shake = 2; }, ev: { 40: (f) => { f.buff.grow = 480; pop(f, "Giant", "#9a6bff"); S.boom(); } } },
+      DDJ: { name: "Vishal Roop", mp: 120, len: 60, pose: "x4", sizes: true, tick: (f, t) => { if (t === 1) f.sc0 = f.sc; f.sc = lerp(f.sc0, GIANT, Math.min(1, t / 40)); if (t % 4 === 0) shake = 2; }, ev: { 40: (f) => { f.buff.grow = 480; pop(f, "Giant", "#9a6bff"); S.boom(); } } },
       H1: { name: "Maya Sena", hell: true, mp: 250, len: 140, beats: beatsAt(100, 112, 124),
         pose: (f, t) => t < 20 ? "p7" : t < 94 ? "p3" : t < 130 ? (t % 8 < 4 ? "x3" : "x1") : "x2",
         tick: (f, t) => {
@@ -517,11 +517,12 @@ const ROSTER = {
           if (t >= 94 && t < 130) { const tg = nearest(f); if (tg) { f.x += Math.sign(tg.x - f.x) * 3; f.y = lerp(f.y, tg.y, 0.08); } if (t % 3 === 0) f.face = -f.face; if (t % 6 === 0) for (const o of foesOf(f)) if (Math.hypot(o.x - f.x, (o.y - f.y) * 2.4) < 48) hitT(f, o, 16, { hell: true }); }
           if (t === 132) { shake = 10; S.boom(); rocks(f.x + f.face * 30, f.y, 8); explode(f.x + f.face * 30, f.y, 8, 0.8); for (const o of foesOf(f)) if (Math.abs(o.x - (f.x + f.face * 30)) < 50 && Math.abs(o.y - f.y) < 20) hitT(f, o, 50, { hell: true, knock: true, kz: 6 }); }
         }, drawFx: (f, t) => { if (t >= 6 && t < 96) fxDraw("vortex", f.x - cam - f.face * 20, f.y - 50, { sc: Math.min(1, (t - 6) / 20) * 0.8, rot: t * 0.05, a: 0.85 }); } },
-      H2: { name: "Parvat Patan", hell: true, mp: 350, len: 200, armor: true, beats: beatsAt(40, 55, 70),
+      H2: { name: "Parvat Patan", hell: true, mp: 350, len: 200, armor: true, sizes: true, beats: beatsAt(40, 55, 70),
         pose: (f, t) => t < 70 ? "x4" : t < 150 ? "x6" : "x4",
         tick: (f, t) => {
           if (t === 1) { const tg = nearest(f); if (tg) faceTo(f, tg); tint = { col: "rgba(40,10,60,0.35)", t: 190 }; }
-          if (t < 70) { f.sc = 1 + 2.3 * (t / 70) ** 1.5; shake = Math.max(shake, t / 14); if (t % 4 === 0) dust(f.x + rand(-30, 30), f.y, 2); if (t % 20 === 0) S.heavy(); }
+          if (t === 1) f.sc0 = f.sc;
+          if (t < 70) { f.sc = f.sc0 + (3.3 - f.sc0) * (t / 70) ** 1.5; shake = Math.max(shake, t / 14); if (t % 4 === 0) dust(f.x + rand(-30, 30), f.y, 2); if (t % 20 === 0) S.heavy(); }
           if (t >= 70 && t < 100) { f.rot = f.face * 1.45 * ((t - 70) / 30) ** 2; }
           if (t === 100) {
             S.boom(); S.boom(); shake = 16; flashA = 0.9; flashC = "#fff"; for (let i = 0; i < 4; i++) explode(f.x + f.face * (40 + i * 50), f.y, 10, 0.9);
@@ -529,8 +530,8 @@ const ROSTER = {
             for (let i = 0; i < 6; i++) rocks(f.x + f.face * i * 34, f.y + rand(-10, 10), 4);
             for (let i = 0; i < 40; i++) dust(f.x + f.face * rand(0, 220), rand(stage.y0, Y1), 1, "rgba(200,180,150,0.9)");
           }
-          if (t >= 150) { const k = (t - 150) / 46; f.rot = f.face * 1.45 * Math.max(0, 1 - k * 1.5); f.sc = Math.max(1, 3.3 - 2.3 * k); }
-        }, end: (f) => { f.rot = 0; f.sc = f.buff.grow ? 1.5 : 1; } }
+          if (t >= 150) { const k = Math.min(1, (t - 150) / 46), rest = restSize(f); f.rot = f.face * 1.45 * Math.max(0, 1 - k * 1.5); f.sc = 3.3 + (rest - 3.3) * k; }
+        }, end: (f) => { f.rot = 0; } }
     } },
 
   barbarik: { name: "Barbarik", sheet: "barbarik", hp: 700, spd: 1.5, w: 11, h: 56, col: "#5aa8ff", el: "Three arrows", hidden: true, dmgMul: 1.15,
