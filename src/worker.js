@@ -368,37 +368,72 @@ async function handleGhostPost(request, env) {
 
 /* Akhada online room: two players at most. The first is the host (side 0); a second "join"
    gets side 1. Messages are small JSON strings passed straight to the other player. Uses the
-   WebSocket hibernation API, so an idle room costs nothing. A connection that is turned away
-   is never added to the room, so it cannot disturb the two players. Each socket may send at
-   most 150 messages a second (a fair game sends about 30); faster than that is closed. */
+   WebSocket hibernation API, so an idle room costs nothing.
+   A room outlives its connections: phones drop a game's socket as soon as the player switches
+   to WhatsApp to send the invite, so the room is kept for ROOM_TTL after its last activity and
+   each seat has a secret key. Coming back with role "back" and that key reclaims the seat (and
+   replaces a stale socket the server has not noticed is dead yet).
+   A connection that is turned away is never added to the room, so it cannot disturb the two
+   players. Each socket may send at most 150 messages a second (a fair game sends about 30). */
+const ROOM_TTL = 30 * 60 * 1000;
 export class AkhadaRoom {
   constructor(ctx, env) { this.ctx = ctx; this.rate = new Map(); }
   async fetch(request) {
-    const role = new URL(request.url).searchParams.get("role");
-    const open = this.ctx.getWebSockets();
+    const u = new URL(request.url), role = u.searchParams.get("role");
+    const key = (u.searchParams.get("key") || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 32);
+    const now = Date.now(), open = this.ctx.getWebSockets();
+    const sideOf = (w) => (w.deserializeAttachment() || {}).side;
+    let room = await this.ctx.storage.get("room");
+    if (room && open.length === 0 && now - room.at > ROOM_TTL) { await this.ctx.storage.deleteAll(); room = null; }
+    let side = -1, reject = 0;
+    if (key.length < 8) reject = 4400;
+    else if (role === "create") { if (room) reject = 4409; else { room = { at: now, keys: [key, null] }; side = 0; } }
+    else if (role === "join") {
+      if (!room) reject = 4404;
+      else if (room.keys[0] === key) side = 0;   // the host opened their own invite link
+      else if (open.some((w) => sideOf(w) === 1)) reject = 4409;
+      else { side = 1; room.keys[1] = key; }
+    } else if (role === "back") {
+      if (!room) reject = 4404; else { side = room.keys.indexOf(key); if (side < 0) reject = 4403; }
+    } else reject = 4400;
     const [client, server] = Object.values(new WebSocketPair());
-    let reject = 0;
-    if (open.length >= 2 || (role === "create" && open.length > 0)) reject = 4409;
-    else if (role === "join" && open.length === 0) reject = 4404;
     if (reject) {
-      server.accept(); server.close(reject, reject === 4404 ? "no such room" : "room full");
+      server.accept(); server.close(reject, reject === 4404 ? "no such room" : reject === 4403 ? "seat taken" : reject === 4400 ? "bad request" : "room full");
       return new Response(null, { status: 101, webSocket: client });
     }
+    // a seat being reclaimed: close the old socket for it, it is dead or about to be
+    for (const w of open) if (sideOf(w) === side) { try { w.serializeAttachment({ side: -1 }); w.close(4000, "replaced"); } catch (e) { /* gone */ } }
     this.ctx.acceptWebSocket(server);
-    const side = open.length === 0 ? 0 : 1 - ((open[0].deserializeAttachment() || {}).side || 0);
     server.serializeAttachment({ side });
+    room.at = now; await this.ctx.storage.put("room", room);
+    await this.ctx.storage.setAlarm(now + ROOM_TTL + 60000);
     server.send(JSON.stringify({ type: "hello", side }));
-    if (open.length === 1) { open[0].send(JSON.stringify({ type: "peer" })); server.send(JSON.stringify({ type: "peer" })); }
+    const other = this.ctx.getWebSockets().find((w) => w !== server && sideOf(w) === 1 - side);
+    if (other) { try { other.send(JSON.stringify({ type: "peer" })); } catch (e) { /* gone */ } server.send(JSON.stringify({ type: "peer" })); }
     return new Response(null, { status: 101, webSocket: client });
   }
   webSocketMessage(ws, msg) {
     if (typeof msg !== "string" || msg.length > 4096) return;
+    const me = (ws.deserializeAttachment() || {}).side; if (me !== 0 && me !== 1) return;
     const now = Date.now(), r = this.rate.get(ws);
     if (!r || now - r.at >= 1000) this.rate.set(ws, { at: now, n: 1 });
     else if (++r.n > 150) { this.rate.delete(ws); try { ws.close(4429, "too many messages"); } catch (e) { /* gone */ } return; }
-    for (const o of this.ctx.getWebSockets()) if (o !== ws) try { o.send(msg); } catch (e) { /* gone */ }
+    for (const o of this.ctx.getWebSockets()) if (o !== ws && (o.deserializeAttachment() || {}).side === 1 - me) try { o.send(msg); } catch (e) { /* gone */ }
   }
-  webSocketClose(ws) { this.leave(ws); try { ws.close(1000, "bye"); } catch (e) { /* already closed */ } }
-  webSocketError(ws) { this.leave(ws); }
-  leave(ws) { this.rate.delete(ws); for (const o of this.ctx.getWebSockets()) if (o !== ws) try { o.send(JSON.stringify({ type: "left" })); } catch (e) { /* gone */ } }
+  async webSocketClose(ws) { await this.leave(ws); try { ws.close(1000, "bye"); } catch (e) { /* already closed */ } }
+  async webSocketError(ws) { await this.leave(ws); }
+  async leave(ws) {
+    this.rate.delete(ws);
+    const me = (ws.deserializeAttachment() || {}).side; if (me !== 0 && me !== 1) return;   // a replaced socket says nothing
+    for (const o of this.ctx.getWebSockets()) if (o !== ws && (o.deserializeAttachment() || {}).side === 1 - me) try { o.send(JSON.stringify({ type: "left" })); } catch (e) { /* gone */ }
+    const room = await this.ctx.storage.get("room"); if (room) { room.at = Date.now(); await this.ctx.storage.put("room", room); }
+  }
+  // tidy up rooms nobody came back to
+  async alarm() {
+    const room = await this.ctx.storage.get("room");
+    if (!room) return;
+    if (this.ctx.getWebSockets().length === 0 && Date.now() - room.at > ROOM_TTL) await this.ctx.storage.deleteAll();
+    else await this.ctx.storage.setAlarm(Date.now() + ROOM_TTL + 60000);
+  }
 }
+

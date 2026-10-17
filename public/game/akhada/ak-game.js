@@ -240,7 +240,7 @@ function endMove(f) {
     const key = f.uid + ":" + f.hellId;
     for (const t of fighters) if (t.team !== f.team && t.hellBy && t.hellBy[key] != null && alive(t)) {
       const cap = Math.round(t.maxHp * AWAKEN_SHARE * (t.hellClean && t.hellClean[key] ? 1 : 0.5)), left = cap - t.hellBy[key];   // blocked all the way: half
-      if (left > 0) { t.hellBy[key] = cap; t.hp = Math.max(t.dummy ? 1 : 0, t.hp - left); t.lastHit = tick; t.flash = 8; pop(t, "-" + left, "#ffd36a", true); burst(t.x, t.y, t.z + 30, "#ffd36a", 12); S.heavy(); if (t.hp <= 0 || !grounded(t)) knockdown(t, -t.face * 2, 4); }
+      if (left > 0) { t.hellBy[key] = cap; t.hp = Math.max(t.dummy || t.buff.immortal > 0 ? 1 : 0, t.hp - left); t.lastHit = tick; t.flash = 8; pop(t, "-" + left, "#ffd36a", true); burst(t.x, t.y, t.z + 30, "#ffd36a", 12); S.heavy(); if (t.hp <= 0 || !grounded(t)) knockdown(t, -t.face * 2, 4); }
     }
   }
   const wasA = f.code && f.code[0] === "A" && f.code !== "AR", q = f.qA;
@@ -258,6 +258,15 @@ function updateFighter(f) {
   // Training has no rounds to reset Jatayu's clipped wings, so they grow back after 20 seconds
   if (f.wounded && f.train && ++f.woundT > 1200) { f.wounded = false; f.woundT = 0; pop(f, "Wings restored", "#ffcf4a"); }
   for (const k in f.buff) if (f.buff[k] > 0 && k !== "chargeN") { f.buff[k]--; if (f.buff[k] === 0 && k === "grow" && !(f.st === "move" && f.code === "H2")) f.sc = 1; }
+  const bmax = f.buffMax || (f.buffMax = {});
+  for (const k in BUFF_INFO) {
+    const v = f.buff[k] || 0;
+    if (v > 0 && (!bmax[k] || v > bmax[k])) { bmax[k] = v; texts.push({ x: f.x, y: f.y - f.z - bodyH(f) - 2, msg: BUFF_INFO[k][1], col: BUFF_COL[k] || "#fff", life: 75 }); }
+    else if (v <= 0 && bmax[k]) bmax[k] = 0;
+  }
+  const fmax = f.fxMax || (f.fxMax = {});
+  for (const k in FX_INFO) { const v = f.fx[k] || 0; if (v > 0 && (!fmax[k] || v > fmax[k])) fmax[k] = v; else if (v <= 0) fmax[k] = 0; }
+  if (f.buff.immortal > 0 && alive(f) && tick % 4 === 0) f.hp = Math.min(f.maxHp, f.hp + 1);
   if (f.buff.regen > 0 && tick % 5 === 0 && alive(f)) f.hp = Math.min(f.maxHp, f.hp + 1);
   if (alive(f)) {
     if (f.fx.burn > 0 && tick % 12 === 0) { f.hp = Math.max(1, f.hp - 2); flame(f.x, f.y, 2); }
@@ -276,7 +285,7 @@ function updateFighter(f) {
   // stopped in time (Freeze Frame, Total Rollback): everything waits, then lands at once
   if (f.fx.stopped > 0 || f.lockBy || f.fx.frozen > 0) f.evq = [];
   if (f.fx.stopped > 0) {
-    if (--f.fx.stopped === 0 && f.stoppedDmg) { const d = f.stoppedDmg; f.stoppedDmg = 0; f.hp = Math.max(0, f.hp - d); pop(f, "-" + d, "#e8c05a", true); S.heavy(); knockdown(f, -f.face * 2, 5); f.stoppedKnock = false; }
+    if (--f.fx.stopped === 0 && f.stoppedDmg) { const d = f.stoppedDmg; f.stoppedDmg = 0; f.hp = Math.max(f.buff.immortal > 0 ? 1 : 0, f.hp - d); pop(f, "-" + d, "#e8c05a", true); S.heavy(); knockdown(f, -f.face * 2, 5); f.stoppedKnock = false; }
     return;
   }
   if (f.lockBy) {
@@ -570,6 +579,9 @@ $("again").addEventListener("click", () => { delete $("continue").dataset.resume
 
 function update() {
   tick++;
+  for (const f of fighters) { f.px = f.x; f.py = f.y; f.pz = f.z; }
+  for (const o of objs) { o.px = o.x; o.py = o.y; o.pz = o.z; }
+  camPrev = cam;
   if (state === "loading") {
     loadT++;
     if (match.online) { netLoading(); return; }
@@ -666,7 +678,7 @@ function poseOf(f) {
   switch (f.st) {
     case "idle": p = "m0"; break;
     case "walk": p = "w"; break;
-    case "run": p = Math.floor(f.walkPh * 0.5) % 3 === 0 ? "p1" : "w"; break;
+    case "run": p = "w"; break;
     case "air": p = f.airAtk ? "m8" : "m7"; break;
     case "block": p = "p0"; break;
     case "charge": p = "p6"; break;
@@ -684,13 +696,25 @@ function poseOf(f) {
   if (typeof p !== "string" || !p) p = "m0";
   f.lastPose = p; return p;
 }
-const BUFF_COL = { vow: "#ffcf4a", iron: "#d39a5a", sun: "#ff8a3a", wings: "#ffb347", grow: "#9a6bff", regen: "#ffd36a", charge: "#fff38a", rhythm: "#c58aff", aim: "#5aa8ff" };
+// some frames were drawn smaller than the rest of their fighter's sheet (Barbarik's falls, Meera's and
+// Hima's knockdowns): these put them back to the fighter's own size
+const FRAME_SC = { barbarik: { m7: 1.15, m8: 1.12, m9: 1.2, m10: 1.22 }, meera: { m10: 1.15 }, hima: { m10: 1.1 } };
+// what each buff does, for the timers under the health bar and the line when it starts
+const BUFF_INFO = {
+  immortal: ["Immortal", "cannot be knocked out"], vow: ["Vow", "no flinch, heavier blows"], iron: ["Guard", "less damage, no flinch"],
+  sun: ["Sun", "+35% damage, hits burn"], grow: ["Giant", "+40% damage, takes less"], charge: ["Charge", "next 3 hits stun"],
+  rhythm: ["Rhythm", "faster attacks"], aim: ["Focus", "arrows home in, +40%"], wings: ["Wings", "faster"], regen: ["Regen", "healing"]
+};
+// effects put on a fighter by the other side, shown the same way
+const FX_INFO = { stun: ["Stunned", "#fff38a"], frozen: ["Frozen", "#9fe6ff"], stopped: ["Paused", "#c9a96a"], slow: ["Slowed", "#e8c05a"],
+  reverse: ["Charmed", "#b6ff9a"], blind: ["Blinded", "#fff6c0"], burn: ["Burning", "#ff7a2a"], poison: ["Poison", "#7fe07a"], mark: ["Marked", "#5aa8ff"] };
+const BUFF_COL = { immortal: "#ffe9a8", vow: "#ffcf4a", iron: "#d39a5a", sun: "#ff8a3a", wings: "#ffb347", grow: "#9a6bff", regen: "#ffd36a", charge: "#fff38a", rhythm: "#c58aff", aim: "#5aa8ff" };
 function drawFighter(f) {
   if (f.hide) return;
   const ref = poseOf(f), [sheet, fr] = frameOf(f, ref), im = IMG[sheet];
   if (!im || !fr) return;
   const hover = f.buff.wings > 0 && grounded(f) && ["idle", "walk", "run", "block", "charge"].includes(f.st) ? 12 + Math.sin(tick * 0.1) * 3 : 0;
-  const x0 = f.x - cam, y = f.y - f.z - (f.bob || 0) - hover, flip = f.face < 0, sc = f.sc;
+  const x0 = f.x - cam, y = f.y - f.z - (f.bob || 0) - hover, flip = f.face < 0, sc = f.sc * ((FRAME_SC[f.d.sheet] || {})[ref] || 1);
   const an = f.rot ? null : motion(f), x = x0 + (an ? an.dx * f.face : 0);
   g.save();
   // the motion pivots on the feet: lean, squash and stretch never move the hit boxes
@@ -702,7 +726,12 @@ function drawFighter(f) {
   const hellOn = (f.st === "move" && f.mv && f.mv.hell) || (cine && cine.f === f) || f.st === "charge";
   const buff = Object.keys(BUFF_COL).find((k) => f.buff[k] > 0);
   const beat = f.beatOpen && tick <= f.beatOpen;
-  if (hellOn || buff || beat) { const c = tinted(sheet, fr, beat ? "#ffffff" : f.st === "charge" ? "#5ab4ff" : hellOn ? "#ffd36a" : BUFF_COL[buff], "glow"); if (c) blitCanvas(c, fr, x, y, flip, sc, (hellOn || beat ? 0.55 : 0.3) + 0.2 * Math.sin(tick * 0.3)); }
+  if (hellOn || buff || beat) { const c = tinted(sheet, fr, beat ? "#ffffff" : f.st === "charge" ? "#5ab4ff" : hellOn ? "#ffd36a" : BUFF_COL[buff], "glow"); if (c) blitCanvas(c, fr, x, y, flip, sc, (hellOn || beat ? 0.55 : 0.42) + 0.2 * Math.sin(tick * 0.3)); }
+  if (buff && !hellOn) {   // a ring of the buff's colour at the feet, and a few motes rising
+    g.save(); g.globalCompositeOperation = "lighter"; g.strokeStyle = BUFF_COL[buff]; g.globalAlpha = 0.5 + 0.3 * Math.sin(tick * 0.2); g.lineWidth = 1;
+    g.beginPath(); g.ellipse(x, f.y - (f.bob || 0), bodyW(f) * 1.6, 3.2, 0, 0, Math.PI * 2); g.stroke(); g.restore();
+    if (tick % 5 === 0) parts.push({ x: f.x + (Math.random() - 0.5) * bodyW(f) * 2, y: f.y, z: f.z + Math.random() * bodyH(f), vx: 0, vz: 0.6, life: 22, max: 22, col: BUFF_COL[buff], r: 1.6, add: true });
+  }
   if (f.st === "charge") animDraw("aura", 0, x, y - bodyH(f) * 0.5, { frame: Math.floor(tick / 4), sc: bodyH(f) / 70, a: 0.9 });
   const blink = (f.st === "getup" || f.inv > 0 && f.st !== "move") && tick % 4 < 2;
   blit(im, fr, x, y, flip, sc, blink ? 0.5 : 1);
@@ -719,7 +748,7 @@ function drawFighter(f) {
   if (f.fx.mark > 0) fxDraw("sigil", x, y - bodyH(f) - 10, { sc: 0.18, rot: tick * 0.05, a: 0.9 });
   if (f.fx.marma > 0 || (f.fx.stun > 0 && f.st === "hurt")) for (let i = 0; i < 3; i++) { const a = tick * 0.12 + i * 2.1; g.fillStyle = f.fx.marma ? "#ffe9a8" : "#fff38a"; g.fillRect(x + Math.cos(a) * 8, y - bodyH(f) - 4 + Math.sin(a) * 2, 2, 2); }
   if (beat && f.ctrl[0] === "p") text("Attack!", x, y - bodyH(f) - 14, 8, "#ffd36a", "center", "IBM Plex Sans", true);
-  else if (f.ctrl[0] === "p" && alive(f)) comboTrail(f, x, y - bodyH(f) - 14);
+  else if (f.ctrl[0] === "p" && alive(f) && match && match.mode === "training") comboTrail(f, x, y - bodyH(f) - 14);   // a learning aid: Training only
 }
 // what the player has entered so far: D → A, D ↑ J …, fading out if they stop
 function comboTrail(f, x, y) {
@@ -800,7 +829,23 @@ function drawParts() {
     g.restore();
   }
 }
-function draw() { drawing++; try { drawFrame(); } finally { drawing--; } }
+/* smooth motion: the game runs at 60 ticks a second, but screens refresh at 60, 90, 120 Hz and
+   never quite on time. Each frame is drawn part of the way between the last two ticks (a = how
+   far), then everything is put back, so drawing never changes the fight. A jump of more than a
+   few steps (a teleport, a new round) is drawn as it is. */
+let camPrev = 0;
+function draw(a = 1) {
+  drawing++;
+  const keep = [], mix = (o) => {
+    if (o.px == null) return;
+    const dx = o.x - o.px, dy = o.y - o.py, dz = (o.z || 0) - (o.pz || 0);
+    if (Math.abs(dx) > 24 || Math.abs(dy) > 24 || Math.abs(dz) > 40) return;
+    keep.push([o, o.x, o.y, o.z]); o.x = o.px + dx * a; o.y = o.py + dy * a; if (o.z != null) o.z = (o.pz || 0) + dz * a;
+  };
+  const camNow = cam;
+  if (a < 1 && !paused && !hitstop && !cine) { for (const f of fighters) mix(f); for (const o of objs) mix(o); if (Math.abs(cam - camPrev) < 24) cam = camPrev + (cam - camPrev) * a; }
+  try { drawFrame(); } finally { for (const [o, x, y, z] of keep) { o.x = x; o.y = y; o.z = z; } cam = camNow; drawing--; }
+}
 function drawFrame() {
   g.setTransform(SCALE, 0, 0, SCALE, 0, 0); g.imageSmoothingEnabled = false;
   g.fillStyle = "#14121a"; g.fillRect(0, 0, LW, LH);
@@ -877,6 +922,25 @@ function drawHud() {
       g.fillStyle = f.mpFlash > 0 && tick % 6 < 3 ? "#ffffff" : ready ? "#ffd36a" : "#4aa3ff"; g.fillRect(left ? bx : bx + w * (1 - mp), y0 + 15, w * mp, 2);
       g.fillStyle = "rgba(255,255,255,0.7)"; for (const m of [0.2, 0.4, 0.6, 0.8]) g.fillRect(left ? bx + w * m : bx + w * (1 - m), y0 + 14, 1, 4);
       if (ready && f.ctrl[0] === "p") text(f.mp >= f.d.moves.H2.mp && canAwaken(f) ? "AWAKENED" : "HELL", left ? bx + w + 4 : bx - 4, y0 + 16, 5.5, tick % 30 < 20 ? "#ffd36a" : "#fff6dc", left ? "left" : "right", "IBM Plex Sans", true);
+      // active buffs: a coloured chip with a draining bar, so it is clear what is on and for how long
+      let cx = left ? bx : bx + w;
+      for (const k in BUFF_INFO) {
+        const v = f.buff[k] || 0, mx = (f.buffMax || {})[k]; if (v <= 0 || !mx) continue;
+        const label = BUFF_INFO[k][0], cw = 6 + label.length * 3.6, cx0 = left ? cx : cx - cw;
+        g.fillStyle = "rgba(10,8,14,0.75)"; g.fillRect(cx0, y0 + 18, cw, 6);
+        g.fillStyle = BUFF_COL[k] || "#fff"; g.fillRect(cx0, y0 + 23, cw * v / mx, 1);
+        text(label, cx0 + cw / 2, y0 + 21, 4.6, BUFF_COL[k] || "#fff", "center", "IBM Plex Sans", true);
+        cx += (cw + 2) * (left ? 1 : -1);
+      }
+      for (const k in FX_INFO) {   // debuffs: a dark chip with a coloured outline
+        const v = f.fx[k] || 0, mx = (f.fxMax || {})[k]; if (v <= 0 || !mx) continue;
+        const [label, col] = FX_INFO[k], cw = 6 + label.length * 3.6, cx0 = left ? cx : cx - cw;
+        g.fillStyle = "rgba(40,6,10,0.85)"; g.fillRect(cx0, y0 + 18, cw, 6);
+        g.strokeStyle = col; g.lineWidth = 0.6; g.strokeRect(cx0 + 0.3, y0 + 18.3, cw - 0.6, 5.4);
+        g.fillStyle = col; g.fillRect(cx0, y0 + 23, cw * v / mx, 1);
+        text(label, cx0 + cw / 2, y0 + 21, 4.6, col, "center", "IBM Plex Sans", true);
+        cx += (cw + 2) * (left ? 1 : -1);
+      }
       if (f.combo >= 3 && f.comboT > 0) text(f.combo + " hits", left ? 8 : LW - 8, 64 + i * 12, 9, "#ffd36a", left ? "left" : "right", "Newsreader", true);
     });
     for (let r = 0; r < 2; r++) { g.fillStyle = wins[team] > r ? "#ffd36a" : "rgba(255,255,255,0.25)"; g.fillRect(left ? 26 + r * 6 : LW - 30 - r * 6, 6 + fighters.filter((f) => f.team === team).length * 24 - 2, 4, 4); }
@@ -1092,7 +1156,7 @@ function loop(now) {
   acc += Math.min(100, now - last); last = now;
   try {
     while (acc >= TICK) { if (NETON && !netStep()) { acc = Math.min(acc, TICK); break; } else if (!NETON) update(); acc -= TICK; }
-    draw(); hellBtn();
+    draw(Math.min(1, acc / TICK)); hellBtn();
   } catch (e) { acc = 0; console.error(e); }
   requestAnimationFrame(loop);
 }

@@ -39,7 +39,9 @@ const IMG = {}, asked = new Set(), failed = new Set();
 function load(name, src) {
   if (asked.has(name)) return; asked.add(name);
   const im = new Image();
-  im.onload = () => (IMG[name] = im); im.onerror = () => failed.add(name);
+  // decode before use: the first draw of an undecoded sheet stalls a frame, which shows as a hitch mid-fight
+  im.onload = () => { const done = () => (IMG[name] = im); if (im.decode) im.decode().then(done, done); else done(); };
+  im.onerror = () => failed.add(name);
   im.src = src;
 }
 function sheetSrc(sheet) {
@@ -392,7 +394,7 @@ function hurt(t, dmg, o) {
     if (awaken && (o.eff === "burn" || o.eff === "poison")) o = Object.assign({}, o, { eff: null });
   }
   if (t.fx.stopped) { t.stoppedDmg = (t.stoppedDmg || 0) + dmg; t.stoppedKnock = t.stoppedKnock || o.knock; sparks(t.x, t.y, t.z + 30, "#e8c05a", 4); S.hit(); if (src) src.combo++; return true; }
-  t.hp = Math.max(t.dummy ? 1 : 0, t.hp - dmg); t.lastHit = tick;   // a training dummy never goes down for good
+  t.hp = Math.max(t.dummy || t.buff.immortal > 0 ? 1 : 0, t.hp - dmg); t.lastHit = tick;   // a training dummy never goes down for good
   t.mp = Math.min(500, t.mp + dmg * 0.4);
   if (t.dummy && src && src.ctrl === "p0") { if (tick - train.last > 70) { train.hits = 0; train.dmg = 0; } train.hits++; train.dmg += dmg; train.last = tick; train.best = Math.max(train.best, train.dmg); }
   if (src) {

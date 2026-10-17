@@ -330,7 +330,8 @@ const ROSTER = {
       DUA: { name: "Gem Flash", mp: 60, len: 30, pose: "p6", ev: { 10: (f) => { zone(f, { x: f.x, y: f.y, life: 12, rx: 60, ry: 30, dmg: 20, eff: "blind", dur: 110 }); flashA = 0.35; flashC = "#fff4d0"; S.zap(); } },
         drawFx: (f, t) => { if (t > 6 && t < 18) fxDraw("burst", f.x - cam + f.face * 3, f.y - f.z - bodyH(f) + 6, { sc: 0.25 + (t - 6) * 0.02 }); } },
       DFJ: { name: "Warrior's Charge", mp: 40, len: 26, armor: true, pose: "p5", vel: () => 5.6, hit: { from: 2, to: 18, range: [0, 28], dmg: 40, knock: true } },
-      DDJ: { name: "Immortal", mp: 100, len: 30, pose: "p6", ev: { 15: (f) => { f.buff.regen = 360; pop(f, "Immortal", "#ffd36a"); S.power(); } } },
+      // the gem on his brow: for 5 seconds nothing can knock him out (he can still be hurt to 1), and he heals a little
+      DDJ: { name: "Immortal", mp: 100, len: 30, pose: "p6", ev: { 15: (f) => { f.buff.immortal = 300; S.power(); burst(f.x, f.y, f.z + bodyH(f) * 0.8, "#ffe9a8", 14); } } },
       H1: { name: "Brahmastra", hell: true, mp: 250, len: 110, beats: beatsAt(30, 45, 60), pose: tl([0, "m11"], [62, "p2"]),
         tick: (f, t) => {
           if (t < 60 && t % 2 === 0) { const a = rand(0, 6.28); parts.push({ x: f.x + f.face * 22 + Math.cos(a) * 30, y: f.y, z: 34 + Math.sin(a) * 26, vx: -Math.cos(a) * 1.4, vz: -Math.sin(a) * 1.1, life: 22, max: 22, col: "#fff2c0", r: 2, add: true }); }
@@ -581,7 +582,7 @@ const ROSTER = {
             d.z -= 8;
             if (d.z <= d.o.z + 34) {
               d.hit = true; const o = d.o;
-              if (o.stoppedDmg) { o.hp = Math.max(0, o.hp - o.stoppedDmg); o.stoppedDmg = 0; } o.fx.stopped = 0;
+              if (o.stoppedDmg) { o.hp = Math.max(o.buff.immortal > 0 ? 1 : 0, o.hp - o.stoppedDmg); o.stoppedDmg = 0; } o.fx.stopped = 0;
               hitT(f, o, 250 + f.beats * 20, { hell: true, unblock: true, knock: true, kz: 8, kx: (Math.sign(o.x - f.x) || 1) * 2, fromX: o.x - (Math.sign(o.x - f.x) || 1) });
               for (const [col, r, life] of [["#ff5050", 16, 22], ["#5aa8ff", 26, 28], ["#ffd36a", 36, 34]]) parts.push({ x: o.x, y: o.y, z: 4, vx: 0, vz: 0, life, max: life, col, ring: r });
               explode(o.x, o.y, 26, 0.9); burst(o.x, o.y, 30, "#bfe0ff", 20); shake = 10; flashA = 0.35; flashC = "#7fb8ff"; S.boom();

@@ -110,3 +110,5 @@
 .ak-select #net-joinrow { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .ak-select #net-joinrow[hidden], .ak-select .ak-share[hidden] { display: none; }
 .ak-select .ak-fight.ak-ready { background: #1fa855; border-color: #1fa855; color: #fff; }
+.ak-select .ak-q { font-weight: 600; }
+.ak-select .ak-q.ok { color: #6fe39a; } .ak-select .ak-q.meh { color: #ffd36a; } .ak-select .ak-q.bad { color: #ff8a7a; }
