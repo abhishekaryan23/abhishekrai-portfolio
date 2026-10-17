@@ -316,7 +316,7 @@ function updateFighter(f) {
     }
     case "run": {
       if (f.hold.mx && Math.sign(f.hold.mx) !== f.run || (!f.hold.mx && f.ctrl[0] === "c" && !f.ai.keepRun)) { setSt(f, "idle"); f.run = 0; break; }
-      f.vx = f.run * f.d.spd * 2.3 * spdK; f.x += f.vx; f.y += f.hold.my * 0.9; f.walkPh += 0.6; if (f.t++ % 6 === 0) stamp(f);
+      f.vx = f.run * f.d.spd * 2.3 * spdK; f.x += f.vx; f.y += f.hold.my * 0.9; f.walkPh += 0.4; f.t++;   // about 2.8 steps a second, and no after-images: they read as jitter
       if (tick % 6 === 0) dust(f.x - f.run * 8, f.y, 1);
       if (f.hold.D) { setSt(f, "block"); f.run = 0; }
       break;
@@ -716,6 +716,23 @@ const FRAME_SC = {
   meera: { m6: 1.12, m10: 1.15, p2: 1.09 },
   rook: { p0: 1.09 }, hima: { p2: 1.07, m10: 1.1 }, kai: { m9: 1.08 }
 };
+/* walking and running: each walk frame's anchor is the middle of the whole body, so the torso
+   slid sideways as the legs moved, which read as shaking at running speed. These shifts (game px,
+   measured on the head and torso of every walk frame) hold the torso steady. */
+const WALK_DX = {
+  kai: [-0.1, -0.5, 0.2, 0.8, -0.2, -0.8, 0.1, 0.7],
+  rook: [-0.8, -1.9, 0.2, 0.5, -0.2, -2, 0.6, 0.7],
+  crane: [0.5, -0.2, -0.2, 0.2, 0.8, -0.3, -0.3, 0.6],
+  ox: [-0.2, -0.1, 0.3, 0.2, -0.4, -0.1, 0.5, 0.1],
+  rollback: [-0.3, -0.7, 0.1, -0.2, -0.1, 0.1, 0.1, 0.5],
+  surya: [-0, -0.8, -0.1, 0.1, 0, -0.8, 0.8, 0.3],
+  hima: [0.1, -0.6, 0.1, 0.3, -0.1, -0.5, -0.2, 0.1],
+  meera: [0.1, -0.2, -0.1, 0.2, 0.2, -0.4, -0.3, 0.2],
+  ashwatthama: [0.1, -0.1, 0.4, -0.7, -0.2, 0.1, 0.2, -0.8],
+  ghatotkacha: [0.3, 1.2, -0.5, -1.1, 1.1, 0.9, -0.3, -1],
+  barbarik: [0.9, -0.1, -0.1, 0.3, 0.1, -0.3, -0.1, 0.2]
+};
+function walkShift(f, ref) { const t = WALK_DX[f.d.sheet]; if (!t || ref !== "w") return 0; const n = (FIGHTER_FRAMES[f.d.sheet + "_walk"] || []).length; return n ? (t[Math.floor(f.walkPh) % n] || 0) * f.face : 0; }
 function frameScale(id, ref) { const t = FRAME_SC[id]; if (!t || typeof ref !== "string") return 1; return t[ref] != null ? t[ref] : t[ref[0]] != null ? t[ref[0]] : 1; }
 // what each buff does, for the timers under the health bar and the line when it starts
 const BUFF_INFO = {
@@ -732,7 +749,7 @@ function drawFighter(f) {
   const ref = poseOf(f), [sheet, fr] = frameOf(f, ref), im = IMG[sheet];
   if (!im || !fr) return;
   const hover = f.buff.wings > 0 && grounded(f) && ["idle", "walk", "run", "block", "charge"].includes(f.st) ? 12 + Math.sin(tick * 0.1) * 3 : 0;
-  const x0 = f.x - cam, y = f.y - f.z - (f.bob || 0) - hover, flip = f.face < 0, sc = f.sc * frameScale(f.d.sheet, ref);
+  const x0 = f.x - cam + walkShift(f, ref) * f.sc, y = f.y - f.z - (f.bob || 0) - hover, flip = f.face < 0, sc = f.sc * frameScale(f.d.sheet, ref);
   const an = f.rot ? null : motion(f), x = x0 + (an ? an.dx * f.face : 0);
   g.save();
   // the motion pivots on the feet: lean, squash and stretch never move the hit boxes
@@ -786,7 +803,7 @@ function motion(f) {
   switch (f.st) {
     case "idle": m.sy = 1 + 0.012 * Math.sin(tick * 0.07 + f.x * 0.1); break;
     case "walk": m.rot = 0.03; m.sy = 1 + 0.015 * Math.sin(f.walkPh * 1.6); break;
-    case "run": m.rot = 0.12; m.dx = 2; m.sy = 1 + 0.03 * Math.sin(tick * 0.6); break;
+    case "run": m.rot = 0.1; m.dx = 2; m.sy = 1 + 0.012 * Math.sin(f.walkPh * Math.PI / 2); break;
     case "air": m.sy = 1 + clamp(f.vz * 0.012, -0.05, 0.07); m.sx = 2 - m.sy; m.rot = f.airAtk ? 0.18 : clamp(-f.vz * 0.015, -0.08, 0.08); break;
     case "block": m.rot = -0.05; m.sy = 0.97; m.sx = 1.03; if (f.t < 8) m.dx = -1; break;
     case "charge": m.sy = 1 + 0.02 * Math.sin(tick * 0.5); m.dx = Math.sin(tick * 1.7) * 0.5; break;
@@ -862,6 +879,7 @@ function draw(a = 1) {
   };
   const camNow = cam;
   if (a < 1 && !paused && !hitstop && !cine) { for (const f of fighters) mix(f); for (const o of objs) mix(o); if (Math.abs(cam - camPrev) < 24) cam = camPrev + (cam - camPrev) * a; }
+  cam = Math.round(cam * 2) / 2;   // the camera on the same half-pixel grid the sprites snap to, so they never shimmer against the stage
   try { drawFrame(); } finally { for (const [o, x, y, z] of keep) { o.x = x; o.y = y; o.z = z; } cam = camNow; drawing--; }
 }
 function drawFrame() {

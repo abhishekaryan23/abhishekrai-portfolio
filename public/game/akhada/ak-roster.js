@@ -358,6 +358,7 @@ const ROSTER = {
     look: {
       idle: () => (tick % 70 < 35 ? "s0" : "s1"),
       walk: (f) => ["s2", "s0", "s3", "s1"][Math.floor(f.walkPh * 0.5) % 4],
+      run: (f) => ["s2", "s0", "s3", "s1"][Math.floor(f.walkPh * 0.5) % 4],   // the same stance as his walk, not his old folded-wing frames
       block: "s8", hurt: "s10", held: "s10",
       fall: (f, p) => (p === "m9" ? "s10" : "s11"), down: "s11", ko: "s11",
       getup: (f, p) => (p === "m10" ? "s11" : p === "m9" ? "s10" : "s0"),
