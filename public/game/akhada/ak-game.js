@@ -696,9 +696,24 @@ function poseOf(f) {
   if (typeof p !== "string" || !p) p = "m0";
   f.lastPose = p; return p;
 }
-// some frames were drawn smaller than the rest of their fighter's sheet (Barbarik's falls, Meera's and
-// Hima's knockdowns): these put them back to the fighter's own size
-const FRAME_SC = { barbarik: { m7: 1.15, m8: 1.12, m9: 1.2, m10: 1.22 }, meera: { m10: 1.15 }, hima: { m10: 1.1 } };
+/* size fixes: the generated sheets were not all drawn at the same scale, so a fighter could grow or
+   shrink between frames (Barbarik raising his bow, walking, falling). Each entry is a factor that
+   puts a frame back to the size of that fighter's standing pose, measured by matching costume
+   details (SIFT) between the frames; a one-letter key covers a whole sheet (w walk, x extra,
+   s stance), a frame key ("x5") overrides it. Hit boxes do not change. */
+const FRAME_SC = {
+  barbarik: { w: 0.93, x: 1.09, x3: 1.12, x5: 1.14, x6: 1, x7: 1, p3: 0.93, m7: 1.08, m8: 1.04, m9: 1.15, m10: 1.18 },
+  ox: { w: 0.95, m5: 1.1, m12: 0.9, p2: 1.07 },
+  ashwatthama: { w: 1.06, m1: 1.08, m2: 1.12, p6: 0.85 },
+  rai: { w: 1.06, m4: 1.08, p0: 1.1 },
+  jatayu: { s: 0.93, v: 0.93, u: 0.88, m3: 1.06, m5: 1.08, m6: 1.1, p0: 0.93, p3: 0.9, p6: 0.94 },
+  jogi: { m7: 1.1, m8: 1.1, m11: 1.07, p0: 1.1, p1: 1.07, p2: 1.15 },
+  ghatotkacha: { m4: 1.09, p3: 0.91, p6: 0.91, p7: 0.9, x2: 1.06, x3: 1.12, x4: 0.94, x5: 1.15, x6: 1.08 },
+  crane: { m5: 1.1, m11: 1.08, p1: 1.08 },
+  meera: { m6: 1.12, m10: 1.15, p2: 1.09 },
+  rook: { p0: 1.09 }, hima: { p2: 1.07, m10: 1.1 }, kai: { m9: 1.08 }
+};
+function frameScale(id, ref) { const t = FRAME_SC[id]; if (!t || typeof ref !== "string") return 1; return t[ref] != null ? t[ref] : t[ref[0]] != null ? t[ref[0]] : 1; }
 // what each buff does, for the timers under the health bar and the line when it starts
 const BUFF_INFO = {
   immortal: ["Immortal", "cannot be knocked out"], vow: ["Vow", "no flinch, heavier blows"], iron: ["Guard", "less damage, no flinch"],
@@ -714,14 +729,14 @@ function drawFighter(f) {
   const ref = poseOf(f), [sheet, fr] = frameOf(f, ref), im = IMG[sheet];
   if (!im || !fr) return;
   const hover = f.buff.wings > 0 && grounded(f) && ["idle", "walk", "run", "block", "charge"].includes(f.st) ? 12 + Math.sin(tick * 0.1) * 3 : 0;
-  const x0 = f.x - cam, y = f.y - f.z - (f.bob || 0) - hover, flip = f.face < 0, sc = f.sc * ((FRAME_SC[f.d.sheet] || {})[ref] || 1);
+  const x0 = f.x - cam, y = f.y - f.z - (f.bob || 0) - hover, flip = f.face < 0, sc = f.sc * frameScale(f.d.sheet, ref);
   const an = f.rot ? null : motion(f), x = x0 + (an ? an.dx * f.face : 0);
   g.save();
   // the motion pivots on the feet: lean, squash and stretch never move the hit boxes
   if (an) { g.translate(x, y); g.rotate(an.rot * f.face); g.scale(an.sx, an.sy); g.translate(-x, -y); }
   if (f.rot) { if (f.sc > 1.4) { g.translate(x, f.y - f.z); g.rotate(f.rot); g.translate(-x, -(f.y - f.z)); } else { const cy = y - bodyH(f) / 2; g.translate(x, cy); g.rotate(f.rot); g.translate(-x, -cy); } }
   // afterimages
-  for (const a of f.after) { const [s2, fr2] = frameOf(f, a.ref), c = IMG[s2] && tinted(s2, fr2, f.d.col, "solid"); if (c) blitCanvas(c, fr2, a.x - cam + (x0 - x), a.y - a.z, a.face < 0, sc, a.a * 0.6); }
+  for (const a of f.after) { const [s2, fr2] = frameOf(f, a.ref), c = IMG[s2] && tinted(s2, fr2, f.d.col, "solid"); if (c) blitCanvas(c, fr2, a.x - cam + (x0 - x), a.y - a.z, a.face < 0, f.sc * frameScale(f.d.sheet, a.ref), a.a * 0.6); }
   // glow: Hell moves gold, buffs in their colour
   const hellOn = (f.st === "move" && f.mv && f.mv.hell) || (cine && cine.f === f) || f.st === "charge";
   const buff = Object.keys(BUFF_COL).find((k) => f.buff[k] > 0);
