@@ -161,7 +161,7 @@ section { padding: clamp(64px, 9vw, 120px) 0; border-top: 1px solid var(--line);
 .cred .meta { font-size: 0.82rem; color: var(--muted); }
 
 /* ---------- learn ---------- */
-.courses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.courses { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
 @media (max-width: 860px) { .courses { grid-template-columns: 1fr; } }
 .course {
   display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
