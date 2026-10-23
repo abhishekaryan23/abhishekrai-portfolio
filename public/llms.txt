@@ -1,6 +1,6 @@
 # Abhishek Rai
 
-> Abhishek Rai is a VMware Cloud Foundation (VCF 9) automation specialist and local AI developer based in Pune, India. He works as a Broadcom PS Developer (VMware Automation Specialist) at Mastercom Technologies Services, delivering under Broadcom Professional Services. He has seven years of cloud automation experience with VCF Automation, VCF Orchestrator, NSX, vSphere Kubernetes Service, Terraform, Ansible, AWS and Microsoft Azure. He builds AI tools that run locally on Apple Silicon and wrote two free courses: DevOps From Basics and VCF Automation From Basics. His website is AbhishekrAI.dev (the capital "AI" is a play on his surname).
+> Abhishek Rai is a VMware Cloud Foundation (VCF 9) automation specialist and local AI developer based in Pune, India. He works as a Broadcom PS Developer (VMware Automation Specialist) at Mastercom Technologies Services, delivering under Broadcom Professional Services. He has seven years of cloud automation experience with VCF Automation, VCF Orchestrator, NSX, vSphere Kubernetes Service, Terraform, Ansible, AWS and Microsoft Azure. He builds AI tools that run locally on Apple Silicon and wrote three free courses: DevOps From Basics, VCF Automation From Basics and LLMs From Basics. His website is AbhishekrAI.dev (the capital "AI" is a play on his surname).
 
 ## Profiles
 
@@ -31,10 +31,12 @@
 
 - [DevOps From Basics](https://abhishekrai.dev/learn/devops/): a free animated course from "what is a server?" to Kubernetes in production. 15 modules: computer basics, SDLC and Agile, what DevOps is, Linux and Bash, networking, Git and GitHub, CI/CD, containers and Docker, Kubernetes, cloud computing (AWS), Terraform and Ansible, observability, DevSecOps, roadmap and career, and a capstone project. Each module has plain explanations, animations, a cheat sheet, interview questions and a quiz.
 - [VCF Automation From Basics](https://abhishekrai.dev/learn/vcf-automation/): a free animated course from "what is a virtual machine?" to a self-service private cloud. 11 modules: virtualization and vSphere, VMware Cloud Foundation, what VCF Automation is, architecture and tenancy, preparing infrastructure, blueprints in YAML, catalog, forms and governance, Orchestrator and extensibility, integrations and infrastructure as code, day-2 operations and troubleshooting, projects and career.
-- [Both courses](https://abhishekrai.dev/learn/): no sign-up; progress is stored only in the learner's browser.
+- [LLMs From Basics](https://abhishekaryan23.github.io/LLM-Learner/): a free animated course on modern AI, from how language models work to image, audio and video models, multimodal AI and reinforcement learning. Hosted on GitHub Pages.
+- [DevOps and VCF course list](https://abhishekrai.dev/learn/): no sign-up; progress is stored only in the learner's browser.
 
 ## Projects
 
+- [moss-image-mac](https://github.com/abhishekaryan23/moss-image-mac): runs the MOSS-Image-SFT 5B text-to-image model locally on Apple Silicon Macs, about 30 seconds per image on a base M4, with an MCP server so Claude, Cursor, VS Code and other MCP apps can use it. Six tools: text-to-image with reliable in-image text, bounding-box layouts, transparent cutouts, inpainting, image-to-image and a status check. Built on stable-diffusion.cpp with Metal: a 4-bit (Q4_0) 5B DiT, a Qwen3.5-9B text encoder, a FLUX.2 VAE decoder and a 4-step turbo LoRA kept in fp16; a high mode reproduces the official 50-step pipeline pixel for pixel. Peak memory about 9 GB. MIT licensed.
 - [SteerVox](https://github.com/SteerVox/SteerVox): a macOS menu bar app for local-first dictation and AI-assisted rewriting. MLX Whisper speech recognition on Apple Silicon and Kokoro text-to-speech; user corrections are embedded locally and stored in SQLite with sqlite-vec, then reused as context so it learns the user's terms and style offline.
 - SmartScissor: a native macOS app (Swift with a local Python engine) that segments and clips objects on screen with SAM-2 and Florence-2 on the Apple Silicon GPU through Metal Performance Shaders, with automatic CPU fallback. Uses SigLIP embeddings. Source not yet public.
 - [AIOps incident commander](https://github.com/abhishekaryan23/devops_dashboard): a Flask dashboard combining Jira, Confluence and Dynatrace data, drafting root-cause analysis reports with a local Ollama model.
@@ -44,10 +46,19 @@
 
 - Language models: Bonsai 27B, Qwen 2.5 (run locally, including through Ollama)
 - Speech: Whisper (including MLX Whisper on Apple Silicon), Kokoro TTS
-- Images: FLUX.2, Z-Image-Turbo
+- Images: FLUX.2, Z-Image-Turbo, MOSS-Image (through stable-diffusion.cpp on Metal)
 - Embeddings and vector search: SigLIP, SQLite-vec
 - Agents: Model Context Protocol (MCP) servers
 - Evaluation: benchmarking small language models (tokens per second, memory use, quantization quality loss)
+
+## For AI agents in the browser (WebMCP)
+
+Pages on abhishekrai.dev register WebMCP tools (document.modelContext) when the browser supports them, so an agent can ask instead of scraping:
+
+- get_profile, get_work_history, get_credentials, list_projects, get_tools_and_skills, list_courses: read-only facts, taken from the home page
+- open_page: go to home, work, credentials, learn, projects, tools, contact, either course, or games
+- draft_contact_message: fill in the contact form for the visitor to review; it never sends
+- On course pages also: get_course_outline and open_course_module
 
 ## Optional
 
