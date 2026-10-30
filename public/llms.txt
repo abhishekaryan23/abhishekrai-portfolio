@@ -1,6 +1,6 @@
 # Abhishek Rai
 
-> Abhishek Rai is a VMware Cloud Foundation (VCF 9) automation specialist and local AI developer based in Pune, India. He works as a Broadcom PS Developer (VMware Automation Specialist) at Mastercom Technologies Services, delivering under Broadcom Professional Services. He has seven years of cloud automation experience with VCF Automation, VCF Orchestrator, NSX, vSphere Kubernetes Service, Terraform, Ansible, AWS and Microsoft Azure. He builds AI tools that run locally on Apple Silicon and wrote three free courses: DevOps From Basics, VCF Automation From Basics and LLMs From Basics. His website is AbhishekrAI.dev (the capital "AI" is a play on his surname).
+> Abhishek Rai is a VMware Cloud Foundation (VCF 9) automation specialist and local AI developer based in Pune, India. He works as a Broadcom PS Developer (VMware Automation Specialist). He has seven years of cloud automation experience with VCF Automation, VCF Orchestrator, NSX, vSphere Kubernetes Service, Terraform, Ansible, AWS and Microsoft Azure. He builds AI tools that run locally on Apple Silicon and wrote three free courses: DevOps From Basics, VCF Automation From Basics and LLMs From Basics. His website is AbhishekrAI.dev (the capital "AI" is a play on his surname).
 
 ## Profiles
 
