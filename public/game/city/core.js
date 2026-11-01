@@ -45,7 +45,7 @@ let state = "menu", paused = false, frameNo = 0;
 let players = [], enemies = [], items = [], barrels = [], fx = [], texts = [], shots = [];
 // stageIdx is the difficulty tier of the street you are on (0 the lane, 1 the Harbour Line, 2 the
 // roofs, 3 the mill): enemies hit harder and last longer the further the night goes
-let stageIdx = 0, cam = 0, queue = [], goT = 0, banner = null, shake = 0;
+let stageIdx = 0, cam = 0, queue = [], goT = 0, banner = null, shake = 0, hitStop = 0;
 let runStart = 0, bossRef = null, lastHit = null, train = null;
 let startPlayers = 1, lastKnife = -999;
 // hidden features

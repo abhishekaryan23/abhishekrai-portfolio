@@ -210,18 +210,10 @@ function eventLabel(p) {
   if (ev.id === "monkey" && s.stole && Math.abs(p.x - s.x) < 24) return { label: "Offer the monkey a banana (" + rupees(10) + ")", x: s.x, y: s.y + 30, act: () => {} };
   return null;
 }
-function drawEvent(P) {
+function drawEvent(P) {   // what's left to draw on top: things in the air, and the shoot's notice
   if (!ev || ev.street !== street.id) return; const s = ev.st, X = (wx) => Math.round(wx - cam);
-  if (ev.id === "pickpocket") drawCiv(s.thief, P);
-  if (ev.id === "van" && s.victim && !s.victim.taken) drawCiv(s.victim, P);
-  if (ev.id === "cow") sprAt("cow", X(s.x), Y1 - 6, false, 0.5);
-  if (ev.id === "baraat") for (let k = 0; k < 5; k++) drawCiv({ civ: true, look: ["civ_a", "civ_c", "civ_d", "civ_e", "civ_i"][k], base: 0, x: s.x + k * 22, y: Y0 + 10 + (k % 2) * 8, face: -1, st: "walk", walkPh: frameNo * 0.15 + k }, P);
-  if (ev.id === "shoot") { const x = X(s.x); R(x - 2, Y0 - 30, 4, 30, "#2a2622"); R(x - 10, Y0 - 38, 20, 10, "#1d1b18"); R(x + 10, Y0 - 35, 6, 4, "#3a3632"); text("SHOOT IN PROGRESS: STAND STILL TO BE AN EXTRA", x, Y0 - 44, 4, "#f2c230"); }
+  if (ev.id === "shoot") text("SHOOT IN PROGRESS: STAND STILL TO BE AN EXTRA", X(s.x), Y0 - 44, 4, "#f2c230");
   if (ev.id === "ball") { const x = X(s.x); R(x - 1, Y1 - 10 - s.z, 3, 3, "#c0392b"); g.fillStyle = "rgba(0,0,0,0.2)"; g.beginPath(); g.ellipse(x, Y1 - 6, 3, 1, 0, 0, 7); g.fill(); }
-  if (ev.id === "uncle") drawCiv({ civ: true, look: "civ_c", base: 0, x: s.x, y: Y0 + 10, face: -1, st: "stand", walkPh: 0 }, P);
-  if (ev.id === "deal") drawCiv({ civ: true, look: "civ_g", base: 0, x: s.x, y: Y0 + 10, face: -1, st: "stand", walkPh: 0 }, P);
-  if (ev.id === "lostChild") { drawCiv(s.kid, P); if (s.with) drawCiv({ civ: true, look: "civ_a", base: 0, x: s.parentX, y: Y0 + 10, face: -1, st: "stand", walkPh: 0 }, P); }
-  if (ev.id === "dog") drawCiv({ civ: true, look: "civ_g", base: 4, x: s.x, y: Y1 - 8, face: Math.sign(players[0].x - s.x) || 1, st: "flee", walkPh: frameNo * 0.3 }, P);
   if (ev.id === "monkey") { const x = X(s.x); R(x - 4, s.y, 8, 8, "#7a5a3a"); R(x - 2, s.y - 4, 5, 5, "#a8805a"); R(x + 4, s.y + 6, 6, 1, "#7a5a3a"); }
 }
 // the power cut darkens the whole street
@@ -230,4 +222,23 @@ function drawPowerCut() { if (ev && ev.id === "powercut" && ev.street === street
 /* ---------- hooks ---------- */
 function updateLiving() { updateFestival(); updateNemesis(); updateEvents(); }
 function livingTarget(p) { return paperTarget(p) || eventLabel(p); }
-function drawLiving(P) { drawFestival(P); drawEvent(P); drawNemesis(); }
+function drawLiving(P) { drawEvent(P); drawNemesis(); }
+// what stands on the walls and the pavement behind everyone: drawn with the street props, before the cast
+function drawLivingBack(P) {
+  drawFestival(P);
+  if (ev && ev.street === street.id && ev.id === "shoot") { const x = Math.round(ev.st.x - cam); R(x - 2, Y0 - 30, 4, 30, "#2a2622"); R(x - 10, Y0 - 38, 20, 10, "#1d1b18"); R(x + 10, Y0 - 35, 6, 4, "#3a3632"); }
+}
+// the people (and the cow) in a street event, sorted by depth with everyone else
+function eventCast() {
+  if (!ev || ev.street !== street.id) return [];
+  const s = ev.st, out = [], civ = (o) => out.push(Object.assign({ civ: true, base: 0, walkPh: 0 }, o));
+  if (ev.id === "pickpocket") out.push(s.thief);
+  if (ev.id === "van" && s.victim && !s.victim.taken) out.push(s.victim);
+  if (ev.id === "lostChild") { out.push(s.kid); if (s.with) civ({ look: "civ_a", x: s.parentX, y: Y0 + 10, face: -1, st: "stand" }); }
+  if (ev.id === "baraat") for (let k = 0; k < 5; k++) civ({ look: ["civ_a", "civ_c", "civ_d", "civ_e", "civ_i"][k], x: s.x + k * 22, y: Y0 + 10 + (k % 2) * 8, face: -1, st: "walk", walkPh: frameNo * 0.2 + k });
+  if (ev.id === "uncle") civ({ look: "civ_c", x: s.x, y: Y0 + 10, face: -1, st: "stand" });
+  if (ev.id === "deal") civ({ look: "civ_g", x: s.x, y: Y0 + 10, face: -1, st: "stand" });
+  if (ev.id === "dog") civ({ look: "civ_g", base: 4, x: s.x, y: Y1 - 8, face: Math.sign(players[0].x - s.x) || 1, st: "flee", walkPh: frameNo * 0.3 });
+  if (ev.id === "cow") out.push({ y: Y1 - 6, paint: () => sprAt("cow", Math.round(s.x - cam), Y1 - 6, false, 0.5) });
+  return out;
+}

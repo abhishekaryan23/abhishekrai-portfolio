@@ -300,9 +300,17 @@ function drawSpriteFighter(f, x, y) {
   if (base && costume !== "classic") im = costumeAtlas(im, base, ikey);
   const d = FIGHTER_FRAMES[fr.walk ? sheet + "_walk" : sheet][fr.i], [sx, sy, w, h, ax, ay] = d, sc = k.scale;
   const face = fr.back ? -f.face : f.face;
+  // knocked flying: two fading copies trail behind
+  if (f.st === "fly" || f.st === "thrown") {
+    const tr = f.trail || (f.trail = []); if (!hitStop && !paused) tr.unshift([f.x, f.z]); if (tr.length > 7) tr.length = 7;
+    for (let j = 6; j >= 3; j -= 3) if (tr[j]) { g.save(); g.globalAlpha = j === 3 ? 0.26 : 0.13; g.translate(Math.round(tr[j][0] - cam), y - Math.round(tr[j][1])); g.scale(face * sc, sc); if (fr.rot) { g.translate(0, -h / 4); g.rotate(fr.rot); g.translate(0, h / 4); } g.drawImage(im, sx, sy, w, h, -ax / 2, -ay / 2, w / 2, h / 2); g.restore(); }
+  } else if (f.trail) f.trail = null;
   g.save();
   g.translate(x, y - Math.round(f.z));
-  g.scale(face * sc, sc * (fr.squash || 1));
+  // squash on landing, stretch on the way up, and a slow breath standing still
+  const land = frameNo - (f.landF || -99), sq = land < 6 ? 0.86 + land * 0.023 : f.st === "air" && f.vz > 1.5 ? 1.06 : 1;
+  const breath = f.st === "idle" ? 1 + 0.02 * Math.sin(frameNo / 24 + (f.ph || (f.ph = Math.random() * 6))) : 1;
+  g.scale(face * sc * (2 - sq), sc * (fr.squash || 1) * sq * breath);
   if (fr.rot) { g.translate(0, -h / 4); g.rotate(fr.rot); g.translate(0, h / 4); }
   // a pulsing outline: red for an enraged boss, gold for a player in the Avatar's divine form
   const glow = f.st === "dead" ? null : f.rage ? "#ff2a1a" : f.avatarT > 0 ? "#ffd23a" : null;
@@ -751,6 +759,7 @@ function drawFx() {
     if (f.kind === "steam") { f.x += f.vx; f.y += f.vy; g.globalAlpha = f.t / 140; g.fillStyle = P.dark ? "#8f8a96" : "#ffffff"; g.beginPath(); g.arc(x, f.y, 3 + (70 - f.t) * 0.08, 0, 7); g.fill(); g.globalAlpha = 1; }
     if (f.kind === "ring" && f.gold) { g.globalAlpha = f.t / 18; g.strokeStyle = "#ffd23a"; g.lineWidth = 2.5; g.beginPath(); g.arc(x, f.y, 8 + (18 - f.t) * 3, 0, 7); g.stroke(); g.globalAlpha = 1; }
     else if (f.kind === "ring") { g.strokeStyle = f.big ? P.T.accent : P.spark; g.lineWidth = 1.5; g.beginPath(); g.arc(x, f.y, (f.big ? 22 : 12) - f.t, 0, 7); g.stroke(); }
+    if (f.kind === "streak") { g.strokeStyle = P.spark; g.lineWidth = 1.5; g.globalAlpha = f.t / 8; g.beginPath(); for (let i = 0; i < 7; i++) { const an = (i / 7 + f.a) * 6.283, r0 = 10 + (8 - f.t) * 3, r1 = r0 + 7 + (i % 2) * 5; g.moveTo(x + Math.cos(an) * r0, f.y + Math.sin(an) * r0 * 0.7); g.lineTo(x + Math.cos(an) * r1, f.y + Math.sin(an) * r1 * 0.7); } g.stroke(); g.globalAlpha = 1; }
     if (f.kind === "water") { f.x += f.vx; f.y += f.vy; f.vy += 0.18; R(x, f.y, 2, 2, P.dark ? "#6fb7d8" : "#4a90b8"); }
     if (f.kind === "heart") { f.x += f.vx; f.y += f.vy; g.globalAlpha = Math.min(1, f.t / 20); g.fillStyle = P.T.accent; g.beginPath(); g.arc(x - 1.5, f.y, 1.8, 0, 7); g.arc(x + 1.5, f.y, 1.8, 0, 7); g.fill(); g.beginPath(); g.moveTo(x - 3.2, f.y + 0.6); g.lineTo(x, f.y + 4); g.lineTo(x + 3.2, f.y + 0.6); g.fill(); g.globalAlpha = 1; }
     if (f.kind === "star") { g.fillStyle = P.spark; g.beginPath(); for (let i = 0; i < 8; i++) { const r = i % 2 ? 2 : 6, a = i * Math.PI / 4; g.lineTo(x + Math.cos(a) * r, f.y + Math.sin(a) * r); } g.fill(); }
@@ -866,7 +875,7 @@ function draw() {
   drawFlames(PAL); drawBag(PAL);
   drawItems(); drawFloodFloor(PAL);
   const waiting = fightersPending();
-  const cast = (waiting ? [] : enemies.concat(players.filter((p) => p && p.lives > 0), civs, missionNpcs(), npcs, carts, rides, enemies.filter((e) => e.bike || e.boat).map((e) => e.bike || e.boat), companions())).concat(barrels, waiting ? [] : vehicleCast());
+  const cast = (waiting ? [] : enemies.concat(players.filter((p) => p && p.lives > 0), civs, missionNpcs(), npcs, carts, rides, enemies.filter((e) => e.bike || e.boat).map((e) => e.bike || e.boat), companions())).concat(barrels, waiting ? [] : vehicleCast(), waiting ? [] : eventCast());
   cast.sort((a, b) => a.y - b.y);
   for (const f of cast) if (f.paint) f.paint(); else if (f.dog) drawMoti(f); else if (f.kid) drawKid(f); else if (f.civ) drawCiv(f, PAL); else if (f.cart) drawCart(f, PAL); else if (f.veh) drawVehicle(f, PAL); else if (f.kind && KINDS[f.kind]) { if (f.fade) g.globalAlpha = 1 - f.fade * 0.85; drawFighter(f); g.globalAlpha = 1; drawWaterline(f); drawCarried(f, Math.round(f.x - cam), f.y); } else drawBarrel(f);
   drawFx();

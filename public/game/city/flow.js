@@ -39,6 +39,7 @@ function update() {
   if (walkIn) { stepWalkIn(); pressed.clear(); return; }
   if (wipe) { updateWipe(); pressed.clear(); return; }
   if (rewinding) { stepRewind(); pressed.clear(); return; }
+  if (hitStop > 0) { hitStop--; frameNo--; if (shake > 0) shake *= 0.85; return; }   // a blow lands: everything holds for a beat, the clock too, so input windows keep their length (presses carry over)
   updateRewind();
   updateStreet();
 
@@ -93,7 +94,7 @@ function startCity(n, at, save) {
 function loadStreet(id, x, y) {
   placeHub();
   street = WORLD.streets[id]; stageIdx = Math.min(3, (street.tier || 0) + (clockRuns() ? 1 : 0));   // the day city is a step up from the night
-  arena = null; queue = [];
+  arena = null; queue = []; hitStop = 0;
   streetArt(street); rwBuf = []; rewinding = null; bridge = null; bridgeT = 240;
   enemies = []; items = []; fx = []; texts = []; shots = []; lastHit = null; bossRef = null; train = null; spray = []; wallCount = 0; posterUsed = false;
   barrels = (street.barrels || []).map(([bx, by, drop, kind = "barrel"]) => ({ x: bx, y: by, drop, kind, hp: kind === "barrel" ? 2 : 3, shake: 0 }));
