@@ -209,6 +209,39 @@
     });
   }
 
+  /* gamepads: pad 1 and pad 2 press the same key codes as the keyboard, through the same
+     handlers as the touch pad, so a game needs no special cases. maps[i] gives pad i's codes:
+     { up, down, left, right, buttons: { <standard button number>: code } }. The stick and the
+     d-pad both move. Handlers get a second argument, true, so a game can tell a pad press
+     apart (to drive its menus, say). Polling starts only once a pad is seen. */
+  function bindGamepads(onDown, onUp, maps) {
+    if (!navigator.getGamepads) return;
+    let held = maps.map(() => new Set()), on = false;
+    const poll = () => {
+      let pads = [];
+      try { pads = [...navigator.getGamepads()].filter((p) => p && p.connected !== false); } catch (e) { /* blocked by a permissions policy */ }
+      maps.forEach((m, i) => {
+        const p = pads[i], next = new Set();
+        if (p && !document.hidden) {
+          const b = (n) => !!p.buttons[n] && (p.buttons[n].pressed || p.buttons[n].value > 0.5);
+          const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
+          if (ay < -0.5 || b(12)) next.add(m.up);
+          if (ay > 0.5 || b(13)) next.add(m.down);
+          if (ax < -0.5 || b(14)) next.add(m.left);
+          if (ax > 0.5 || b(15)) next.add(m.right);
+          for (const n in m.buttons) if (b(+n)) next.add(m.buttons[n]);
+        }
+        for (const c of held[i]) if (!next.has(c)) onUp(c, true);
+        for (const c of next) if (!held[i].has(c)) onDown(c, true);
+        held[i] = next;
+      });
+      requestAnimationFrame(poll);
+    };
+    const start = () => { if (!on) { on = true; requestAnimationFrame(poll); } };
+    addEventListener("gamepadconnected", start);
+    try { if ([...navigator.getGamepads()].some(Boolean)) start(); } catch (e) { /* ignore */ }
+  }
+
   /* hidden extras across both games (and the home page logo), remembered in
      this browser. They are never listed or called out anywhere: a player just
      stumbles on them, and a short chime and a toast with the name say "nice". */
@@ -258,5 +291,5 @@
 
   // the big Start on the game screen (shown when the menu sits under the screen) presses the menu's own start button
   for (const b of document.querySelectorAll("[data-start]")) b.addEventListener("click", () => { const t = document.getElementById(b.dataset.start); if (t) t.click(); });
-  window.Arcade = { tokens, onTheme: (f) => listeners.push(f), tone, noise, bindPad, setupFullscreen, isFullscreen: () => fs.on, enterFullscreen: () => enterFs(), secret, hasSecret, toast, onSequence, onWord };
+  window.Arcade = { tokens, onTheme: (f) => listeners.push(f), tone, noise, bindPad, bindGamepads, setupFullscreen, isFullscreen: () => fs.on, enterFullscreen: () => enterFs(), exitFullscreen: () => exitFs(), secret, hasSecret, toast, onSequence, onWord };
 })();

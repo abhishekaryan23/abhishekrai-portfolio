@@ -54,3 +54,4 @@
 - [Ghost Deploy](https://abhishekrai.dev/game/): a one-minute daily browser puzzle race, themed on getting a deploy past firewalls to production.
 - [Rollback Street](https://abhishekrai.dev/game/street/): a side-scrolling browser beat 'em up for one or two players.
 - [Akhada](https://abhishekrai.dev/game/akhada/): a 2.5D browser power fighter set across India, with fighters from Indian streets and epics, combo specials and Hell move super combos; one player against the CPU or two on one keyboard.
+- [Rollback City](https://abhishekrai.dev/game/city/): an open-world browser brawler set in Bunderpur, an invented Indian port city, grown from Rollback Street: three acts of story missions, districts to explore, odd jobs, side lines, a wax museum of film villains, and an Explore mode with every door open; one or two players.
