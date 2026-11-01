@@ -11,7 +11,7 @@ const SPRITES = {};
 // Art is fetched a stage at a time (plus the next stage, in the background), so a
 // phone only downloads what it is about to show. Anything not loaded yet is drawn
 // the old way, in code, so a slow connection never blocks play.
-const ART_V = 30, ART = "/game/city/sprites/", asked = new Set(), failed = new Set();
+const ART_V = 32, ART = "/game/city/sprites/", asked = new Set(), failed = new Set();
 function sprite(name, src) { if (asked.has(name)) return; asked.add(name); const im = new Image(); im.onload = () => (SPRITES[name] = im); im.onerror = () => failed.add(name); im.src = src + "?v=" + ART_V; }
 // When a stage opens, hold play for a moment (6 s at most) until the fighters on screen
 // have their 8-bit sheets, so nobody flashes up in the old drawn style first.
@@ -50,8 +50,8 @@ function streetArt(s) {
   if (s.theme === "akhada") art(["a_photo", "a_rack", "a_charpai"]);
   if ((s.junctions || []).some((j) => j.dir === "up" && !j.gate)) art(["gali_d", "gali_n"]);
   // the painted far layers, day and night
-  const far = { street: "city", roof: "city", seafront: "sea", opensea: "sea", docks: "harbour", ghat: "river" }[s.theme];
-  if (far) { const n = "bg_" + far + (worldDark() ? "_n" : "_d"); sprite(n, ART + n + ".webp"); }   // the other one when the light turns
+  const far = s.theme === "street" || s.theme === "yard" ? farKey(s) : { roof: "city", seafront: "sea", opensea: "sea", docks: "harbour", ghat: "river", heights: "heights" }[s.theme];
+  if (far) { const n = farName(far); sprite(n, ART + n + ".webp"); }   // the other one when the light turns
   if (s.theme === "seafront") for (const n of ["bg_hotel", "bg_club"]) sprite(n, ART + n + ".webp");
   if (PAINTED_ROOMS.has(s.id)) sprite("room_" + s.id, ART + "rooms/" + s.id + ".webp");
   if (s.theme === "godown9") art(["g_ring", "g_board", "g_bulbs", "crowd"]);
@@ -166,10 +166,18 @@ function paintedRoom(P, paint) {
   if (street.id === "dhaba") drawCup(P);
   return true;
 }
+// which painted far layer a stage shows: a district with its own skyline, else the old city
+const FAR_OF = { mandi: "mandi", harbour: "port", heights: "heights" };
+const farKey = (s) => FAR_OF[s.district] || "city";
+// the sunset art for the hour around dawn and the two before dark, where a stage has one
+const DUSK_ART = new Set(["city", "sea"]);
+const duskNow = () => clockRuns() && !isNight() && [6, 17, 18].includes(hour());
+const farName = (key, v) => "bg_" + key + (v || (worldDark() ? "_n" : DUSK_ART.has(key) && duskNow() ? "_e" : "_d"));
 function backdrop(key, bottom, v) {
-  // only the version on show is fetched (night art when night falls), as a small WebP
-  const name = "bg_" + key + (v || (PAL.dark ? "_n" : "_d")), im = SPRITES[name];
-  if (!im) { sprite(name, ART + name + ".webp"); return false; }
+  // only the version on show is fetched (night art when night falls), as a small WebP; until it
+  // comes, the plain day or night one stands in rather than the old drawn skyline
+  let name = farName(key, v), im = SPRITES[name];
+  if (!im) { sprite(name, ART + name + ".webp"); name = "bg_" + key + (v || (PAL.dark ? "_n" : "_d")); im = SPRITES[name]; if (!im) { sprite(name, ART + name + ".webp"); return false; } }
   if (!im.top) {   // its top-edge colour and its bottom-edge colour, measured once
     const c = document.createElement("canvas"); c.width = 16; c.height = 2; const x = c.getContext("2d");
     x.drawImage(im, 0, 0, im.width, 2, 0, 0, 16, 1); x.drawImage(im, 0, im.height - 2, im.width, 2, 0, 1, 16, 1);
@@ -180,7 +188,28 @@ function backdrop(key, bottom, v) {
   const y = Math.round(bottom - h);
   if (y > 0) { const gr = g.createLinearGradient(0, 0, 0, y + 1); gr.addColorStop(0, shade(im.top, -0.12)); gr.addColorStop(1, im.top); g.fillStyle = gr; g.fillRect(0, 0, LW, y + 1); }
   g.drawImage(im, -Math.round(Math.max(0, cam) * par), y, w, h);
+  skyLife(key, y + h * 0.45);
   return im;
+}
+// the sky is never quite still: kites tug on their strings by day, a plane blinks across at night
+const KITE_C = ["#e8287a", "#ffd23a", "#27b36a", "#2fa8e0", "#ff7a1a"];
+function skyLife(key, low) {
+  if (key === "storm" || key === "studio") return;
+  if (worldDark()) {
+    const t = (frameNo % 5400) * 0.22 - 30; if (t > LW + 30) return;
+    const x = Math.round(t), y = 14 + Math.round(t * 0.03);
+    R(x, y, 2, 1, "#c8c4d8"); if (frameNo % 50 < 6) R(x - 1, y, 1, 1, "#ff4a3a"); if ((frameNo + 25) % 50 < 6) R(x + 2, y, 1, 1, "#ffffff");
+    return;
+  }
+  if (!["city", "sea", "mandi", "river"].includes(key) || street.theme === "opensea" || raining()) return;
+  const W = LW + 160;
+  for (let i = 0; i < 4; i++) {
+    const x = Math.round((((i * 211 + 70 - cam * 0.22) % W) + W) % W - 80), sw = Math.sin(frameNo / (34 + i * 7) + i * 2);
+    const y = Math.round(12 + i * 9 + Math.sin(frameNo / 53 + i) * 3), c = KITE_C[i % 5];
+    g.strokeStyle = "rgba(240,240,240,0.35)"; g.lineWidth = 0.5; g.beginPath(); g.moveTo(x, y + 4); g.quadraticCurveTo(x - 10 - i * 4, y + 30, x - 26 - i * 6, low); g.stroke(); g.lineWidth = 1;   // the manjha, down to a roof
+    g.save(); g.translate(x, y); g.rotate(sw * 0.22); g.fillStyle = c; g.beginPath(); g.moveTo(0, -5); g.lineTo(4, 0); g.lineTo(0, 5); g.lineTo(-4, 0); g.fill();
+    g.fillStyle = "rgba(255,255,255,0.35)"; g.fillRect(-0.5, -5, 1, 10); g.fillStyle = c; g.fillRect(-1 + sw, 5, 2, 2); g.fillRect(-1 + sw * 2, 8, 2, 1); g.restore();
+  }
 }
 function skyline(P, par, base, tall) {
   const off = cam * par;
@@ -205,7 +234,7 @@ function clearAt(wx, r) {
 }
 function drawStreet(P) {
   const L = look(), wareFrom = L.wareFrom === undefined ? Infinity : L.wareFrom, dhabaI = L.dhaba === undefined ? null : L.dhaba;
-  if (!backdrop("city", 112)) {   // the painted far layer; the old drawn one until it loads
+  if (!backdrop(farKey(street), 112)) {   // the painted far layer; the old drawn one until it loads
   R(0, 0, LW, LH, P.sky); stars(P, 40, 60);
     g.fillStyle = P.dark ? "#3a3440" : "#f6eff3"; g.beginPath(); g.arc(300 - cam * 0.05, 26, 11, 0, 7); g.fill();
     skyline(P, 0.3, 112, 50);

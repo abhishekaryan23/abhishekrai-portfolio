@@ -14,7 +14,7 @@ function physics(f) {
     }
     if (f.z <= 0) {
       f.z = 0; f.vz = 0;
-      if (f.st === "air") { setState(f, "idle"); f.vx = 0; f.airAtk = null; if (f.team === "e") f.cool = rand(...KINDS[f.kind].cool); dust(f.x, f.y); }
+      if (f.st === "air") { setState(f, "idle"); f.vx = 0; f.airAtk = null; f.landF = frameNo; if (f.team === "e") f.cool = rand(...KINDS[f.kind].cool); dust(f.x, f.y); }
       else if (f.st === "fly" || f.st === "thrown") {
         shake = Math.max(shake, 3); Arcade.noise(0.07, 0.06);
         slamLanding(f); floodSplash(f);
@@ -195,6 +195,9 @@ function spark(d, a, atk) {
   fx.push({ kind: "star", x: d.x - (a.face || 1) * 6, y: h, t: 6 });
   Arcade.tone(atk.sfx || 400, 0.06, "square", 0.05, -120); Arcade.noise(0.05, 0.05);
   shake = Math.max(shake, atk.knock ? 4 : 1.5);
+  const mine = (f) => f && f.pi != null;   // a real player: allies on team "p" scrapping off-screen must not freeze the game
+  if (mine(d) || mine(a) || mine(a.owner)) hitStop = Math.max(hitStop, atk.knock ? 5 : 2);
+  if (atk.knock) fx.push({ kind: "streak", x: d.x - (a.face || 1) * 4, y: h, t: 8, a: rand(0, 1) });
 }
 function burst(x, y, n, c) { for (let i = 0; i < n; i++) fx.push({ kind: "dot", x, y, vx: rand(-1.6, 1.6), vy: rand(-2.2, 0.4), c, t: rand(12, 22) }); }
 function dust(x, y) { for (let i = 0; i < 5; i++) fx.push({ kind: "dust", x: x + rand(-8, 8), y, vx: rand(-0.6, 0.6), vy: rand(-0.6, -0.1), t: rand(14, 24) }); }

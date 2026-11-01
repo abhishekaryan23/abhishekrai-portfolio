@@ -84,7 +84,7 @@ function trainHere(cost) {
 // an open yard behind a compound wall: the weighbridge, the truck yard
 function drawYard(P) {
   const L = look(), d = P.dark, wall = d ? "#575047" : "#d9cdb4", earth = d ? "#4a3e32" : "#b8a07c";
-  R(0, 0, LW, LH, P.sky); stars(P, 30, 60); skyline(P, 0.3, 100, 44); drawCrows(9);
+  if (!backdrop("mandi", 100)) { R(0, 0, LW, LH, P.sky); stars(P, 30, 60); skyline(P, 0.3, 100, 44); } drawCrows(9);
   R(0, 92, LW, 58, wall); R(0, 90, LW, 3, shade(wall, -0.3));
   for (let x = -(cam % 5); x < LW; x += 5) R(x, 88, 2, 2, d ? "#6d8a7a" : "#9cc2ae");   // glass along the top
   for (let i = Math.floor(cam / 96) - 1; i < Math.floor(cam / 96) + LW / 96 + 2; i++) {

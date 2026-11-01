@@ -83,7 +83,7 @@ function drawStudio(P) {
   for (let wx = 200; wx < street.w; wx += 340) { const x = Math.round(wx - cam); if (x < -20 || x > LW + 20) continue; R(x, 70, 2, 80, "#2a2622"); R(x - 6, 64, 14, 8, "#3a3632"); g.globalAlpha = P.dark ? 0.2 : 0.08; g.fillStyle = "#fff4c8"; g.beginPath(); g.moveTo(x - 6, 72); g.lineTo(x + 40, 150); g.lineTo(x - 30, 150); g.fill(); g.globalAlpha = 1; }
 }
 function drawPlaza(P) {
-  if (!backdrop("city", 112)) R(0, 0, LW, LH, P.sky);
+  if (!backdrop("heights", 112)) R(0, 0, LW, LH, P.sky);
   R(0, 30, LW, 120, P.dark ? "rgba(20,30,48,0.55)" : "rgba(170,200,220,0.5)");
   for (let x = -(cam * 1 % 40); x < LW; x += 40) { R(x, 30, 1, 120, P.dark ? "#4a6a8a" : "#e8f2fa"); for (let y = 40; y < 150; y += 18) R(x + 4, y, 32, 1, P.dark ? "#2a3a52" : "#c8dce8"); }   // the glass curtain wall
   R(0, 150, LW, LH - 150, P.dark ? "#2a2a30" : "#d8d8dc"); for (let x = -(cam % 48); x < LW; x += 48) R(x, 150, 1, LH - 150, P.dark ? "#3a3a44" : "#c0c0c8");
