@@ -163,6 +163,9 @@ function hurt(d, a, atk) {
     d.sp = Math.min(100, d.sp + 3); d.stagger++; d.staggerT = 70; if (d.stagger >= (KINDS[d.kind].sturdy || 3) + statGrit()) knock = true;
     if (d.hold) { d.hold.heldBy = null; setState(d.hold, "idle"); d.hold = null; }
     if (d.st === "air") d.airAtk = null;
+    // a rider stays in the saddle: goondas, villains and the police can hurt you on a bike, not
+    // unseat you (a crash, traffic or a knockout still can)
+    if (d.ride && d.hp > 0 && a.team === "e" && !a.env) { knock = false; d.stagger = 0; }
   }
   if (KINDS[d.kind].boss) {
     d.poise += atk.dmg;

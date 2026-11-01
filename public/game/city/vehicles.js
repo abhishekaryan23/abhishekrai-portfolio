@@ -111,8 +111,10 @@ function updateRides() {
     if (Math.abs(v.vx) > 2) {
       for (const e of enemies) {
         if (e.rammed === v && frameNo - e.ramF < 40 || Math.abs(e.x - v.x) > 20 || Math.abs(e.y - v.y) > 11 || DOWN_STATES.includes(e.st) || e.inv > 0) continue;
-        e.rammed = v; e.ramF = frameNo;
-        hurt(e, { x: v.x - v.face * 10, face: v.face, team: "p", kind: v.rider.kind, owner: v.rider }, { dmg: Math.round(4 + Math.abs(v.vx) * 1.5), knock: true, sfx: 200 });
+        // run the same one down again soon and it hurts more each time: 1.5x, 2x, up to 3x
+        e.ramN = frameNo - (e.ramF || -999) < 300 ? (e.ramN || 0) + 1 : 1; e.rammed = v; e.ramF = frameNo;
+        hurt(e, { x: v.x - v.face * 10, face: v.face, team: "p", kind: v.rider.kind, owner: v.rider }, { dmg: Math.round((4 + Math.abs(v.vx) * 1.5) * Math.min(3, 1 + (e.ramN - 1) * 0.5)), knock: true, sfx: 200 });
+        if (e.ramN > 1) texts.push({ x: e.x, y: e.y - 70, s: "Rammed x" + e.ramN + "!", t: 50 });
         v.vx *= 0.7;
       }
       for (const c of civs) if (!c.hit && Math.abs(c.x - v.x) < 18 && Math.abs(c.y - v.y) < 10) hitCiv(c, v.rider);
