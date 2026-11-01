@@ -890,7 +890,7 @@ function draw() {
   if (state === "play" && !wipe && !paused) drawPrompts(PAL);
   if (phoneBtn) { const hide = !hasPhone(); if (phoneBtn.hidden !== hide) phoneBtn.hidden = hide; }
   if (rwBtn) { const hide = !(state === "play" && !paused && hasWatch() && rewinds > 0); if (rwBtn.hidden !== hide) rwBtn.hidden = hide; }
-  if (useBtn) { const hide = !(state === "play" && !paused && players[0] && (players[0].target || players[0].ride)); if (useBtn.hidden !== hide) useBtn.hidden = hide; }
+  if (useBtn) { const hide = !(state === "play" && !paused && players[0]), idle = hide || !(players[0].target || players[0].ride); if (useBtn.hidden !== hide) useBtn.hidden = hide; useBtn.classList.toggle("idle", idle); }
   if (state !== "menu" && state !== "story") drawHud();
   if (state === "play" && countdown > 0 && !paused) {
     g.setTransform(SCALE, 0, 0, SCALE, 0, 0);
