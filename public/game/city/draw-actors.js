@@ -866,7 +866,7 @@ function draw() {
   drawFlames(PAL); drawBag(PAL);
   drawItems(); drawFloodFloor(PAL);
   const waiting = fightersPending();
-  const cast = (waiting ? [] : enemies.concat(players.filter((p) => p && p.lives > 0), civs, missionNpcs(), npcs, carts, rides, enemies.filter((e) => e.bike || e.boat).map((e) => e.bike || e.boat), companions())).concat(barrels, waiting ? [] : vehicleCast());
+  const cast = (waiting ? [] : enemies.concat(players.filter((p) => p && p.lives > 0), civs, missionNpcs(), npcs, carts, rides, enemies.filter((e) => e.bike || e.boat).map((e) => e.bike || e.boat), companions())).concat(barrels, waiting ? [] : vehicleCast(), waiting ? [] : eventCast());
   cast.sort((a, b) => a.y - b.y);
   for (const f of cast) if (f.paint) f.paint(); else if (f.dog) drawMoti(f); else if (f.kid) drawKid(f); else if (f.civ) drawCiv(f, PAL); else if (f.cart) drawCart(f, PAL); else if (f.veh) drawVehicle(f, PAL); else if (f.kind && KINDS[f.kind]) { if (f.fade) g.globalAlpha = 1 - f.fade * 0.85; drawFighter(f); g.globalAlpha = 1; drawWaterline(f); drawCarried(f, Math.round(f.x - cam), f.y); } else drawBarrel(f);
   drawFx();

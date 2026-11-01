@@ -381,6 +381,7 @@ function drawStreetProps(P) {
     if (pr.kind === "netacutout" && flag("moustache:" + street.id + ":" + pr.x)) { R(x - 5, Y0 - 41, 10, 2, P.ol); R(x - 6, Y0 - 45, 4, 3, P.ol); R(x + 2, Y0 - 45, 4, 3, P.ol); R(x - 2, Y0 - 44, 4, 1, P.ol); }   // the lane's opinion
   }
   drawHeatProps(P); drawHideouts(P); drawEavesdrop(P);
+  drawLivingBack(P); drawSpots(); drawBooth(); drawMuseumFront(P);   // on the walls and the pavement: behind everyone
 }
 // passing traffic, drawn with the cast so it sorts by depth with the people
 function drawTraffic(P) {

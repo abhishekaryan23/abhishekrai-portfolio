@@ -158,7 +158,6 @@ function addTitleButtons() {
 function updateGallery() { updateWax(); updateCats(); if (frameNo % 60 === 0) updateUnlocks(); }
 function galleryTarget(p) { return spotTarget(p) || boothTarget(p) || museumTarget(p); }
 function drawGallery(P) {
-  drawSpots(); drawBooth(); drawMuseumFront(P);
   if (clockRuns() && !street.interior) {
     for (const d of POLAROIDS) if (d.look && d.street === street.id && !gotPolaroid(d.id)) collectCue(d.x, Y0 - 30);   // the 1987 polaroids
     for (const it of items) if (it.kind === "letter") collectCue(it.x, it.y - 10 - (it.z || 0));   // Nani's letters, once out of their barrel

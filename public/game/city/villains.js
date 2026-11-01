@@ -17,7 +17,7 @@ art(VILLAINS.map((v) => v.art).concat("v_ambulance"));
 
 WORLD.streets.waxMuseum = { id: "waxMuseum", name: "Khalnayak Wax Museum", district: WORLD.streets.kinara.district, w: 640, theme: "museum", interior: true, mapOn: "kinara",
   doors: [{ x: 600, to: "kinara", label: "Sagar Kinara" }] };
-WORLD.streets.kinara.doors = (WORLD.streets.kinara.doors || []).concat({ x: 960, to: "waxMuseum", label: "Khalnayak Wax Museum" });
+WORLD.streets.kinara.doors = (WORLD.streets.kinara.doors || []).concat({ x: 1300, to: "waxMuseum", label: "Khalnayak Wax Museum" });   // its own pavilion on the promenade, between the hotel and the club
 
 // inside: velvet walls, a polished floor, five plinths under spotlights with ropes between them
 function drawMuseum(P) {
@@ -38,6 +38,14 @@ function drawMuseum(P) {
     if ((progress.waxBeat || []).includes(VILLAINS.indexOf(v))) R(x + 10, 144, 5, 4, "#2f9a4a");   // a small green tick on the plaque: beaten
   }
   if (waxFight && waxFight.k === 3) for (let k = 0; k < 4; k++) { const sx = LW / 2 + Math.sin(frameNo / 20 + k * 1.6) * 160; g.globalAlpha = 0.14; g.fillStyle = ["#ff3bd0", "#3bd0ff", "#ffe03b", "#3bff7a"][k]; g.beginPath(); g.moveTo(LW / 2, 0); g.lineTo(sx - 20, 200); g.lineTo(sx + 20, 200); g.fill(); g.globalAlpha = 1; }   // Lucky brings his own disco
+  { // the way out: a lit double door with an EXIT sign, where you came in
+    const dx = Math.round(600 - cam);
+    if (dx > -40 && dx < LW + 40) {
+      R(dx - 16, 96, 32, 56, "#1d0a0e"); R(dx - 14, 98, 28, 54, "#5a3a22"); R(dx - 1, 98, 2, 54, "#3e2616"); R(dx - 5, 124, 2, 4, "#c9a227"); R(dx + 3, 124, 2, 4, "#c9a227");
+      R(dx - 16, 94, 32, 3, "#c9a227"); R(dx - 10, 82, 20, 9, "#0e3a1e"); text("EXIT", dx, 89, 6, "#5cff8a", "center", "IBM Plex Sans");
+      g.globalAlpha = 0.14; g.fillStyle = "#ffd98a"; g.beginPath(); g.moveTo(dx - 14, 152); g.lineTo(dx + 14, 152); g.lineTo(dx + 26, 168); g.lineTo(dx - 26, 168); g.fill(); g.globalAlpha = 1;
+    }
+  }
   for (let k = 0; k < VILLAINS.length - 1; k++) {   // velvet ropes on brass posts
     const a = Math.round(VILLAINS[k].x + 26 - cam), b = Math.round(VILLAINS[k + 1].x - 26 - cam);
     for (const px of [a, b]) { R(px - 1, 150, 3, 16, gold); R(px - 2, 148, 5, 3, "#e8c860"); R(px - 3, 165, 7, 2, gold); }
@@ -46,9 +54,11 @@ function drawMuseum(P) {
 }
 // outside, on the Kinara: a little art deco front with a marquee and a lit doorway
 function drawMuseumFront(P) {
-  if (street.id !== "kinara") return; const x = Math.round(960 - cam); if (x < -60 || x > LW + 60) return;
+  if (street.id !== "kinara") return; const x = Math.round(1300 - cam); if (x < -60 || x > LW + 60) return;
   const cream = P.dark ? "#8a8070" : "#efe2c4", trim = P.dark ? "#5a4a3a" : "#b88a5a";
-  R(x - 30, 70, 60, 80, cream); R(x - 30, 70, 60, 3, trim); for (const px of [-30, 22]) R(x + px, 70, 8, 80, trim);
+  R(x - 40, 46, 80, 6, trim); R(x - 36, 40, 72, 7, cream); R(x - 26, 34, 52, 7, trim);   // a stepped deco crown
+  R(x - 38, 70, 76, 80, cream); R(x - 38, 70, 76, 3, trim); for (const px of [-38, -26, 18, 30]) { R(x + px, 70, 8, 80, trim); R(x + px + 2, 70, 2, 80, shade(trim, 0.2)); }   // columns
+  for (let k = 0; k < 3; k++) R(x - 44 - k * 3, 150 - k * 2, 88 + k * 6, 2, k % 2 ? shade(cream, -0.15) : cream);   // steps
   R(x - 34, 54, 68, 18, "#4a1420"); R(x - 33, 55, 66, 1, "#c9a227"); text("WAX MUSEUM", x, 66, 6, "#f2c230", "center", "IBM Plex Sans");
   for (let b = 0; b < 9; b++) if ((Math.floor(frameNo / 12) + b) % 3) R(x - 32 + b * 8, 52, 2, 2, "#ffe9a8");   // marquee bulbs
   R(x - 12, 100, 24, 50, "#1d0a0e"); R(x - 10, 102, 20, 48, P.dark ? "#6a2a1a" : "#8a3a24"); g.globalAlpha = 0.35; R(x - 10, 102, 20, 48, "#ffb070"); g.globalAlpha = 1;
