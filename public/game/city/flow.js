@@ -171,6 +171,7 @@ function findTargets(ap) {
     const rd = !arena && !street.water && rides.length && rideTarget(p); if (rd) { p.target = rd; continue; }
     const fy = back && ferryTarget(p); if (fy) { p.target = fy; continue; }
     const hid = hideoutTarget(p); if (hid) { p.target = hid; continue; }
+    const evl = !arena && eventLabel(p); if (evl) { p.target = evl; continue; }   // street events answer Use anywhere on the road, so their prompt (and the pad's Use) must too
     const cut = clockRuns() && back && (street.props || []).find((pr) => pr.kind === "netacutout" && Math.abs(pr.x - p.x) < 20 && !flag("moustache:" + street.id + ":" + pr.x));
     if (cut) { p.target = { label: "Draw a moustache on Netaji", x: cut.x, y: Y0 - 62, act: () => { progress.flags["moustache:" + street.id + ":" + cut.x] = true; changeRespect(2); sayAt(cut.x, Y0 - 70, "The lane will talk about this for a week"); if (convoy) crime(1, cut.x, "police"); } }; continue; }
     const cp = back && !arena && companionTarget(p); if (cp) { p.target = cp; continue; }

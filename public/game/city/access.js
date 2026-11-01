@@ -60,6 +60,23 @@ function capActors() {
   if (texts.length > 24) texts.splice(0, texts.length - 24);
 }
 
+/* ---------- a phone held upright: ask for landscape ---------- */
+// The game plays sideways. A phone held upright gets a card asking for a turn; "Play upright
+// anyway" keeps arcade.js's turned stage for those with rotation locked (for this visit only).
+const PHONE = TOUCH && Math.min(screen.width, screen.height) < 600;   // tablets get arcade.js's small hint instead
+let turnSkipped = false;
+function checkTurn() {
+  const el = $("turn-phone"); if (!el) return;
+  const ask = PHONE && !turnSkipped && innerHeight > innerWidth;
+  if (el.hidden === !ask) return;
+  el.hidden = !ask;
+  if (ask && state === "play" && !paused) togglePause();   // turned upright mid-fight: hold the game
+}
+$("turn-skip").addEventListener("click", () => { turnSkipped = true; checkTurn(); });
+addEventListener("resize", checkTurn); addEventListener("orientationchange", () => setTimeout(checkTurn, 150));
+{ const mq = matchMedia("(orientation: portrait)"); if (mq.addEventListener) mq.addEventListener("change", checkTurn); else mq.addListener(checkTurn); }   // some browsers turn without a resize
+checkTurn();
+
 /* ---------- balance (Story difficulty) ---------- */
 function applyBalance() {
   if (MISSIONS["2-11"]) MISSIONS["2-11"].tin = EASY ? 4000 : 6000;
