@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,500;0,6..72,600;1,6..72,500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/assets/site.css?v=6">
+  <link rel="stylesheet" href="/assets/site.css?v=7">
   <noscript><style>.reveal-up{opacity:1;transform:none}</style></noscript>
   <script type="application/ld+json">
   {
@@ -251,6 +251,22 @@
             "position": 1,
             "item": {
               "@type": "SoftwareSourceCode",
+              "name": "VCF Enterprise MCP",
+              "programmingLanguage": "Python",
+              "description": "An unofficial, under-testing MCP server that lets AI assistants work with VMware Cloud Foundation 9 (SDDC Manager, vCenter, NSX, VCF Operations; VCF Automation and Orchestrator experimental) without giving VCF credentials to the model: per-role tool filtering, dry runs with human approval, credential redaction and an audit trail. Includes a simulated VCF 9 Digital Twin.",
+              "codeRepository": "https://github.com/abhishekaryan23/vcf-ent-mcp",
+              "license": "https://opensource.org/licenses/MIT",
+              "keywords": "vmware-cloud-foundation, vcf9, mcp-server, ai-agents, nsx, vcenter, sddc-manager",
+              "author": {
+                "@id": "https://abhishekrai.dev/#person"
+              }
+            }
+          },
+          {
+            "@type": "ListItem",
+            "position": 2,
+            "item": {
+              "@type": "SoftwareSourceCode",
               "name": "moss-image-mac",
               "programmingLanguage": "Python",
               "description": "Runs the MOSS-Image-SFT 5B text-to-image model locally on Apple Silicon Macs (4-bit, about 30 seconds per image on a base M4) with an MCP server: text-to-image with reliable text, bounding-box layouts, inpainting, image-to-image and transparent cutouts. Built on stable-diffusion.cpp with Metal.",
@@ -264,7 +280,7 @@
           },
           {
             "@type": "ListItem",
-            "position": 2,
+            "position": 3,
             "item": {
               "@type": "SoftwareApplication",
               "name": "SteerVox",
@@ -279,7 +295,7 @@
           },
           {
             "@type": "ListItem",
-            "position": 3,
+            "position": 4,
             "item": {
               "@type": "SoftwareApplication",
               "name": "SmartScissor",
@@ -293,7 +309,7 @@
           },
           {
             "@type": "ListItem",
-            "position": 4,
+            "position": 5,
             "item": {
               "@type": "WebSite",
               "name": "Onived",
@@ -306,7 +322,7 @@
           },
           {
             "@type": "ListItem",
-            "position": 5,
+            "position": 6,
             "item": {
               "@type": "SoftwareSourceCode",
               "name": "Local AIOps incident commander",
@@ -535,6 +551,20 @@
         <p>Mostly local AI: tools that run on your own machine, so your data never leaves it. Each one is working software.</p>
       </div>
       <div class="projects">
+        <article class="proj full text-only reveal-up">
+          <div class="proj-body">
+            <div class="kind">VMware Cloud Foundation · AI agents · MCP · under testing</div>
+            <h3>VCF Enterprise MCP</h3>
+            <p>An MCP server that lets AI assistants such as Claude Code, Cursor or VS Code work with VMware Cloud Foundation 9: SDDC Manager, vCenter, NSX and VCF Operations, with VCF Automation and Orchestrator experimental. The model never gets VCF credentials or the raw infrastructure APIs.</p>
+            <p>An unofficial community project, not a Broadcom or VMware product, and still under testing. It ships with a simulated VCF 9 Digital Twin, so you can try it without a real environment.</p>
+            <div class="links"><a href="https://github.com/abhishekaryan23/vcf-ent-mcp" target="_blank" rel="noopener">GitHub</a></div>
+          </div>
+          <dl class="proj-facts">
+            <dt>How it works</dt><dd>It sits between your identity provider and VCF. Each person sees only the tools their role allows (16 roles, 6 risk classes). Every change runs as a dry run first and waits for that person's approval. Passwords stay in an encrypted store or your vault, are entered on a private local page and are redacted from replies, and every call is audited.</dd>
+            <dt>Troubleshooting</dt><dd>Traces why an application is down across appliances, NSX (BGP, firewall, Tier-1, VPC), virtual machines, Active Directory and clustered databases.</dd>
+            <dt>Built with</dt><dd>Python, Model Context Protocol, VCF 9 APIs checked against Broadcom's published 9.0 and 9.1 specs (not yet validated on live appliances)</dd>
+          </dl>
+        </article>
         <article class="proj full reveal-up">
           <div class="proj-body">
             <div class="kind">Image generation · macOS · Apple Silicon · MCP</div>
